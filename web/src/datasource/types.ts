@@ -6,12 +6,6 @@
  */
 import type {CourseCode, CourseInfo, Plan, PlanBundle, PlanId} from '../domain';
 
-export type SavedCollection = {
-  id: string;
-  name: string;
-  courses: CourseCode[];
-};
-
 export type DataSource = {
   kind: 'demo';
   /** The plan and everything the engine needs to evaluate it. */
@@ -19,8 +13,9 @@ export type DataSource = {
   savePlan(plan: Plan): Promise<void>;
   /** Forget every local edit to the plan; the next load starts fresh. */
   resetPlan(id: PlanId): Promise<void>;
-  loadCollections(): Promise<SavedCollection[]>;
-  saveCollections(collections: SavedCollection[]): Promise<void>;
+  /** The student's favourited courses, in the order they were starred. */
+  loadFavorites(): Promise<CourseCode[]>;
+  saveFavorites(favorites: CourseCode[]): Promise<void>;
   /** Code or title match, ordered by code; empty query returns nothing. */
   searchCourses(query: string, limit: number): Promise<CourseInfo[]>;
   /** Courses the suggestion strip may offer for a rule (`08-board-interaction.md`). */

@@ -891,20 +891,15 @@ export const bundle: PlanBundle = {
 
 // -------------------------------------------------------------------- saved
 
-import type {SavedCollection} from '../datasource/types';
-
-export const savedCollections: SavedCollection[] = [
-  {
-    id: 'coll-spring-maybe',
-    name: 'Spring maybe',
-    courses: ['STAT 315', 'COMP 430', 'COMP 440', 'HART 101'].map(code),
-  },
-  {
-    id: 'coll-fallbacks',
-    name: 'Fallbacks',
-    courses: ['PHIL 101', 'ECON 100'].map(code),
-  },
-];
+/** Starred courses. One flat list; there are no folders. */
+export const favorites: CourseCode[] = [
+  'STAT 315',
+  'COMP 430',
+  'COMP 440',
+  'HART 101',
+  'PHIL 101',
+  'ECON 100',
+].map(code);
 
 /** Stand-in for the catalog query a rule's suggestion strip makes (`08-board-interaction.md`). */
 export const catalogCandidates: CourseCode[] = courseFacts.courses.map(

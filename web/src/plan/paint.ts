@@ -71,6 +71,11 @@ export const islandHover: CSSProperties = {
 };
 export const islandDimmed: CSSProperties = {opacity: 0.6};
 
+/** A row carrying a warning: the yellow wash, so the problem is visible from across the board. */
+export const warningRow: CSSProperties = {
+  background: 'var(--color-background-yellow)',
+};
+
 export const selfCheckRow: CSSProperties = {
   borderBlockStart: LINE,
   boxShadow: 'inset 3px 0 0 0 var(--color-border-purple)',
@@ -99,6 +104,18 @@ export function liftedCard(hue: Hue): CSSProperties {
     transform: 'scale(0.96)',
   };
 }
+/** A rule row is a drop target, so it reads as a slot, not a tag. */
+export const ruleRow: CSSProperties = {
+  border: 'var(--border-width) solid var(--color-border)',
+  borderRadius: 'var(--radius-inner)',
+  background: 'var(--color-background-card)',
+  minHeight: 40,
+};
+export const ruleRowRaised: CSSProperties = {
+  ...ruleRow,
+  borderColor: 'var(--color-accent)',
+  background: 'var(--color-accent-muted)',
+};
 export const ruleHit: CSSProperties = {
   background: 'var(--color-accent-muted)',
   borderRadius: 'var(--radius-inner)',

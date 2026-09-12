@@ -4,6 +4,7 @@
  */
 import {
   courseKey,
+  type CourseCode,
   type CourseInfo,
   type Plan,
   type PlanBundle,
@@ -12,12 +13,12 @@ import {
 import {
   bundle as fixtureBundle,
   catalogCandidates as fixtureCandidates,
-  savedCollections as fixtureCollections,
+  favorites as fixtureFavorites,
 } from '../fixtures/csStats';
-import type {DataSource, SavedCollection} from './types';
+import type {DataSource} from './types';
 
 const PLAN_KEY = 'skyspace.demo.plan.v1.';
-const COLLECTIONS_KEY = 'skyspace.demo.collections.v1';
+const FAVORITES_KEY = 'skyspace.demo.favorites.v1';
 
 function read<T>(key: string, isValid: (v: unknown) => v is T): T | undefined {
   try {
@@ -52,9 +53,9 @@ function remove(key: string): void {
 const isPlan = (v: unknown): v is Plan =>
   typeof v === 'object' && v !== null && 'terms' in v && 'programs' in v;
 
-const isCollections = (v: unknown): v is SavedCollection[] =>
+const isCourseCodes = (v: unknown): v is CourseCode[] =>
   Array.isArray(v) &&
-  v.every(c => typeof c === 'object' && c !== null && 'courses' in c);
+  v.every(c => typeof c === 'object' && c !== null && 'subject' in c);
 
 export const demoDataSource: DataSource = {
   kind: 'demo',
@@ -70,17 +71,17 @@ export const demoDataSource: DataSource = {
 
   async resetPlan(id: PlanId): Promise<void> {
     remove(PLAN_KEY + id);
-    remove(COLLECTIONS_KEY);
+    remove(FAVORITES_KEY);
     // The key an earlier build used; harmless to clear.
     remove(`skyspace.plan.v1.${id}`);
   },
 
-  async loadCollections(): Promise<SavedCollection[]> {
-    return read(COLLECTIONS_KEY, isCollections) ?? fixtureCollections;
+  async loadFavorites(): Promise<CourseCode[]> {
+    return read(FAVORITES_KEY, isCourseCodes) ?? fixtureFavorites;
   },
 
-  async saveCollections(collections: SavedCollection[]): Promise<void> {
-    write(COLLECTIONS_KEY, collections);
+  async saveFavorites(favorites: CourseCode[]): Promise<void> {
+    write(FAVORITES_KEY, favorites);
   },
 
   async searchCourses(query: string, limit: number): Promise<CourseInfo[]> {

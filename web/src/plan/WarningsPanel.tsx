@@ -1,64 +1,37 @@
+import {Card} from '@astryxdesign/core/Card';
 import {Icon} from '@astryxdesign/core/Icon';
-import {Section} from '@astryxdesign/core/Section';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 
 import type {Plan, Warning} from '../domain';
 import {termName, warningSubject, warningTerm, warningText} from './labels';
 import {HollowMark} from './marks';
-import {violetInk} from './paint';
+import {islandHead, violetInk} from './paint';
 
-type WarningsDrawerProps = {
+type WarningsPanelProps = {
   plan: Plan;
   warnings: Warning[];
-  /** While a card is in the air the drawer is one line. */
-  collapsed: boolean;
 };
 
-export function WarningsDrawer({
-  plan,
-  warnings,
-  collapsed,
-}: WarningsDrawerProps) {
-  if (collapsed) {
-    return (
-      <Section
-        variant="muted"
-        dividers={['top']}
-        paddingInline={3}
-        paddingBlock={2}
-        width="100%"
-      >
-        <Stack direction="horizontal" width="100%" gap={1.5} vAlign="center">
-          <Icon icon="info" size="sm" color="secondary" label="Note" />
-          <Text size="sm">
-            Drop anywhere. Skyspace warns after, never blocks.
-          </Text>
-        </Stack>
-      </Section>
-    );
-  }
+/** Sits above the board. Stays put during a drag; the board's own tints do the talking then. */
+export function WarningsPanel({plan, warnings}: WarningsPanelProps) {
   return (
-    <Section
-      variant="muted"
-      dividers={['top']}
-      paddingInline={3}
-      paddingBlock={2}
-      width="100%"
-    >
-      <Stack width="100%" gap={1.5}>
+    <Card padding={0} width="100%" variant="yellow">
+      <Stack width="100%" gap={0}>
         <Stack
           direction="horizontal"
           width="100%"
-          hAlign="between"
+          paddingInline={2}
+          paddingBlock={1.5}
+          gap={1.5}
           vAlign="center"
+          style={islandHead}
         >
-          <Text type="label" weight="semibold">
-            Warnings
-          </Text>
-          <Text type="supporting">
-            {warnings.length} · the plan is yours; Skyspace warns and never
-            blocks
+          <Icon icon="warning" size="sm" color="warning" label="" />
+          <Text size="sm" weight="semibold">
+            {warnings.length === 0
+              ? 'No warnings'
+              : `${warnings.length} warning${warnings.length === 1 ? '' : 's'}`}
           </Text>
         </Stack>
         {warnings.map((warning, i) => {
@@ -69,8 +42,11 @@ export function WarningsDrawer({
               key={i}
               direction="horizontal"
               width="100%"
+              paddingInline={2}
+              paddingBlock={1}
               gap={1.5}
               vAlign="start"
+              style={i === 0 ? undefined : islandHead}
             >
               {self ? (
                 <Icon
@@ -92,7 +68,7 @@ export function WarningsDrawer({
               </Text>
               <Text type="supporting" textWrap="nowrap">
                 {self
-                  ? 'self-check'
+                  ? 'check yourself'
                   : term === undefined
                     ? ''
                     : termName(plan, term)}
@@ -101,10 +77,7 @@ export function WarningsDrawer({
             </Stack>
           );
         })}
-        {warnings.length === 0 && (
-          <Text type="supporting">Nothing to warn about.</Text>
-        )}
       </Stack>
-    </Section>
+    </Card>
   );
 }

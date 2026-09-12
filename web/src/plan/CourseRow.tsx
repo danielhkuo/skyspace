@@ -27,6 +27,7 @@ import {
   selfCheckRow,
   subjectHue,
   violetInk,
+  warningRow,
 } from './paint';
 import type {FillsIndex} from './usePlan';
 
@@ -85,11 +86,12 @@ export function CourseRow({
     !planned && card.riceEquivalent === undefined && card.fills.length > 0;
   const chip = warnings.map(warningChip).find(c => c !== undefined);
   const hue = planned ? subjectHue(card.course.subject) : 'gray';
-  const paint = planned
+  const base = planned
     ? rowStyle(hue)
     : byChoice
       ? selfCheckRow
       : rowStyle('gray');
+  const paint = chip === undefined ? base : {...base, ...warningRow};
 
   const fillsLine = fills.map(f => f.path).join(' · ');
 
@@ -159,11 +161,13 @@ export function CourseRow({
             </Stack>
           )}
           {chip !== undefined && (
-            <Stack direction="horizontal" gap={1} vAlign="center">
-              <Icon icon="warning" size="xsm" color="warning" label="Warning" />
-              <Text type="supporting" size="xsm">
-                {chip}
-              </Text>
+            <Stack
+              direction="horizontal"
+              gap={1}
+              vAlign="center"
+              paddingBlockStart={0.5}
+            >
+              <Token label={chip} size="sm" color="yellow" />
             </Stack>
           )}
         </Stack>

@@ -21,7 +21,7 @@ import {
   type TermId,
   type Warning,
 } from '../domain';
-import {dataSource, type SavedCollection} from '../datasource';
+import {dataSource} from '../datasource';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
 import {AddCourseDialog} from './AddCourseDialog';
 import {Board} from './Board';
@@ -31,11 +31,11 @@ import {ruleHit} from './paint';
 import {PlanHeader} from './PlanHeader';
 import {RequirementsSidebar} from './RequirementsSidebar';
 import {RuleSuggestions} from './RuleSuggestions';
-import {SavedTray} from './SavedTray';
+import {FavoritesTray} from './FavoritesTray';
 import {TermPickerDialog} from './TermPickerDialog';
 import {ruleTargetKey, useBoardDrag} from './useBoardDrag';
 import {locateEntry, usePlan} from './usePlan';
-import {WarningsDrawer} from './WarningsDrawer';
+import {WarningsPanel} from './WarningsPanel';
 
 const SIDEBAR_WIDTH = 400;
 
@@ -54,22 +54,18 @@ function entryOf(warning: Warning): EntryId | undefined {
 /** Loads the plan from the data source, then hands it to the board. */
 export function PlanPage() {
   const [loaded, setLoaded] = useState<
-    | {
-        bundle: PlanBundle;
-        collections: SavedCollection[];
-        candidates: CourseCode[];
-      }
+    | {bundle: PlanBundle; favorites: CourseCode[]; candidates: CourseCode[]}
     | undefined
   >(undefined);
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
       dataSource.loadBundle(),
-      dataSource.loadCollections(),
+      dataSource.loadFavorites(),
       dataSource.catalogCandidates(),
-    ]).then(([bundle, collections, candidates]) => {
+    ]).then(([bundle, favorites, candidates]) => {
       if (!cancelled) {
-        setLoaded({bundle, collections, candidates});
+        setLoaded({bundle, favorites, candidates});
       }
     });
     return () => {
@@ -86,7 +82,7 @@ export function PlanPage() {
   return (
     <PlanBoardPage
       initial={loaded.bundle}
-      initialCollections={loaded.collections}
+      initialFavorites={loaded.favorites}
       catalogCandidates={loaded.candidates}
     />
   );
@@ -94,13 +90,13 @@ export function PlanPage() {
 
 type PlanBoardPageProps = {
   initial: PlanBundle;
-  initialCollections: SavedCollection[];
+  initialFavorites: CourseCode[];
   catalogCandidates: CourseCode[];
 };
 
 function PlanBoardPage({
   initial,
-  initialCollections,
+  initialFavorites,
   catalogCandidates,
 }: PlanBoardPageProps) {
   const state = usePlan(initial);
@@ -112,30 +108,24 @@ function PlanBoardPage({
   const [sheet, setSheet] = useState<'saved' | 'requirements' | undefined>(
     undefined,
   );
-  const [collections, setCollections] =
-    useState<SavedCollection[]>(initialCollections);
+  const [favorites, setFavorites] = useState<CourseCode[]>(initialFavorites);
   useEffect(() => {
-    if (collections !== initialCollections) {
-      void dataSource.saveCollections(collections);
+    if (favorites !== initialFavorites) {
+      void dataSource.saveFavorites(favorites);
     }
-  }, [collections, initialCollections]);
+  }, [favorites, initialFavorites]);
   const [addingTo, setAddingTo] = useState<TermId | undefined>(undefined);
   const [picking, setPicking] = useState<
     {course: CourseCode; credits: number} | undefined
   >(undefined);
 
-  // Parking a card bookmarks it in the first collection; bookmarks are never removed by a drag.
+  // Parking a card stars it; a drag out of the tray never unstars.
   const park = useCallback((course: CourseCode) => {
-    setCollections(prev => {
-      const [first, ...rest] = prev;
-      if (first === undefined) {
-        return [{id: 'coll-saved', name: 'Saved', courses: [course]}];
-      }
-      if (first.courses.some(c => courseKey(c) === courseKey(course))) {
-        return prev;
-      }
-      return [{...first, courses: [...first.courses, course]}, ...rest];
-    });
+    setFavorites(prev =>
+      prev.some(c => courseKey(c) === courseKey(course))
+        ? prev
+        : [...prev, course],
+    );
   }, []);
   const dragCallbacks = useMemo(() => ({onPark: park}), [park]);
   const drag = useBoardDrag(bundle, report, dispatch, dragCallbacks);
@@ -189,23 +179,18 @@ function PlanBoardPage({
     return map;
   }, [report, bundle.plan]);
 
-  const savedCourses = useMemo(
-    () => collections.flatMap(c => c.courses),
-    [collections],
-  );
-
   const renderSuggestions = useCallback(
     (program: Program, rule: RuleReport): ReactNode => (
       <RuleSuggestions
         bundle={bundle}
         program={program}
         rule={rule}
-        saved={savedCourses}
+        saved={favorites}
         catalog={catalogCandidates}
         onCoursePointerDown={drag.onCoursePointerDown}
       />
     ),
-    [bundle, savedCourses, catalogCandidates, drag.onCoursePointerDown],
+    [bundle, favorites, catalogCandidates, drag.onCoursePointerDown],
   );
 
   const wrapRule = useCallback(
@@ -319,7 +304,7 @@ function PlanBoardPage({
           desktop ? undefined : (
             <>
               <Button
-                label="Saved"
+                label="Favorites"
                 variant="secondary"
                 size="sm"
                 onClick={() => setSheet('saved')}
@@ -343,10 +328,9 @@ function PlanBoardPage({
           align="stretch"
         >
           {desktop && (
-            <SavedTray
+            <FavoritesTray
               bundle={bundle}
-              report={report}
-              collections={collections}
+              favorites={favorites}
               isOpen={trayOpen}
               onToggle={() => setTrayOpen(v => !v)}
               isDropHovered={hovered?.kind === 'tray'}
@@ -367,6 +351,14 @@ function PlanBoardPage({
                   warningsByEntry={warningsByEntry}
                   columns={desktop ? 2 : 1}
                   rowMinHeight={desktop ? undefined : 56}
+                  header={
+                    showWarnings ? (
+                      <WarningsPanel
+                        plan={bundle.plan}
+                        warnings={report.warnings}
+                      />
+                    ) : undefined
+                  }
                   drag={
                     drag.state !== undefined
                       ? {
@@ -389,13 +381,6 @@ function PlanBoardPage({
                   registerTarget={drag.registerTarget}
                 />
               </StackItem>
-              {showWarnings && (
-                <WarningsDrawer
-                  plan={bundle.plan}
-                  warnings={report.warnings}
-                  collapsed={dragging}
-                />
-              )}
             </Stack>
           </StackItem>
           {desktop && (
@@ -417,13 +402,12 @@ function PlanBoardPage({
         <BottomSheet
           isOpen={sheet === 'saved'}
           onOpenChange={open => setSheet(open ? 'saved' : undefined)}
-          label="Saved courses"
+          label="Favorites"
           height="tall"
         >
-          <SavedTray
+          <FavoritesTray
             bundle={bundle}
-            report={report}
-            collections={collections}
+            favorites={favorites}
             isOpen
             onToggle={() => setSheet(undefined)}
             isDropHovered={false}

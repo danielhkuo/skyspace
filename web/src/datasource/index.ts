@@ -5,7 +5,7 @@
 import {demoDataSource} from './demo';
 import type {DataSource} from './types';
 
-export type {DataSource, SavedCollection} from './types';
+export type {DataSource} from './types';
 
 const requested: string = import.meta.env['VITE_DATA_SOURCE'] ?? 'demo';
 

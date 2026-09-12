@@ -23,7 +23,7 @@ import {
   type RuleReport,
 } from '../domain';
 import {HalfMark, HollowMark} from './marks';
-import {selfCheckRow, violetInk} from './paint';
+import {ruleRow, ruleRowRaised, selfCheckRow, violetInk} from './paint';
 import {locateEntry, type PlanAction} from './usePlan';
 
 type SidebarProps = {
@@ -142,15 +142,9 @@ function LeafRow({
       gap={1.5}
       vAlign="center"
       wrap="wrap"
-      padding={raised ? 1 : 0}
-      style={
-        raised
-          ? {
-              background: 'var(--color-accent-muted)',
-              borderRadius: 'var(--radius-inner)',
-            }
-          : undefined
-      }
+      paddingInline={1.5}
+      paddingBlock={1}
+      style={raised ? ruleRowRaised : ruleRow}
     >
       <StatusMark report={outcome} />
       <Text size="sm">{label}</Text>
@@ -167,9 +161,6 @@ function LeafRow({
           change
         </Link>
       )}
-      <Link href={first.source.url} size="sm" isExternalLink>
-        source
-      </Link>
     </Stack>
   );
   const unmet = outcome.outcome.outcome !== 'met';
@@ -182,12 +173,10 @@ function LeafRow({
 }
 
 function SelfCheckRow({
-  plan,
   rule,
   program,
   dispatch,
 }: {
-  plan: Plan;
   rule: RuleReport;
   program: Program;
   dispatch: SidebarProps['dispatch'];
@@ -205,18 +194,21 @@ function SelfCheckRow({
   return (
     <Stack
       width="100%"
-      gap={0.5}
+      gap={1}
       align="start"
-      paddingInlineStart={1.5}
-      paddingBlock={1}
+      paddingInline={1.5}
+      paddingBlock={1.5}
       style={selfCheckRow}
     >
-      <Text size="sm" weight="medium">
-        {rule.label}
-      </Text>
-      {text !== rule.label && <Text type="supporting">{text}</Text>}
+      <Stack direction="horizontal" gap={1} vAlign="center" wrap="wrap">
+        <Token label="Check this yourself" size="sm" color="purple" />
+        <Text type="supporting" size="xsm">
+          Skyspace can't verify it and doesn't count it
+        </Text>
+      </Stack>
+      <Text size="sm">{text}</Text>
       <CheckboxInput
-        label="I've checked this"
+        label="I've confirmed this"
         size="sm"
         value={confirmed}
         width="100%"
@@ -228,11 +220,6 @@ function SelfCheckRow({
           )
         }
       />
-      <Text type="supporting" size="xsm" style={violetInk}>
-        {plan.selfChecks.some(s => s.rule === rule.rule)
-          ? 'self-check · not counted'
-          : 'not counted'}
-      </Text>
     </Stack>
   );
 }
@@ -271,7 +258,6 @@ function RuleChildren({
       out.push(
         <SelfCheckRow
           key={child.rule}
-          plan={plan}
           rule={child}
           program={program}
           dispatch={dispatch}
@@ -367,7 +353,6 @@ function RuleChildren({
           {checks.map(check => (
             <SelfCheckRow
               key={check.rule}
-              plan={plan}
               rule={check}
               program={program}
               dispatch={dispatch}

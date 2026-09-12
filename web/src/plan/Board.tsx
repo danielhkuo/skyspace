@@ -42,6 +42,8 @@ type BoardProps = {
   columns: 1 | 2;
   /** Tablet rows are 56 px so a finger can pick one up. */
   rowMinHeight?: number;
+  /** Rendered above the incoming-credit island: the warnings panel. */
+  header?: ReactNode;
 };
 
 /** Group terms into academic years, in board order. */
@@ -104,6 +106,7 @@ export function Board({
   registerTarget,
   columns,
   rowMinHeight,
+  header,
 }: BoardProps) {
   const incomingCredits = plan.incomingCredit.reduce(
     (s, c) => s + c.credits,
@@ -136,6 +139,7 @@ export function Board({
 
   return (
     <Stack width="100%" gap={4} padding={3}>
+      {header}
       <Stack width="100%" gap={1.5}>
         <RowHeader label="Incoming credit" credits={incomingCredits} />
         {grid([

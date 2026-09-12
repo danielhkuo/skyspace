@@ -1,3 +1,4 @@
+import {Badge} from '@astryxdesign/core/Badge';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {Section} from '@astryxdesign/core/Section';
@@ -100,10 +101,16 @@ export function PlanHeader({
           {extraActions}
           <Button label="Export PDF" variant="secondary" size="sm" />
           <Button
-            label={`Warnings (${warningCount})`}
-            variant="secondary"
+            label="Warnings"
+            variant={warningCount > 0 ? 'primary' : 'secondary'}
             size="sm"
             icon={<Icon icon="warning" size="sm" />}
+            endContent={
+              <Badge
+                variant={warningCount > 0 ? 'warning' : 'neutral'}
+                label={warningCount}
+              />
+            }
             onClick={onToggleWarnings}
           />
         </Stack>
