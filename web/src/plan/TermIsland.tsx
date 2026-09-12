@@ -64,6 +64,8 @@ type TermIslandProps = {
   renderMenu?: (entry: EntryId, term: TermId) => ReactNode;
   rowMinHeight?: number;
   onAddCourse?: () => void;
+  /** Edit term, Add term after, Remove term. */
+  termMenu?: ReactNode;
   islandRef?: (element: HTMLElement | null) => void;
   extraHeader?: ReactNode;
 };
@@ -90,6 +92,7 @@ export function TermIsland({
   renderMenu,
   rowMinHeight,
   onAddCourse,
+  termMenu,
   islandRef,
 }: TermIslandProps) {
   const completed = compareTermPosition(term.position, today) < 0;
@@ -218,9 +221,12 @@ export function TermIsland({
                 Off terms hold no courses
               </Text>
             )}
-            <Text type="supporting" hasTabularNumbers>
-              {off ? '' : creditsText}
-            </Text>
+            <Stack direction="horizontal" gap={1} vAlign="center">
+              <Text type="supporting" hasTabularNumbers>
+                {off ? '' : creditsText}
+              </Text>
+              {termMenu}
+            </Stack>
           </Stack>
           {term.label !== undefined && (
             <Token

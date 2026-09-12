@@ -1,6 +1,7 @@
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
+import {MoreMenu} from '@astryxdesign/core/MoreMenu';
 import {Text} from '@astryxdesign/core/Text';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 import {useCallback, useEffect, useMemo, useState} from 'react';
@@ -16,6 +17,7 @@ import {
   type EntryId,
   type CourseInfo,
   type PlanBundle,
+  type PlanTerm,
   type Program,
   type RuleReport,
   type TermId,
@@ -27,6 +29,7 @@ import {AddCourseDialog} from './AddCourseDialog';
 import {Board} from './Board';
 import {CardMenu} from './CardMenu';
 import {DragGhost} from './DragGhost';
+import {EditTermDialog} from './EditTermDialog';
 import {ruleHit} from './paint';
 import {PlanHeader} from './PlanHeader';
 import {RequirementsSidebar} from './RequirementsSidebar';
@@ -34,7 +37,7 @@ import {RuleSuggestions} from './RuleSuggestions';
 import {FavoritesTray} from './FavoritesTray';
 import {TermPickerDialog} from './TermPickerDialog';
 import {ruleTargetKey, useBoardDrag} from './useBoardDrag';
-import {locateEntry, usePlan} from './usePlan';
+import {locateEntry, termKindChangeBlocker, usePlan} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
 
 const SIDEBAR_WIDTH = 400;
@@ -115,6 +118,7 @@ function PlanBoardPage({
     }
   }, [favorites, initialFavorites]);
   const [addingTo, setAddingTo] = useState<TermId | undefined>(undefined);
+  const [editingTerm, setEditingTerm] = useState<TermId | undefined>(undefined);
   const [picking, setPicking] = useState<
     {course: CourseCode; credits: number} | undefined
   >(undefined);
@@ -288,6 +292,45 @@ function PlanBoardPage({
   );
 
   const addingToTerm = bundle.plan.terms.find(t => t.id === addingTo);
+  const editing = bundle.plan.terms.find(t => t.id === editingTerm);
+
+  const renderTermMenu = useCallback(
+    (term: PlanTerm): ReactNode => {
+      const holdsCards = termKindChangeBlocker(term, 'off') !== undefined;
+      return (
+        <MoreMenu
+          label={`Options for ${shortTermLabel(term.position)}`}
+          size="sm"
+          alignment="end"
+          items={[
+            {
+              id: 'edit',
+              label: 'Edit term…',
+              description: 'At Rice, away, or off',
+              onClick: () => setEditingTerm(term.id),
+            },
+            {
+              id: 'add',
+              label: 'Add term after',
+              onClick: () => dispatch({type: 'addTermAfter', after: term.id}),
+            },
+            {type: 'divider'},
+            {
+              id: 'remove',
+              label: 'Remove term',
+              variant: 'destructive',
+              isDisabled: holdsCards,
+              description: holdsCards
+                ? 'Move or remove its courses first'
+                : undefined,
+              onClick: () => dispatch({type: 'removeTerm', term: term.id}),
+            },
+          ]}
+        />
+      );
+    },
+    [dispatch],
+  );
 
   return (
     <Stack width="100%" height="100%" gap={0}>
@@ -378,6 +421,7 @@ function PlanBoardPage({
                   onRowKeyDown={onRowKeyDown}
                   renderMenu={renderMenu}
                   onAddCourse={setAddingTo}
+                  renderTermMenu={renderTermMenu}
                   registerTarget={drag.registerTarget}
                 />
               </StackItem>
@@ -452,6 +496,22 @@ function PlanBoardPage({
               {kind: 'term', term: addingTo, slot: Number.MAX_SAFE_INTEGER},
             );
           }
+        }}
+      />
+      <EditTermDialog
+        term={editing}
+        onClose={() => setEditingTerm(undefined)}
+        onSave={(kind, label) => {
+          if (editing !== undefined) {
+            dispatch({
+              type: 'setTerm',
+              term: editing.id,
+              kind,
+              label,
+              facts: bundle.facts,
+            });
+          }
+          setEditingTerm(undefined);
         }}
       />
       <TermPickerDialog

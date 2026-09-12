@@ -44,6 +44,18 @@ export function shortTermLabel(position: TermPosition): string {
   return `${SEASON_LABEL[position.season]} ${calendarYear(position)}`;
 }
 
+/** The term that follows on the board: fall, spring, summer, then next year's fall. */
+export function nextTermPosition(position: TermPosition): TermPosition {
+  switch (position.season) {
+    case 'fall':
+      return {academicYear: position.academicYear, season: 'spring'};
+    case 'spring':
+      return {academicYear: position.academicYear, season: 'summer'};
+    case 'summer':
+      return {academicYear: position.academicYear + 1, season: 'fall'};
+  }
+}
+
 /** Six digits: academic year then season code (`10` fall, `20` spring, `30` summer). */
 export type TermCode = string;
 

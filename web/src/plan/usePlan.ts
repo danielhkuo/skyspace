@@ -6,22 +6,32 @@
 import {useEffect, useMemo, useReducer} from 'react';
 
 import {
+  compareTermPosition,
   findRule,
   isAwayTerm,
+  isOffTerm,
   isRiceTerm,
+  nextTermPosition,
+  newTermId,
+  originForLabel,
+  termKindName,
   walkRules,
   type EntryId,
   type ManualCourseCard,
   type Plan,
   type PlanBundle,
   type PlannedCourse,
+  type PlanTerm,
   type Program,
+  type TermKindName,
   type Report,
   type RuleId,
   type RuleReport,
   type TermId,
   type Warning,
 } from '../domain';
+import {courseInfo} from '../engine/interim/filter';
+import type {CourseFacts} from '../domain';
 import {engine} from '../engine';
 import {warningTerm} from './labels';
 import {dataSource} from '../datasource';
@@ -34,6 +44,19 @@ export type PlanAction =
   | {type: 'removeEntry'; entry: EntryId}
   | {type: 'setFills'; entry: EntryId; program: Program; rule: RuleId}
   | {type: 'setCredits'; entry: EntryId; credits: number}
+  /** Change a term's kind and label. Refused when cards would be lost; see `termKindChangeBlocker`. */
+  | {
+      type: 'setTerm';
+      term: TermId;
+      kind: TermKindName;
+      label?: string;
+      /** For the titles of cards converted to manual cards. */
+      facts: CourseFacts;
+    }
+  /** Insert an empty Rice term at the next free board position after `after`. */
+  | {type: 'addTermAfter'; after: TermId}
+  /** Remove a term that holds no cards. */
+  | {type: 'removeTerm'; term: TermId}
   | {
       type: 'confirmSelfCheck';
       rule: RuleId;
@@ -173,6 +196,81 @@ function mapEntry(
   };
 }
 
+/** Why a kind change is refused, or `undefined` when it is allowed. Nothing is ever deleted by a toggle. */
+export function termKindChangeBlocker(
+  term: PlanTerm,
+  kind: TermKindName,
+): string | undefined {
+  if (kind === termKindName(term.kind)) {
+    return undefined;
+  }
+  if (kind === 'off') {
+    const count = isRiceTerm(term.kind)
+      ? term.kind.rice.courses.length
+      : isAwayTerm(term.kind)
+        ? term.kind.away.cards.length
+        : 0;
+    return count === 0
+      ? undefined
+      : `Move or remove its ${count} course${count === 1 ? '' : 's'} first; an off term holds none.`;
+  }
+  if (kind === 'rice' && isAwayTerm(term.kind)) {
+    const unmapped = term.kind.away.cards.filter(
+      c => c.riceEquivalent === undefined,
+    );
+    return unmapped.length === 0
+      ? undefined
+      : `${unmapped.length} card${unmapped.length === 1 ? ' has' : 's have'} no Rice course code and cannot live in a Rice term.`;
+  }
+  return undefined;
+}
+
+function convertTerm(
+  term: PlanTerm,
+  kind: TermKindName,
+  label: string | undefined,
+  facts: CourseFacts,
+): PlanTerm {
+  const base = {...term, label};
+  if (kind === termKindName(term.kind)) {
+    return base;
+  }
+  if (kind === 'off') {
+    return {...base, kind: 'off'};
+  }
+  if (kind === 'away') {
+    const cards: ManualCourseCard[] = isRiceTerm(term.kind)
+      ? term.kind.rice.courses.map(c => ({
+          id: c.id,
+          origin: originForLabel(label),
+          code: `${c.course.subject} ${c.course.number}`,
+          title: courseInfo(facts, c.course)?.title ?? '',
+          credits: c.credits,
+          riceEquivalent: c.course,
+          fills: c.fills,
+          note: c.note,
+        }))
+      : [];
+    return {...base, kind: {away: {cards}}};
+  }
+  const courses: PlannedCourse[] = isAwayTerm(term.kind)
+    ? term.kind.away.cards.flatMap(c =>
+        c.riceEquivalent === undefined
+          ? []
+          : [
+              {
+                id: c.id,
+                course: c.riceEquivalent,
+                credits: c.credits,
+                fills: c.fills,
+                note: c.note,
+              },
+            ],
+      )
+    : [];
+  return {...base, kind: {rice: {courses}}};
+}
+
 export function reducePlan(plan: Plan, action: PlanAction): Plan {
   switch (action.type) {
     case 'replace':
@@ -218,6 +316,60 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
         ...plan,
         selfChecks: plan.selfChecks.filter(s => s.rule !== action.rule),
       };
+    case 'setTerm': {
+      const term = plan.terms.find(t => t.id === action.term);
+      if (
+        term === undefined ||
+        termKindChangeBlocker(term, action.kind) !== undefined
+      ) {
+        return plan;
+      }
+      const label =
+        action.label?.trim() === '' ? undefined : action.label?.trim();
+      return {
+        ...plan,
+        terms: plan.terms.map(t =>
+          t.id === action.term
+            ? convertTerm(t, action.kind, label, action.facts)
+            : t,
+        ),
+      };
+    }
+    case 'addTermAfter': {
+      const after = plan.terms.find(t => t.id === action.after);
+      if (after === undefined) {
+        return plan;
+      }
+      let position = nextTermPosition(after.position);
+      while (
+        plan.terms.some(t => compareTermPosition(t.position, position) === 0)
+      ) {
+        position = nextTermPosition(position);
+      }
+      const term: PlanTerm = {
+        id: newTermId(),
+        position,
+        kind: {rice: {courses: []}},
+        nonCourse: [],
+      };
+      return {
+        ...plan,
+        terms: [...plan.terms, term].sort((a, b) =>
+          compareTermPosition(a.position, b.position),
+        ),
+      };
+    }
+    case 'removeTerm': {
+      const term = plan.terms.find(t => t.id === action.term);
+      if (
+        term === undefined ||
+        (termKindChangeBlocker(term, 'off') !== undefined &&
+          !isOffTerm(term.kind))
+      ) {
+        return plan;
+      }
+      return {...plan, terms: plan.terms.filter(t => t.id !== action.term)};
+    }
   }
 }
 

@@ -13,6 +13,7 @@ import {
   isOffTerm,
   isRiceTerm,
   newEntryId,
+  originForLabel,
   type CourseCode,
   type Credits,
   type EntryId,
@@ -294,7 +295,7 @@ export function useBoardDrag(
           to: target.term,
           card: {
             id: newEntryId(),
-            origin: 'studyAbroad',
+            origin: originForLabel(term.label),
             code: `${payload.course.subject} ${payload.course.number}`,
             title,
             credits: payload.credits,

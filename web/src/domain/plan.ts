@@ -75,6 +75,20 @@ export type Plan = {
   selfChecks: SelfCheck[];
 };
 
+export type TermKindName = 'rice' | 'away' | 'off';
+
+export function termKindName(kind: TermKind): TermKindName {
+  if (isRiceTerm(kind)) {
+    return 'rice';
+  }
+  return isAwayTerm(kind) ? 'away' : 'off';
+}
+
+/** What an away term's label says about a card dropped into it. */
+export function originForLabel(label: string | undefined): CreditOrigin {
+  return /abroad/i.test(label ?? '') ? 'studyAbroad' : 'transfer';
+}
+
 export function isRiceTerm(
   kind: TermKind,
 ): kind is {rice: {code?: TermCode; courses: PlannedCourse[]}} {
