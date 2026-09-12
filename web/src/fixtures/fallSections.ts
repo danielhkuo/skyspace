@@ -3,6 +3,9 @@
  * few MUSI rows so the "hide unscheduled" rule has something to hide. Mock
  * data for the demo and tests: shapes and label formats follow
  * `rice-data.md` §2; CRNs, instructors, times and seat counts are invented.
+ * An invented CRN must never be linked to courses.rice.edu: Rice reuses
+ * CRNs across terms and 12950 is a real, unrelated section. The UI checks
+ * `dataSource.kind` before it offers a Rice link.
  */
 import {
   creditsFromHours,
@@ -599,7 +602,7 @@ export const fallSections: Section[] = [
   }),
   section({
     crn: '12950',
-    raw: 'LPAP 120',
+    raw: 'LPAP 170',
     title: 'Yoga',
     credits: 1,
     instructors: ['Sanchez, Maria'],
@@ -615,7 +618,7 @@ export const fallSections: Section[] = [
   }),
   section({
     crn: '12951',
-    raw: 'LPAP 120',
+    raw: 'LPAP 170',
     section: '002',
     title: 'Yoga',
     credits: 1,

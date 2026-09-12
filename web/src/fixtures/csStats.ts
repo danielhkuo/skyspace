@@ -579,7 +579,7 @@ export const courseFacts: CourseFacts = {
       credits: 3,
       attributes: ['GRP3'],
     }),
-    info({raw: 'LPAP 120', title: 'Yoga', credits: 1, repeatable: true}),
+    info({raw: 'LPAP 170', title: 'Yoga', credits: 1, repeatable: true}),
     info({
       raw: 'HIST 117',
       title: 'The world since 1492',
@@ -795,7 +795,7 @@ export const plan: Plan = {
         planned('MATH 102', 3),
         planned('FWIS 149', 3),
         planned('CHEM 121', 3),
-        planned('LPAP 120', 1),
+        planned('LPAP 170', 1),
       ],
       '202510',
     ),

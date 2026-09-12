@@ -26,6 +26,7 @@ import {
   type Crn,
   type Section as CourseSection,
   type SectionPage,
+  type TermCode,
 } from '../domain';
 import {engine} from '../engine';
 import {FavoritesFooter} from './FavoritesFooter';
@@ -58,7 +59,10 @@ const fixedColumn: CSSProperties = {flexShrink: 0};
 const givingColumn: CSSProperties = {minWidth: 0};
 const SORTS: SortKey[] = ['relevance', 'courseNumber', 'credits', 'openSeats'];
 
-type UrlPatch = Partial<CatalogQuery> & {crn?: Crn | undefined};
+type UrlPatch = Partial<CatalogQuery> & {
+  crn?: Crn | undefined;
+  term?: TermCode;
+};
 
 type Results = {key: string; rows: CourseSection[]; page: SectionPage};
 
@@ -70,16 +74,23 @@ export function CatalogPage() {
   const [params, setParams] = useSearchParams();
   const desktop = useViewportWidth() >= DESKTOP_WIDTH;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const {query, crn} = useMemo(() => parseCatalogUrl(params), [params]);
+  const {
+    query,
+    crn,
+    term: urlTerm,
+  } = useMemo(() => parseCatalogUrl(params), [params]);
   const queryKey = serializeCatalogUrl({query}).toString();
 
   const patch = useCallback(
     (change: UrlPatch, mode: 'replace' | 'push' = 'replace') => {
       const current = parseCatalogUrl(params);
-      const {crn: nextCrn, ...queryChange} = change;
+      const {crn: nextCrn, term: nextTerm, ...queryChange} = change;
+      const crnAfter = 'crn' in change ? nextCrn : current.crn;
       const next = serializeCatalogUrl({
         query: {...current.query, ...queryChange, offset: 0},
-        crn: 'crn' in change ? nextCrn : current.crn,
+        // The term rides with the CRN and only with it.
+        term: crnAfter === undefined ? undefined : (nextTerm ?? current.term),
+        crn: crnAfter,
       });
       void setParams(next, {replace: mode === 'replace'});
     },
@@ -89,7 +100,8 @@ export function CatalogPage() {
   // One page at a time, like the API. A new query starts over; "Load more" appends.
   const [results, setResults] = useState<Results | undefined>(undefined);
   const [loadingMore, setLoadingMore] = useState(false);
-  const term = data?.term.code;
+  // A shared link names its term; without one the catalog shows the current term.
+  const term = urlTerm ?? data?.term.code;
   useEffect(() => {
     if (term === undefined) {
       return;
@@ -157,7 +169,8 @@ export function CatalogPage() {
     crn !== undefined && pane?.crn === crn ? pane.section : undefined;
   const siblings = selected === undefined ? [] : (pane?.siblings ?? []);
 
-  const select = (next: Crn): void => patch({crn: next}, 'push');
+  const select = (next: Crn): void =>
+    patch({crn: next, term: data?.term.code}, 'push');
 
   const report = useMemo(
     () => (data === undefined ? undefined : engine.evaluate(data.bundle)),

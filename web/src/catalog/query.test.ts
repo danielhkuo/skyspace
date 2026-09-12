@@ -134,11 +134,12 @@ describe('URL round trip', () => {
         scheduledOnly: false,
         sort: 'openSeats' as const,
       },
+      term: '202710',
       crn: '12422',
     };
     const params = serializeCatalogUrl(state);
     expect(params.toString()).toBe(
-      'q=comp+140&subj=COMP&attr=GRP3&level=100%2C200&days=TR&after=540&cmin=1.5&cmax=3&pot=Full+Term&open=1&unsched=1&sort=openSeats&crn=12422',
+      'term=202710&q=comp+140&subj=COMP&attr=GRP3&level=100%2C200&days=TR&after=540&cmin=1.5&cmax=3&pot=Full+Term&open=1&unsched=1&sort=openSeats&crn=12422',
     );
     expect(parseCatalogUrl(params)).toEqual(state);
     expect(activeFilterCount(state.query)).toBe(9);

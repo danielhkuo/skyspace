@@ -27,14 +27,21 @@ import {
   type Section,
   type SectionPage,
   type SortKey,
+  type TermCode,
 } from '../domain';
 
 export {DEFAULT_QUERY, LEVELS, SORT_LABEL} from '../domain';
 export type {CatalogQuery} from '../domain';
 
-/** What the catalog URL holds: the query, and which section the pane shows. */
+/**
+ * What the catalog URL holds: the query, which section the pane shows, and
+ * the term that section belongs to. A CRN means nothing without its term:
+ * Rice reuses CRNs, so 12950 is one course this fall and another next spring.
+ */
 export type CatalogUrlState = {
   query: CatalogQuery;
+  /** Set whenever `crn` is; absent means the current term. */
+  term?: TermCode;
   crn?: Crn;
 };
 
@@ -104,13 +111,24 @@ export function parseCatalogUrl(params: URLSearchParams): CatalogUrlState {
     query.creditsMax = creditsMax;
   }
   const crn = params.get('crn');
-  return crn !== null && /^\d{5}$/.test(crn) ? {query, crn} : {query};
+  const term = params.get('term');
+  const state: CatalogUrlState = {query};
+  if (term !== null && /^\d{6}$/.test(term)) {
+    state.term = term;
+  }
+  if (crn !== null && /^\d{5}$/.test(crn)) {
+    state.crn = crn;
+  }
+  return state;
 }
 
 /** Only non-default values are written, so an untouched catalog has a bare URL. Paging never enters the URL. */
 export function serializeCatalogUrl(state: CatalogUrlState): URLSearchParams {
-  const {query, crn} = state;
+  const {query, term, crn} = state;
   const params = new URLSearchParams();
+  if (term !== undefined) {
+    params.set('term', term);
+  }
   if (query.q !== '') {
     params.set('q', query.q);
   }

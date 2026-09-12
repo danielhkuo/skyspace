@@ -11,6 +11,8 @@ import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
 import type {ReactNode} from 'react';
 
+import {dataSource} from '../datasource';
+
 import {
   ATTRIBUTE_LABEL,
   FINAL_EXAM_LABEL,
@@ -210,13 +212,20 @@ export function SectionDetailBody({
       <Divider />
 
       <Stack width="100%" gap={1} align="start">
-        <Link
-          href={`${RICE_COURSE}&p_term=${listing.term}&p_crn=${listing.crn}`}
-          size="sm"
-          isExternalLink
-        >
-          Rice course page
-        </Link>
+        {dataSource.kind === 'demo' ? (
+          <Text type="supporting">
+            Demo data: this CRN is invented, so there is no Rice page for it. A
+            real term and CRN together name a section; Rice reuses CRNs.
+          </Text>
+        ) : (
+          <Link
+            href={`${RICE_COURSE}&p_term=${listing.term}&p_crn=${listing.crn}`}
+            size="sm"
+            isExternalLink
+          >
+            Rice course page
+          </Link>
+        )}
         <Link href="https://esther.rice.edu/" size="sm" isExternalLink>
           Syllabus in Esther (sign-in required)
         </Link>
