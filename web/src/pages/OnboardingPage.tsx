@@ -9,9 +9,12 @@ import {useEffect, useMemo, useState} from 'react';
 import {useNavigate} from 'react-router';
 
 import {dataSource} from '../datasource';
+import {setLeaveGuard} from '../shell/leaveGuard';
 import {queuePlanSave} from '../datasource/planSaver';
 import {
   compareTermPosition,
+  courseInfo,
+  creditRangeMin,
   creditsFromHours,
   formatCatalogYear,
   newEntryId,
@@ -20,6 +23,7 @@ import {
   parseCourseCode,
   shortTermLabel,
   type CatalogYear,
+  type CourseFacts,
   type CreditOrigin,
   type ManualCourseCard,
   type Plan,
@@ -92,6 +96,7 @@ function termsBetween(from: TermPosition, to: TermPosition): PlanTerm[] {
 export function OnboardingPage() {
   const navigate = useNavigate();
   const [available, setAvailable] = useState<Program[]>([]);
+  const [facts, setFacts] = useState<CourseFacts | undefined>(undefined);
   const [step, setStep] = useState<Step>(1);
   const [majors, setMajors] = useState<ProgramId[]>([]);
   const [minors, setMinors] = useState<ProgramId[]>([]);
@@ -115,7 +120,26 @@ export function OnboardingPage() {
 
   useEffect(() => {
     void dataSource.listPrograms().then(setAvailable);
+    void dataSource.loadBundle().then(b => setFacts(b.facts));
   }, []);
+  // Anything chosen is worth a question before it is thrown away.
+  const dirty =
+    majors.length > 0 || minors.length > 0 || incoming.length > 0 || step > 1;
+  useEffect(() => {
+    setLeaveGuard(
+      dirty
+        ? 'Leave without creating the plan? What you chose here will be lost.'
+        : undefined,
+    );
+    return () => setLeaveGuard(undefined);
+  }, [dirty]);
+  const timelineProblem =
+    compareTermPosition(graduation, matriculation) <= 0
+      ? 'Graduation must come after matriculation.'
+      : catalogYear < matriculation.academicYear - 1 ||
+          catalogYear > graduation.academicYear
+        ? 'Pick a catalog year between matriculation and graduation.'
+        : undefined;
   const semesters = useMemo(() => semesterOptions(), []);
   const years = useMemo(() => {
     const out: CatalogYear[] = [];
@@ -147,11 +171,20 @@ export function OnboardingPage() {
       selfChecks: [],
     };
     queuePlanSave(plan, 0);
+    setLeaveGuard(undefined);
     void navigate('/plan');
   };
 
+  const draftEquivalent = parseCourseCode(draft.equivalent);
+  const draftInfo =
+    draftEquivalent === null || facts === undefined
+      ? undefined
+      : courseInfo(facts, draftEquivalent);
   const addCredit = (): void => {
-    const hours = Number(draft.hours);
+    const hours =
+      draftInfo === undefined
+        ? Number(draft.hours)
+        : creditRangeMin(draftInfo.credits) / 100;
     if (draft.code.trim() === '' || Number.isNaN(hours)) {
       return;
     }
@@ -165,7 +198,9 @@ export function OnboardingPage() {
         title: draft.title.trim(),
         credits: creditsFromHours(hours),
         fills: [],
-        ...(equivalent === null ? {} : {riceEquivalent: equivalent}),
+        ...(equivalent === null
+          ? {creditsSource: 'manual' as const}
+          : {riceEquivalent: equivalent}),
       },
     ]);
     setDraft(d => ({...d, code: '', title: '', equivalent: ''}));
@@ -175,7 +210,7 @@ export function OnboardingPage() {
     n === step ? (
       <Token label={`${n} · ${label}`} size="sm" color="blue" />
     ) : n < step ? (
-      <Token label={`${n} · ${label}`} size="sm" />
+      <Token label={`${n} · ${label}`} size="sm" onClick={() => setStep(n)} />
     ) : (
       <Text type="supporting">
         {n} · {label}
@@ -236,9 +271,9 @@ export function OnboardingPage() {
                     onChange={setMinors}
                   />
                   <Text type="supporting">
-                    Rice has 351 programs; reviewed rules exist for a few. A
-                    program without reviewed rules still counts toward
-                    University requirements.
+                    Rice has 351 programs; reviewed requirements exist for a
+                    few. A program without reviewed requirements still counts
+                    toward University requirements.
                   </Text>
                 </>
               )}
@@ -266,6 +301,14 @@ export function OnboardingPage() {
                       options={semesters}
                       onChange={v => setGraduation(decode(v))}
                       width="50%"
+                      status={
+                        compareTermPosition(graduation, matriculation) <= 0
+                          ? {
+                              type: 'error',
+                              message: 'Must come after matriculation',
+                            }
+                          : undefined
+                      }
                     />
                   </Stack>
                   <Selector
@@ -280,6 +323,11 @@ export function OnboardingPage() {
                     onChange={v => setCatalogYear(Number(v))}
                     width="100%"
                   />
+                  <Text type="supporting">
+                    {termsBetween(matriculation, graduation).length} term
+                    columns, fall and spring only. Add summers later from plan
+                    settings.
+                  </Text>
                 </>
               )}
               {step === 3 && (
@@ -324,8 +372,13 @@ export function OnboardingPage() {
                     <TextInput
                       label="Hours"
                       size="sm"
-                      value={draft.hours}
+                      value={
+                        draftInfo === undefined
+                          ? draft.hours
+                          : String(creditRangeMin(draftInfo.credits) / 100)
+                      }
                       onChange={v => setDraft(d => ({...d, hours: v}))}
+                      isReadOnly={draftInfo !== undefined}
                       width={72}
                     />
                     <TextInput
@@ -360,8 +413,11 @@ export function OnboardingPage() {
                     ))}
                   </Stack>
                   <Text type="supporting">
-                    Only the registrar&apos;s evaluation makes an equivalence
-                    official. AP and IB never count toward distribution.
+                    Give each card the Rice course it posts as; the hours then
+                    come from that course. A card with no Rice equivalent counts
+                    as hours only and is flagged. Only the registrar&apos;s
+                    evaluation makes an equivalence official; AP and IB never
+                    count toward distribution.
                   </Text>
                 </>
               )}
@@ -387,7 +443,17 @@ export function OnboardingPage() {
                   label="Continue"
                   variant="primary"
                   size="sm"
-                  isDisabled={step === 1 && majors.length === 0}
+                  isDisabled={
+                    (step === 1 && majors.length === 0) ||
+                    (step === 2 && timelineProblem !== undefined)
+                  }
+                  tooltip={
+                    step === 2
+                      ? timelineProblem
+                      : step === 1 && majors.length === 0
+                        ? 'Pick at least one major'
+                        : undefined
+                  }
                   onClick={() => setStep(s => (s === 1 ? 2 : 3))}
                 />
               ) : (

@@ -11,9 +11,12 @@ import {
   formatCreditRange,
   type CourseInfo,
   type Credits,
+  type PlanBundle,
   type CourseCode,
 } from '../domain';
 import {dataSource} from '../datasource';
+import {termName} from './labels';
+import {duplicateOf} from './useBoardDrag';
 
 const RESULT_LIMIT = 12;
 
@@ -23,6 +26,7 @@ type AddCourseDialogProps = {
   termLabel: string;
   onClose: () => void;
   onPick: (course: CourseCode, credits: Credits) => void;
+  bundle: PlanBundle;
 };
 
 /** The same search as the catalog, dropping its pick into one term. */
@@ -31,6 +35,7 @@ export function AddCourseDialog({
   termLabel,
   onClose,
   onPick,
+  bundle,
 }: AddCourseDialogProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CourseInfo[]>([]);
@@ -53,6 +58,9 @@ export function AddCourseDialog({
   };
 
   const pick = (info: CourseInfo): void => {
+    if (duplicateOf(bundle, info.code) !== undefined) {
+      return;
+    }
     onPick(info.code, creditRangeMin(info.credits));
     close();
   };
@@ -99,9 +107,15 @@ export function AddCourseDialog({
               layout="inline"
               endContent={
                 <Text size="sm" color="secondary" hasTabularNumbers>
-                  {formatCreditRange(info.credits)}
+                  {(() => {
+                    const already = duplicateOf(bundle, info.code);
+                    return already === undefined
+                      ? formatCreditRange(info.credits)
+                      : `already in ${already === 'incoming' ? 'incoming credit' : termName(bundle.plan, already)}`;
+                  })()}
                 </Text>
               }
+              isDisabled={duplicateOf(bundle, info.code) !== undefined}
               onClick={() => pick(info)}
             />
           ))}

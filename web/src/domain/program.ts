@@ -1,9 +1,9 @@
 /**
- * Requirement programs and rules, mirroring `skyspace-core::program`.
- * `RuleBody` and `CourseSelector` are internally tagged on `kind`.
+ * Requirement programs and requirements, mirroring `skyspace-core::program`.
+ * `RequirementBody` and `CourseSelector` are internally tagged on `kind`.
  */
 import type {CourseCode, CreditRange, Credits} from './course';
-import type {ProgramId, RuleId} from './ids';
+import type {ProgramId, RequirementId} from './ids';
 import type {CatalogYear} from './term';
 
 export type Attribute = 'AD' | 'GRP1' | 'GRP2' | 'GRP3';
@@ -23,9 +23,9 @@ export type CreditScope = 'any' | 'additional';
 
 export type NonCourseKind = 'proficiencyExam' | 'portfolio' | 'other';
 
-export type RuleBody =
-  | {kind: 'all'; of: Rule[]}
-  | {kind: 'select'; count: number; of: Rule[]}
+export type RequirementBody =
+  | {kind: 'all'; of: Requirement[]}
+  | {kind: 'select'; count: number; of: Requirement[]}
   /** `semesters` is GA's "(minimum of 8 semesters)"; one slot per semester. */
   | {kind: 'course'; filter: CourseFilter; semesters: number}
   | {kind: 'credits'; minimum: Credits; scope: CreditScope; from: CourseFilter}
@@ -37,12 +37,12 @@ export type SourceRef = {
   anchor?: string;
 };
 
-export type Rule = {
-  id: RuleId;
+export type Requirement = {
+  id: RequirementId;
   label: string;
   hours?: CreditRange;
   source: SourceRef;
-  body: RuleBody;
+  body: RequirementBody;
 };
 
 export type ProgramKind =
@@ -57,25 +57,31 @@ export type Program = {
   credential: string;
   totalCredits?: Credits;
   source: SourceRef;
-  root: Rule;
-  retiredRules: RuleId[];
+  root: Requirement;
+  retiredRequirements: RequirementId[];
 };
 
-/** Depth-first walk over a program's rules, document order. */
-export function walkRules(rule: Rule, visit: (rule: Rule) => void): void {
-  visit(rule);
-  if (rule.body.kind === 'all' || rule.body.kind === 'select') {
-    for (const child of rule.body.of) {
-      walkRules(child, visit);
+/** Depth-first walk over a program's requirements, document order. */
+export function walkRequirements(
+  requirement: Requirement,
+  visit: (requirement: Requirement) => void,
+): void {
+  visit(requirement);
+  if (requirement.body.kind === 'all' || requirement.body.kind === 'select') {
+    for (const child of requirement.body.of) {
+      walkRequirements(child, visit);
     }
   }
 }
 
-export function findRule(program: Program, id: RuleId): Rule | undefined {
-  let found: Rule | undefined;
-  walkRules(program.root, rule => {
-    if (rule.id === id) {
-      found = rule;
+export function findRequirement(
+  program: Program,
+  id: RequirementId,
+): Requirement | undefined {
+  let found: Requirement | undefined;
+  walkRequirements(program.root, requirement => {
+    if (requirement.id === id) {
+      found = requirement;
     }
   });
   return found;

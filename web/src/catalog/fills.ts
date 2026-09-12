@@ -1,19 +1,19 @@
 /**
- * "Fills in your plan" for one course: the rules its card fills if it is on
- * the board, or the rules it could fill if it is not. Paths read like the
+ * "Fills in your plan" for one course: the requirements its card fills if it is on
+ * the board, or the requirements it could fill if it is not. Paths read like the
  * board's fills line: "Core Requirements › COMP 140".
  */
 import {
   isRiceTerm,
   sameCourse,
   shortTermLabel,
-  walkRules,
+  walkRequirements,
   type CourseCode,
   type EntryId,
   type PlanBundle,
   type Report,
-  type Rule,
-  type RuleReport,
+  type Requirement,
+  type RequirementReport,
 } from '../domain';
 import {engine} from '../engine';
 
@@ -23,9 +23,9 @@ export type FillsSummary = {
   planName: string;
   /** "Fall 2026" when the course is on the board. */
   placedIn?: string;
-  /** Rules the placed card fills; empty when placed but filling nothing. */
+  /** Requirements the placed card fills; empty when placed but filling nothing. */
   fills: FillEntry[];
-  /** Rules a not-yet-placed course matches. */
+  /** Requirements a not-yet-placed course matches. */
   candidates: FillEntry[];
 };
 
@@ -65,14 +65,17 @@ export function summarizeFills(
   if (placed !== undefined) {
     summary.placedIn = placed.term;
     for (const program of report.programs) {
-      const walk = (rule: RuleReport, area: string | undefined): void => {
-        if (rule.filledBy.includes(placed.entry)) {
+      const walk = (
+        requirement: RequirementReport,
+        area: string | undefined,
+      ): void => {
+        if (requirement.filledBy.includes(placed.entry)) {
           summary.fills.push({
             program: program.name,
-            path: pathOf(area, rule.label),
+            path: pathOf(area, requirement.label),
           });
         }
-        for (const child of rule.children) {
+        for (const child of requirement.children) {
           walk(child, area ?? child.label);
         }
       };
@@ -84,23 +87,26 @@ export function summarizeFills(
   }
 
   for (const program of bundle.programs) {
-    const areas = new Map<Rule, string>();
+    const areas = new Map<Requirement, string>();
     const root = program.root;
     if (root.body.kind === 'all' || root.body.kind === 'select') {
       for (const area of root.body.of) {
-        walkRules(area, rule => areas.set(rule, area.label));
+        walkRequirements(area, requirement =>
+          areas.set(requirement, area.label),
+        );
       }
     }
-    walkRules(root, rule => {
-      if (rule.body.kind !== 'course') {
+    walkRequirements(root, requirement => {
+      if (requirement.body.kind !== 'course') {
         return;
       }
       if (
-        engine.ruleMatches(program, rule.id, [code], bundle.facts).length > 0
+        engine.requirementMatches(program, requirement.id, [code], bundle.facts)
+          .length > 0
       ) {
         summary.candidates.push({
           program: program.name,
-          path: pathOf(areas.get(rule), rule.label),
+          path: pathOf(areas.get(requirement), requirement.label),
         });
       }
     });

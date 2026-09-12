@@ -30,7 +30,6 @@ import {
   islandDimmed,
   islandHead,
   islandHover,
-  islandNow,
   rowDivider,
   slotRow,
 } from './paint';
@@ -187,7 +186,6 @@ export function TermIsland({
       ref={islandRef}
       data-term={term.id}
       style={{
-        ...(isNow ? islandNow : undefined),
         ...(isHovered ? islandHover : undefined),
         ...(dimmed ? islandDimmed : undefined),
       }}

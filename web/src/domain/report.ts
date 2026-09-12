@@ -3,7 +3,7 @@
  * Mirrors `skyspace-core::evaluate`, `::warn` and `08-board-interaction.md`.
  */
 import type {CourseCode, Credits} from './course';
-import type {EntryId, PlanId, ProgramId, RuleId, TermId} from './ids';
+import type {EntryId, PlanId, ProgramId, RequirementId, TermId} from './ids';
 import type {SelfCheckReason, CreditOrigin, FillBasis} from './plan';
 import type {SourceRef} from './program';
 import type {CatalogYear, Season} from './term';
@@ -15,10 +15,10 @@ export type Outcome =
   | {outcome: 'needsStudentCheck'; confirmed?: SelfCheckReason};
 
 export type Progress = {
-  rulesMet: number;
-  rulesCheckable: number;
-  /** Rules held only by a pinned card the filter rejects: "on your say-so", never met. */
-  rulesClaimed: number;
+  requirementsMet: number;
+  requirementsCheckable: number;
+  /** Requirements held only by a pinned card the filter rejects: "on your say-so", never met. */
+  requirementsClaimed: number;
   creditsMet: Credits;
   creditsRequired: Credits;
   /** Above zero, `creditsRequired` is a lower bound and the interface says so. */
@@ -27,8 +27,8 @@ export type Progress = {
   selfChecksConfirmed: number;
 };
 
-export type RuleReport = {
-  rule: RuleId;
+export type RequirementReport = {
+  requirement: RequirementId;
   label: string;
   source: SourceRef;
   outcome: Outcome;
@@ -38,7 +38,7 @@ export type RuleReport = {
   /** The subset of `filledBy` that sits there by claim, not by match. */
   claimedBy: EntryId[];
   claimedIn?: TermId;
-  children: RuleReport[];
+  children: RequirementReport[];
 };
 
 export type ProgramReport = {
@@ -46,7 +46,7 @@ export type ProgramReport = {
   name: string;
   catalogYear: CatalogYear;
   evaluatedWith: CatalogYear;
-  root: RuleReport;
+  root: RequirementReport;
   progress: Progress;
   declaredCredits?: Credits;
 };
@@ -76,22 +76,34 @@ export type Warning =
       value: {program: ProgramId; wanted: CatalogYear; used: CatalogYear};
     }
   | {
-      kind: 'ruleChoiceUnmatched';
-      value: {term: TermId; entry: EntryId; rule: RuleId; basis?: FillBasis};
+      kind: 'requirementChoiceUnmatched';
+      value: {
+        term: TermId;
+        entry: EntryId;
+        requirement: RequirementId;
+        basis?: FillBasis;
+      };
     }
   /** AP and IB credit never counts toward distribution or Analyzing Diversity (`rice-data.md` §10). */
   | {
       kind: 'incomingCreditIneligible';
-      value: {entry: EntryId; rule: RuleId; origin: CreditOrigin};
+      value: {entry: EntryId; requirement: RequirementId; origin: CreditOrigin};
     }
-  /** One card filling rules in two programs; Rice limits the overlap and we cannot check it. */
+  /** A manual card whose hours the student typed: hours only, not a Rice course, and unverified. */
+  | {kind: 'manualCredits'; value: {entry: EntryId; credits: Credits}}
+  /** One card filling requirements in two programs; Rice limits the overlap and we cannot check it. */
   | {
       kind: 'doubleCounted';
       value: {entry: EntryId; course: CourseCode; programs: ProgramId[]};
     }
   | {
-      kind: 'ruleChoiceMissing';
-      value: {term: TermId; entry: EntryId; rule: RuleId; retired: boolean};
+      kind: 'requirementChoiceMissing';
+      value: {
+        term: TermId;
+        entry: EntryId;
+        requirement: RequirementId;
+        retired: boolean;
+      };
     }
   | {
       kind: 'attributeUnknown';
@@ -130,10 +142,15 @@ export type Warning =
         termsSeen: number;
       };
     }
-  /** A rule the engine cannot verify, surfaced as its own row so it is never silent. */
+  /** A requirement the engine cannot verify, surfaced as its own row so it is never silent. */
   | {
       kind: 'selfCheck';
-      value: {program: ProgramId; rule: RuleId; label: string; text: string};
+      value: {
+        program: ProgramId;
+        requirement: RequirementId;
+        label: string;
+        text: string;
+      };
     };
 
 export type Report = {
@@ -156,15 +173,15 @@ export type PlacementPreview = {
   prerequisites: PrereqVerdict;
   duplicateOf?: TermId;
   creditsAfter: Credits;
-  fills: [ProgramId, RuleId][];
+  fills: [ProgramId, RequirementId][];
 };
 
 /** Document-order flattening, the slice the warning functions read. */
-export function flattenRuleReports(report: Report): RuleReport[] {
-  const out: RuleReport[] = [];
-  const walk = (rule: RuleReport): void => {
-    out.push(rule);
-    for (const child of rule.children) {
+export function flattenRequirementReports(report: Report): RequirementReport[] {
+  const out: RequirementReport[] = [];
+  const walk = (requirement: RequirementReport): void => {
+    out.push(requirement);
+    for (const child of requirement.children) {
       walk(child);
     }
   };

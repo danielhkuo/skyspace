@@ -55,7 +55,7 @@ const LINE = 'var(--border-width) solid var(--color-border)';
 export const stripe = (hue: Hue): string =>
   `inset 4px 0 0 0 var(--color-border-${hue})`;
 
-/** A course row: top rule plus the subject stripe. */
+/** A course row: top requirement plus the subject stripe. */
 export function rowStyle(hue: Hue): CSSProperties {
   return {borderBlockStart: LINE, boxShadow: stripe(hue)};
 }
@@ -104,19 +104,19 @@ export function liftedCard(hue: Hue): CSSProperties {
     transform: 'scale(0.96)',
   };
 }
-/** A rule row is a drop target, so it reads as a slot, not a tag. */
-export const ruleRow: CSSProperties = {
+/** A requirement row is a drop target, so it reads as a slot, not a tag. */
+export const requirementRow: CSSProperties = {
   border: 'var(--border-width) solid var(--color-border)',
   borderRadius: 'var(--radius-inner)',
   background: 'var(--color-background-card)',
   minHeight: 40,
 };
-export const ruleRowRaised: CSSProperties = {
-  ...ruleRow,
+export const requirementRowRaised: CSSProperties = {
+  ...requirementRow,
   borderColor: 'var(--color-accent)',
   background: 'var(--color-accent-muted)',
 };
-export const ruleHit: CSSProperties = {
+export const requirementHit: CSSProperties = {
   background: 'var(--color-accent-muted)',
   borderRadius: 'var(--radius-inner)',
 };

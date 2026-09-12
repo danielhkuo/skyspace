@@ -3,15 +3,19 @@
  * the PDF say the same thing (`design-prompt-dnd.md` "Copy").
  */
 import {
+  formatCredits,
   formatCourseCode,
+  type EntryId,
+  isRiceTerm,
+  isAwayTerm,
   shortTermLabel,
-  walkRules,
+  walkRequirements,
   type CreditOrigin,
   type FillBasis,
   type PlacementPreview,
   type Plan,
   type Program,
-  type RuleId,
+  type RequirementId,
   type SelfCheckReason,
   type TermId,
   type Warning,
@@ -37,16 +41,16 @@ const ORIGIN_NAME: Record<CreditOrigin, string> = {
 export function basisText(basis: FillBasis | undefined): string {
   switch (basis?.kind) {
     case 'earlierCatalog':
-      return `Doesn't match this rule in the plan's catalog year; you said it counted${basis.catalogYear === undefined ? '' : ` in ${basis.catalogYear}-${String(basis.catalogYear + 1).slice(2)}`}.`;
+      return `Doesn't match this requirement in the plan's catalog year; you said it counted${basis.catalogYear === undefined ? '' : ` in ${basis.catalogYear}-${String(basis.catalogYear + 1).slice(2)}`}.`;
     case 'advisorApproved':
-      return `Doesn't match this rule as published; you recorded an advisor-approved substitution${basis.who === undefined ? '' : ` (${basis.who}${basis.on === undefined ? '' : `, ${basis.on}`})`}.`;
+      return `Doesn't match this requirement as published; you recorded an advisor-approved substitution${basis.who === undefined ? '' : ` (${basis.who}${basis.on === undefined ? '' : `, ${basis.on}`})`}.`;
     case 'petitionGranted':
-      return `Doesn't match this rule as published; you recorded a granted petition${basis.on === undefined ? '' : ` (${basis.on})`}.`;
+      return `Doesn't match this requirement as published; you recorded a granted petition${basis.on === undefined ? '' : ` (${basis.on})`}.`;
     case 'registrarPosted':
-      return "Doesn't match this rule as published; you recorded that the registrar posted it on your degree audit.";
+      return "Doesn't match this requirement as published; you recorded that the registrar posted it on your degree audit.";
     case 'unsure':
     case undefined:
-      return "Doesn't match this rule as published, and no reason is recorded.";
+      return "Doesn't match this requirement as published, and no reason is recorded.";
   }
 }
 
@@ -58,9 +62,9 @@ export const SELF_CHECK_REASON_LABEL: Record<SelfCheckReason, string> = {
   other: 'Other',
 };
 
-/** "Core › COMP 140" for every rule of a program: the area, then the rule. */
-export function rulePaths(program: Program): Map<RuleId, string> {
-  const paths = new Map<RuleId, string>();
+/** "Core › COMP 140" for every requirement of a program: the area, then the requirement. */
+export function requirementPaths(program: Program): Map<RequirementId, string> {
+  const paths = new Map<RequirementId, string>();
   const root = program.root;
   if (root.body.kind !== 'all' && root.body.kind !== 'select') {
     paths.set(root.id, root.label);
@@ -68,12 +72,12 @@ export function rulePaths(program: Program): Map<RuleId, string> {
   }
   for (const area of root.body.of) {
     const short = area.label.replace(/ Requirements?$/i, '');
-    walkRules(area, rule => {
+    walkRequirements(area, requirement => {
       paths.set(
-        rule.id,
-        rule === area || rule.label === area.label
+        requirement.id,
+        requirement === area || requirement.label === area.label
           ? area.label
-          : `${short} › ${rule.label}`,
+          : `${short} › ${requirement.label}`,
       );
     });
   }
@@ -95,19 +99,21 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'overSemesterLoad':
       return 'Above the 18 hours Rice allows without written approval. Not a cap.';
     case 'programUnavailable':
-      return 'No reviewed rules for this program yet.';
+      return 'No reviewed requirements for this program yet.';
     case 'programYearSubstituted':
-      return `Evaluated with the ${warning.value.used}-${String(warning.value.used + 1).slice(2)} rules instead.`;
-    case 'ruleChoiceUnmatched':
+      return `Evaluated with the ${warning.value.used}-${String(warning.value.used + 1).slice(2)} requirements instead.`;
+    case 'requirementChoiceUnmatched':
       return `${basisText(warning.value.basis)} Skyspace can't verify Rice will count it; check your degree audit in Esther or ask your advisor.`;
     case 'incomingCreditIneligible':
       return `${ORIGIN_NAME[warning.value.origin]} credit counts toward your total and your major, not toward distribution or Analyzing Diversity. Not counted here; your Esther degree audit shows what the registrar posted.`;
     case 'doubleCounted':
       return 'Counted toward two programs. Rice limits how many courses may overlap, and Skyspace cannot check that limit; ask your advisor.';
-    case 'ruleChoiceMissing':
+    case 'manualCredits':
+      return `${formatCredits(warning.value.credits)} hours entered by hand: it counts as hours, not as a Rice course. Skyspace can't verify what the registrar will post; check your transfer evaluation in Esther.`;
+    case 'requirementChoiceMissing':
       return warning.value.retired
-        ? 'The rule you chose was retired in review.'
-        : 'The rule you chose no longer exists.';
+        ? 'The requirement you chose was retired in review.'
+        : 'The requirement you chose no longer exists.';
     case 'attributeUnknown':
       return 'We hold no distribution data for this course yet.';
     case 'prerequisite': {
@@ -128,12 +134,60 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'seasonUnlikely':
       return `Usually offered in another season (${warning.value.termsSeen} terms seen).`;
     case 'selfCheck':
-      return warning.value.text;
+      return "Skyspace can't verify this from Rice's data. Not counted until you confirm it with a reason.";
   }
 }
 
-/** The subject the warning is about, for the drawer's first column. */
-export function warningSubject(warning: Warning): string {
+/** A card's code on the board, for warnings that name an entry rather than a course. */
+function entryCode(plan: Plan, entry: EntryId): string {
+  for (const card of plan.incomingCredit) {
+    if (card.id === entry) {
+      return card.code;
+    }
+  }
+  for (const term of plan.terms) {
+    if (isRiceTerm(term.kind)) {
+      const hit = term.kind.rice.courses.find(c => c.id === entry);
+      if (hit !== undefined) {
+        return formatCourseCode(hit.course);
+      }
+    } else if (isAwayTerm(term.kind)) {
+      const hit = term.kind.away.cards.find(c => c.id === entry);
+      if (hit !== undefined) {
+        return hit.code;
+      }
+    }
+  }
+  return 'Card';
+}
+
+/** A pin the student already explained: kept, but out of the loud count. */
+export function isRecordedClaim(warning: Warning): boolean {
+  return (
+    warning.kind === 'requirementChoiceUnmatched' &&
+    warning.value.basis !== undefined &&
+    warning.value.basis.kind !== 'unsure'
+  );
+}
+
+/** The card a warning is about, when it names one. */
+export function warningEntry(warning: Warning): EntryId | undefined {
+  switch (warning.kind) {
+    case 'fillsNoRequirement':
+    case 'requirementChoiceUnmatched':
+    case 'requirementChoiceMissing':
+    case 'attributeUnknown':
+    case 'incomingCreditIneligible':
+    case 'doubleCounted':
+    case 'manualCredits':
+      return warning.value.entry;
+    default:
+      return undefined;
+  }
+}
+
+/** The subject the warning is about, for the panel's first column. */
+export function warningSubject(warning: Warning, plan: Plan): string {
   switch (warning.kind) {
     case 'fillsNoRequirement':
     case 'attributeUnknown':
@@ -148,12 +202,13 @@ export function warningSubject(warning: Warning): string {
     case 'selfCheck':
       return warning.value.label;
     case 'incomingCreditIneligible':
-      return 'Incoming credit';
+    case 'requirementChoiceUnmatched':
+    case 'requirementChoiceMissing':
+    case 'manualCredits':
+      return entryCode(plan, warning.value.entry);
     case 'doubleCounted':
       return formatCourseCode(warning.value.course);
     case 'overSemesterLoad':
-    case 'ruleChoiceUnmatched':
-    case 'ruleChoiceMissing':
       return 'Term';
     case 'programUnavailable':
     case 'programYearSubstituted':
@@ -166,8 +221,8 @@ export function warningTerm(warning: Warning): TermId | undefined {
   switch (warning.kind) {
     case 'fillsNoRequirement':
     case 'overSemesterLoad':
-    case 'ruleChoiceUnmatched':
-    case 'ruleChoiceMissing':
+    case 'requirementChoiceUnmatched':
+    case 'requirementChoiceMissing':
     case 'attributeUnknown':
     case 'prerequisite':
     case 'prerequisiteUnparsed':
@@ -195,12 +250,14 @@ export function warningChip(warning: Warning): string | undefined {
       return `Mutually exclusive with ${formatCourseCode(warning.value.blocker)}`;
     case 'duplicateCourse':
       return 'Also elsewhere in the plan';
-    case 'ruleChoiceUnmatched':
+    case 'requirementChoiceUnmatched':
       return 'On your say-so · not verified';
     case 'incomingCreditIneligible':
       return 'AP/IB: not for distribution';
     case 'doubleCounted':
       return 'Counted in two programs';
+    case 'manualCredits':
+      return 'Hours by hand · not verified';
     case 'prerequisiteUnparsed':
       return 'Prerequisites could not be read';
     default:

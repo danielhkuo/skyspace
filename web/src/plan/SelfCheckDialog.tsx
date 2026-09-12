@@ -8,20 +8,20 @@ import {TextArea} from '@astryxdesign/core/TextArea';
 import {useState} from 'react';
 
 import {
-  findRule,
+  findRequirement,
   type Program,
-  type RuleReport,
+  type RequirementReport,
   type SelfCheck,
   type SelfCheckReason,
 } from '../domain';
 import {SELF_CHECK_REASON_LABEL} from './labels';
 import {islandHead, rowDivider, violetInk} from './paint';
-import {ReportRuleDialog} from './ReportRuleDialog';
+import {ReportRequirementDialog} from './ReportRequirementDialog';
 import type {PlanAction} from './usePlan';
 
 type SelfCheckDialogProps = {
   program: Program;
-  rule: RuleReport;
+  requirement: RequirementReport;
   existing: SelfCheck | undefined;
   dispatch: (action: PlanAction) => void;
   onClose: () => void;
@@ -36,13 +36,13 @@ const REASONS: SelfCheckReason[] = [
 ];
 
 /**
- * "Why are you marking this as satisfied?" (`Plan 6 Rule Choice`). A
+ * "Why are you marking this as satisfied?" (`Plan 6 Requirement Choice`). A
  * self-check is the student's word with a reason attached; it is listed on
  * the PDF and never counted in a total.
  */
 export function SelfCheckDialog({
   program,
-  rule,
+  requirement,
   existing,
   dispatch,
   onClose,
@@ -52,13 +52,13 @@ export function SelfCheckDialog({
   );
   const [note, setNote] = useState(existing?.note ?? '');
   const [reporting, setReporting] = useState(false);
-  const source = findRule(program, rule.rule);
+  const source = findRequirement(program, requirement.requirement);
   const text =
     source?.body.kind === 'unverifiable'
       ? source.body.text
       : source?.body.kind === 'nonCourse'
         ? source.body.description
-        : rule.label;
+        : requirement.label;
 
   return (
     <>
@@ -88,7 +88,7 @@ export function SelfCheckDialog({
               gap={2}
             >
               <Text as="h3" weight="semibold">
-                {rule.label}
+                {requirement.label}
               </Text>
               <Link
                 href="#"
@@ -98,14 +98,14 @@ export function SelfCheckDialog({
                   setReporting(true);
                 }}
               >
-                Report this rule
+                Report this requirement
               </Link>
             </Stack>
             <Text size="sm" color="secondary">
               {text} Skyspace cannot verify this from Rice&apos;s data, so it is
               yours to confirm.
             </Text>
-            <Link href={rule.source.url} size="sm" isExternalLink>
+            <Link href={requirement.source.url} size="sm" isExternalLink>
               General Announcements · source
             </Link>
           </Stack>
@@ -164,7 +164,10 @@ export function SelfCheckDialog({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    dispatch({type: 'clearSelfCheck', rule: rule.rule});
+                    dispatch({
+                      type: 'clearSelfCheck',
+                      requirement: requirement.requirement,
+                    });
                     onClose();
                   }}
                 />
@@ -182,7 +185,7 @@ export function SelfCheckDialog({
                 onClick={() => {
                   dispatch({
                     type: 'confirmSelfCheck',
-                    rule: rule.rule,
+                    requirement: requirement.requirement,
                     reason,
                     note: note.trim() === '' ? undefined : note.trim(),
                   });
@@ -194,9 +197,9 @@ export function SelfCheckDialog({
         </Stack>
       </Dialog>
       {reporting && (
-        <ReportRuleDialog
+        <ReportRequirementDialog
           program={program}
-          rule={rule}
+          requirement={requirement}
           onClose={() => setReporting(false)}
         />
       )}

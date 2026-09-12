@@ -1,3 +1,4 @@
+import {Banner} from '@astryxdesign/core/Banner';
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
@@ -20,7 +21,7 @@ import {
   type PlanBundle,
   type PlanTerm,
   type Program,
-  type RuleReport,
+  type RequirementReport,
   type TermId,
   type Warning,
 } from '../domain';
@@ -31,17 +32,18 @@ import {Board} from './Board';
 import {CardMenu} from './CardMenu';
 import {ManualCardMenu} from './ManualCardMenu';
 import {PlanSettingsDialog} from './PlanSettingsDialog';
-import {RuleChoiceDialog} from './RuleChoiceDialog';
+import {EditCourseDialog} from './EditCourseDialog';
 import {SelfCheckDialog} from './SelfCheckDialog';
 import {DragGhost} from './DragGhost';
 import {EditTermDialog} from './EditTermDialog';
-import {ruleHit} from './paint';
+import {requirementHit} from './paint';
 import {PlanHeader} from './PlanHeader';
 import {RequirementsSidebar} from './RequirementsSidebar';
-import {RuleSuggestions} from './RuleSuggestions';
+import {RequirementSuggestions} from './RequirementSuggestions';
 import {FavoritesTray} from './FavoritesTray';
 import {TermPickerDialog} from './TermPickerDialog';
-import {ruleTargetKey, useBoardDrag} from './useBoardDrag';
+import {requirementTargetKey, useBoardDrag} from './useBoardDrag';
+import {isRecordedClaim, termName} from './labels';
 import {locateEntry, usePlan, termRemoveBlocker} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
 import {LoadErrorCard} from '../shell/LoadErrorCard';
@@ -51,11 +53,12 @@ const SIDEBAR_WIDTH = 400;
 function entryOf(warning: Warning): EntryId | undefined {
   switch (warning.kind) {
     case 'fillsNoRequirement':
-    case 'ruleChoiceUnmatched':
-    case 'ruleChoiceMissing':
+    case 'requirementChoiceUnmatched':
+    case 'requirementChoiceMissing':
     case 'attributeUnknown':
     case 'incomingCreditIneligible':
     case 'doubleCounted':
+    case 'manualCredits':
       return warning.value.entry;
     default:
       return undefined;
@@ -155,12 +158,12 @@ function PlanBoardPage({
   }, [favorites, initialFavorites]);
   const [addingTo, setAddingTo] = useState<TermId | undefined>(undefined);
   const [editingTerm, setEditingTerm] = useState<TermId | undefined>(undefined);
-  const [choosingRule, setChoosingRule] = useState<EntryId | undefined>(
+  const [editingCourse, setEditingCourse] = useState<EntryId | undefined>(
     undefined,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selfCheck, setSelfCheck] = useState<
-    {program: Program; rule: RuleReport} | undefined
+    {program: Program; requirement: RequirementReport} | undefined
   >(undefined);
   const [picking, setPicking] = useState<
     {course: CourseCode; credits: number} | undefined
@@ -174,7 +177,26 @@ function PlanBoardPage({
         : [...prev, course],
     );
   }, []);
-  const dragCallbacks = useMemo(() => ({onPark: park}), [park]);
+  const [notice, setNotice] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (notice === undefined) {
+      return undefined;
+    }
+    const t = setTimeout(() => setNotice(undefined), 6000);
+    return () => clearTimeout(t);
+  }, [notice]);
+  const onDuplicate = useCallback(
+    (course: CourseCode, where: TermId | 'incoming') => {
+      setNotice(
+        `${formatCourseCode(course)} is already in ${where === 'incoming' ? 'incoming credit' : termName(bundle.plan, where)}. Rice gives credit once; move it from there instead.`,
+      );
+    },
+    [bundle.plan],
+  );
+  const dragCallbacks = useMemo(
+    () => ({onPark: park, onDuplicate}),
+    [park, onDuplicate],
+  );
   const drag = useBoardDrag(bundle, report, dispatch, dragCallbacks);
   const dragging = drag.state !== undefined;
   const hovered = drag.state?.hovered;
@@ -238,11 +260,11 @@ function PlanBoardPage({
   }, [report, bundle.plan]);
 
   const renderSuggestions = useCallback(
-    (program: Program, rule: RuleReport): ReactNode => (
-      <RuleSuggestions
+    (program: Program, requirement: RequirementReport): ReactNode => (
+      <RequirementSuggestions
         bundle={bundle}
         program={program}
-        rule={rule}
+        requirement={requirement}
         saved={favorites}
         catalog={catalogCandidates}
         onCoursePointerDown={drag.onCoursePointerDown}
@@ -251,27 +273,34 @@ function PlanBoardPage({
     [bundle, favorites, catalogCandidates, drag.onCoursePointerDown],
   );
 
-  const wrapRule = useCallback(
-    (program: Program, rule: RuleReport, row: ReactNode): ReactNode => {
+  const wrapRequirement = useCallback(
+    (
+      program: Program,
+      requirement: RequirementReport,
+      row: ReactNode,
+    ): ReactNode => {
       const isTarget =
-        hovered?.kind === 'rule' &&
+        hovered?.kind === 'requirement' &&
         hovered.program === program.id &&
-        hovered.rule === rule.rule;
+        hovered.requirement === requirement.requirement;
       return (
         <Stack
           width="100%"
           gap={0.5}
           ref={el =>
-            drag.registerTarget(ruleTargetKey(program.id, rule.rule), el)
+            drag.registerTarget(
+              requirementTargetKey(program.id, requirement.requirement),
+              el,
+            )
           }
-          style={isTarget ? ruleHit : undefined}
+          style={isTarget ? requirementHit : undefined}
           padding={isTarget ? 1 : 0}
         >
           {row}
           {isTarget && drag.state?.payload.kind === 'card' && (
             <Stack direction="horizontal" gap={1} paddingInlineStart={3}>
               <Text size="sm" weight="medium">
-                Fill this rule with{' '}
+                Fill this requirement with{' '}
                 {formatCourseCode(drag.state.payload.course)}
               </Text>
             </Stack>
@@ -299,7 +328,7 @@ function PlanBoardPage({
           dispatch={dispatch}
           dropOn={drag.dropOn}
           onPark={park}
-          onChooseRule={() => setChoosingRule(entry)}
+          onEditCourse={() => setEditingCourse(entry)}
         />
       );
     },
@@ -313,7 +342,7 @@ function PlanBoardPage({
         where={where}
         plan={bundle.plan}
         dispatch={dispatch}
-        onChooseRule={() => setChoosingRule(card.id)}
+        onEditCourse={() => setEditingCourse(card.id)}
       />
     ),
     [bundle.plan, dispatch],
@@ -407,7 +436,7 @@ function PlanBoardPage({
         plan={bundle.plan}
         programs={bundle.programs}
         report={report}
-        warningCount={report.warnings.length}
+        warningCount={report.warnings.filter(w => !isRecordedClaim(w)).length}
         onToggleWarnings={() => setShowWarnings(v => !v)}
         onOpenSettings={() => setSettingsOpen(true)}
         extraActions={
@@ -462,12 +491,25 @@ function PlanBoardPage({
                   columns={desktop ? 2 : 1}
                   rowMinHeight={desktop ? undefined : 56}
                   header={
-                    showWarnings ? (
-                      <WarningsPanel
-                        plan={bundle.plan}
-                        warnings={report.warnings}
-                      />
-                    ) : undefined
+                    <>
+                      {notice !== undefined && (
+                        <Banner
+                          status="info"
+                          container="card"
+                          collapsible={false}
+                          isDismissable
+                          title={notice}
+                          onDismiss={() => setNotice(undefined)}
+                        />
+                      )}
+                      {showWarnings && (
+                        <WarningsPanel
+                          plan={bundle.plan}
+                          warnings={report.warnings}
+                          onEditCourse={setEditingCourse}
+                        />
+                      )}
+                    </>
                   }
                   drag={
                     drag.state !== undefined
@@ -502,13 +544,13 @@ function PlanBoardPage({
                 programs={bundle.programs}
                 report={report}
                 dispatch={dispatch}
-                raisedRules={drag.state?.raisedRules}
+                raisedRequirements={drag.state?.raisedRequirements}
                 renderSuggestions={renderSuggestions}
-                wrapRule={wrapRule}
-                onOpenSelfCheck={(program, rule) =>
-                  setSelfCheck({program, rule})
+                wrapRequirement={wrapRequirement}
+                onOpenSelfCheck={(program, requirement) =>
+                  setSelfCheck({program, requirement})
                 }
-                onChooseRule={setChoosingRule}
+                onEditCourse={setEditingCourse}
               />
             </Stack>
           )}
@@ -550,13 +592,16 @@ function PlanBoardPage({
             report={report}
             dispatch={dispatch}
             renderSuggestions={renderSuggestions}
-            onOpenSelfCheck={(program, rule) => setSelfCheck({program, rule})}
-            onChooseRule={setChoosingRule}
+            onOpenSelfCheck={(program, requirement) =>
+              setSelfCheck({program, requirement})
+            }
+            onEditCourse={setEditingCourse}
           />
         </BottomSheet>
       )}
       <AddCourseDialog
         isOpen={addingTo !== undefined}
+        bundle={bundle}
         termLabel={
           addingToTerm === undefined
             ? ''
@@ -589,44 +634,20 @@ function PlanBoardPage({
         }}
       />
       {(() => {
-        if (choosingRule === undefined) {
+        if (editingCourse === undefined) {
           return null;
         }
-        const located = locateEntry(bundle.plan, choosingRule);
-        const course =
-          located === undefined
-            ? undefined
-            : located.where === 'rice'
-              ? located.course.course
-              : located.card.riceEquivalent;
-        const fills =
-          located === undefined
-            ? []
-            : located.where === 'rice'
-              ? located.course.fills
-              : located.card.fills;
-        const claims =
-          located === undefined
-            ? []
-            : ((located.where === 'rice'
-                ? located.course.claims
-                : located.card.claims) ?? []);
-        const label =
-          located === undefined
-            ? ''
-            : located.where === 'rice'
-              ? formatCourseCode(located.course.course)
-              : located.card.code;
-        return located === undefined ? null : (
-          <RuleChoiceDialog
-            entry={choosingRule}
-            course={course}
-            label={label}
-            fills={fills}
-            claims={claims}
+        const located = locateEntry(bundle.plan, editingCourse);
+        if (located === undefined) {
+          return null;
+        }
+        return (
+          <EditCourseDialog
+            entry={editingCourse}
+            card={located.where === 'rice' ? located.course : located.card}
             bundle={bundle}
             dispatch={dispatch}
-            onClose={() => setChoosingRule(undefined)}
+            onClose={() => setEditingCourse(undefined)}
           />
         );
       })()}
@@ -641,9 +662,9 @@ function PlanBoardPage({
       {selfCheck !== undefined && (
         <SelfCheckDialog
           program={selfCheck.program}
-          rule={selfCheck.rule}
+          requirement={selfCheck.requirement}
           existing={bundle.plan.selfChecks.find(
-            s => s.rule === selfCheck.rule.rule,
+            s => s.requirement === selfCheck.requirement.requirement,
           )}
           dispatch={dispatch}
           onClose={() => setSelfCheck(undefined)}
@@ -676,7 +697,7 @@ function PlanBoardPage({
             liftedFrom === undefined
               ? drag.state.payload.kind === 'course' &&
                 drag.state.payload.fills !== undefined
-                ? 'fills this rule'
+                ? 'fills this requirement'
                 : 'from Saved'
               : `lifted from ${shortTermLabel(liftedFrom.position)}`
           }

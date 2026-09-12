@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
 import {
-  flattenRuleReports,
+  flattenRequirementReports,
   formatCourseCode,
   isRiceTerm,
   parseCourseCode,
@@ -10,7 +10,7 @@ import {
 import {
   BSCS_ID,
   COMP_415_ENTRY,
-  RULES,
+  REQS,
   TERMS,
   bscsProgram,
   bundle,
@@ -52,7 +52,7 @@ describe('evaluate (interim)', () => {
   it('counts an Analyzing Diversity course for its distribution slot too', () => {
     const university = report.programs.find(p => p.name === 'University');
     const find = (label: string) =>
-      flattenRuleReports(report)
+      flattenRequirementReports(report)
         .filter(r => r.label === label)
         .find(r =>
           university?.root.children.some(
@@ -64,7 +64,7 @@ describe('evaluate (interim)', () => {
     const groupOne = find('Distribution Group I');
     expect(groupOne?.outcome.outcome).toBe('partial');
     expect(groupOne?.children.flatMap(c => c.claimedBy)).toHaveLength(1);
-    expect(university?.progress.rulesClaimed).toBe(1);
+    expect(university?.progress.requirementsClaimed).toBe(1);
   });
 
   it('never lets AP or IB credit fill a distribution slot', () => {
@@ -72,7 +72,7 @@ describe('evaluate (interim)', () => {
       w => w.kind === 'incomingCreditIneligible',
     );
     expect(ineligible).toHaveLength(0);
-    const apOnGroup = flattenRuleReports(report).some(
+    const apOnGroup = flattenRequirementReports(report).some(
       r =>
         r.label.startsWith('Distribution Group') &&
         r.filledBy.some(e => String(e).includes('math-105')),
@@ -86,8 +86,8 @@ describe('evaluate (interim)', () => {
       plan: {...bundle.plan, terms: [...bundle.plan.terms].reverse()},
     };
     const other = engine.evaluate(reversed);
-    expect(other.programs.map(p => p.progress.rulesMet)).toEqual(
-      report.programs.map(p => p.progress.rulesMet),
+    expect(other.programs.map(p => p.progress.requirementsMet)).toEqual(
+      report.programs.map(p => p.progress.requirementsMet),
     );
   });
 
@@ -104,7 +104,7 @@ describe('evaluate (interim)', () => {
 
   it('holds a group at partial while a self-check inside it is unconfirmed', () => {
     const bscs = report.programs.find(p => p.program === BSCS_ID);
-    const open = flattenRuleReports(report).find(
+    const open = flattenRequirementReports(report).find(
       r =>
         r.outcome.outcome === 'needsStudentCheck' &&
         r.outcome.confirmed === undefined,
@@ -178,10 +178,10 @@ describe('evaluate (interim)', () => {
     expect(later).toHaveLength(1);
   });
 
-  it('never counts a self-check toward rules met', () => {
+  it('never counts a self-check toward requirements met', () => {
     const bscs = report.programs.find(p => p.program === BSCS_ID);
     expect(bscs?.progress.selfChecks).toBeGreaterThan(0);
-    expect(bscs?.progress.rulesCheckable).toBeLessThan(30);
+    expect(bscs?.progress.requirementsCheckable).toBeLessThan(30);
   });
 });
 
@@ -215,11 +215,11 @@ describe('previewPlacement (interim)', () => {
   });
 });
 
-describe('ruleMatches (interim)', () => {
+describe('requirementMatches (interim)', () => {
   it('resolves ECON 307 to STAT 310 through the alias table', () => {
-    const matched = engine.ruleMatches(
+    const matched = engine.requirementMatches(
       bscsProgram,
-      RULES.probStat,
+      REQS.probStat,
       [code('ECON 307'), code('COMP 140')],
       bundle.facts,
     );

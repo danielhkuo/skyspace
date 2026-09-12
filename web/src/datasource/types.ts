@@ -14,7 +14,7 @@ import type {
   PlanId,
   Program,
   ProgramId,
-  RuleId,
+  RequirementId,
   Section,
   SectionPage,
   TermCode,
@@ -32,7 +32,7 @@ export type DataSource = {
   saveFavorites(favorites: CourseCode[]): Promise<void>;
   /** Code or title match, ordered by code; empty query returns nothing. */
   searchCourses(query: string, limit: number): Promise<CourseInfo[]>;
-  /** Courses the suggestion strip may offer for a rule (`08-board-interaction.md`). */
+  /** Courses the suggestion strip may offer for a requirement (`08-board-interaction.md`). */
   catalogCandidates(): Promise<CourseCode[]>;
   /** The term the catalog shows; the demo has exactly one. */
   currentTerm(): Promise<{code: TermCode; label: string}>;
@@ -44,8 +44,8 @@ export type DataSource = {
   /** Reference lists the rail offers: Rice's `SUBJECTS` and `SESSIONS`. */
   listSubjects(term: TermCode): Promise<string[]>;
   listPartsOfTerm(term: TermCode): Promise<string[]>;
-  /** "Report this rule": a person reviews every report (`06-api.md`). */
-  reportRule(report: RuleReport): Promise<void>;
+  /** "Report this requirement": a person reviews every report (`06-api.md`). */
+  reportRequirement(report: RequirementReport): Promise<void>;
   /** Every program a plan may name, for the pickers. The demo has three. */
   listPrograms(): Promise<Program[]>;
   /** Who is signed in, if anyone. The demo keeps a pretend session in this browser. */
@@ -60,9 +60,9 @@ export type DataSource = {
 
 export type Session = {email: string; name: string};
 
-export type RuleReport = {
+export type RequirementReport = {
   program: ProgramId;
-  rule: RuleId;
+  requirement: RequirementId;
   label: string;
   sourceUrl: string;
   text: string;

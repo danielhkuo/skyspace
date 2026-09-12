@@ -81,7 +81,7 @@ export function CourseRow({
   const info = planned ? courseInfo(facts, card.course) : undefined;
   const title = planned ? info?.title : card.title;
   const fills = fillsIndex.get(entry) ?? [];
-  // A manual card with no Rice equivalent fills a rule only by the student's word.
+  // A manual card with no Rice equivalent fills a requirement only by the student's word.
   const byChoice =
     !planned && card.riceEquivalent === undefined && card.fills.length > 0;
   const chip = warnings.map(warningChip).find(c => c !== undefined);
@@ -94,6 +94,8 @@ export function CourseRow({
   const paint = chip === undefined ? base : {...base, ...warningRow};
 
   const fillsLine = fills.map(f => f.path).join(' · ');
+  // A pin the student explained: a quiet violet mark, not a yellow chip.
+  const recorded = (card.claims ?? []).some(c => c.basis.kind !== 'unsure');
 
   return (
     <Stack
@@ -131,6 +133,14 @@ export function CourseRow({
       <Text size="sm" weight="semibold" hasTabularNumbers textWrap="nowrap">
         {code}
       </Text>
+      {recorded && (
+        <Icon
+          icon={HollowMark}
+          size="xsm"
+          label="Counted on your say-so; Skyspace cannot verify it"
+          style={violetInk}
+        />
+      )}
       <StackItem size="fill">
         <Stack gap={0} align="start" width="100%">
           {title !== undefined && (

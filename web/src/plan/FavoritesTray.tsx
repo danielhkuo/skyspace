@@ -16,7 +16,7 @@ import {
   type CourseCode,
   type Credits,
   type PlanBundle,
-  type RuleId,
+  type RequirementId,
 } from '../domain';
 import {GripMark} from './marks';
 import {
@@ -42,7 +42,7 @@ type FavoritesTrayProps = {
   onCoursePointerDown: (
     course: CourseCode,
     credits: Credits,
-    fills: RuleId[] | undefined,
+    fills: RequirementId[] | undefined,
     event: ReactPointerEvent<HTMLElement>,
   ) => void;
   registerTarget: (key: string, element: HTMLElement | null) => void;

@@ -1,6 +1,6 @@
 /**
  * The "CS + Stats minor" plan from the design artboards, as a `PlanBundle`.
- * Codes, titles, prerequisites and program rules are real Rice data
+ * Codes, titles, prerequisites and program requirements are real Rice data
  * (`rice-data.md`); the student and their choices are invented.
  *
  * Fixture ids are stable strings, not UUIDs, so tests can name them.
@@ -23,8 +23,8 @@ import type {
   PrereqExpr,
   Program,
   ProgramId,
-  Rule,
-  RuleId,
+  Requirement,
+  RequirementId,
   Season,
   TermId,
   TermPosition,
@@ -52,69 +52,73 @@ export const UNIVERSITY_ID = 'prog-university' as ProgramId;
 export const BSCS_ID = 'prog-bscs' as ProgramId;
 export const STATS_MINOR_ID = 'prog-stat-minor' as ProgramId;
 
-export const RULES = {
-  fwis: 'rule-fwis' as RuleId,
-  dg1: 'rule-dg1' as RuleId,
-  dg1a: 'rule-dg1-a' as RuleId,
-  dg1b: 'rule-dg1-b' as RuleId,
-  dg1c: 'rule-dg1-c' as RuleId,
-  dg1Depts: 'rule-dg1-depts' as RuleId,
-  dg2: 'rule-dg2' as RuleId,
-  dg2a: 'rule-dg2-a' as RuleId,
-  dg2b: 'rule-dg2-b' as RuleId,
-  dg2c: 'rule-dg2-c' as RuleId,
-  dg3: 'rule-dg3' as RuleId,
-  dg3a: 'rule-dg3-a' as RuleId,
-  dg3b: 'rule-dg3-b' as RuleId,
-  dg3c: 'rule-dg3-c' as RuleId,
-  ad: 'rule-ad' as RuleId,
-  lpap: 'rule-lpap' as RuleId,
-  core: 'rule-core' as RuleId,
-  calc: 'rule-calc' as RuleId,
-  math102: 'rule-math102' as RuleId,
-  math212: 'rule-math212' as RuleId,
-  comp140: 'rule-comp140' as RuleId,
-  comp182: 'rule-comp182' as RuleId,
-  comp215: 'rule-comp215' as RuleId,
-  comp222: 'rule-comp222' as RuleId,
-  comp312: 'rule-comp312' as RuleId,
-  comp321: 'rule-comp321' as RuleId,
-  comp382: 'rule-comp382' as RuleId,
-  probStat: 'rule-probstat' as RuleId,
-  design: 'rule-design' as RuleId,
-  breadth: 'rule-breadth' as RuleId,
-  breadthA: 'rule-breadth-a' as RuleId,
-  breadthB: 'rule-breadth-b' as RuleId,
-  breadthC: 'rule-breadth-c' as RuleId,
-  breadthD: 'rule-breadth-d' as RuleId,
-  electives: 'rule-electives' as RuleId,
-  footnote2: 'rule-footnote-2' as RuleId,
-  freeElectives: 'rule-free-electives' as RuleId,
-  minorRoot: 'rule-minor-root' as RuleId,
-  stat310: 'rule-minor-stat310' as RuleId,
-  stat315: 'rule-minor-stat315' as RuleId,
-  stat410: 'rule-minor-stat410' as RuleId,
-  stat413: 'rule-minor-stat413' as RuleId,
-  minorElective1: 'rule-minor-el-1' as RuleId,
-  minorElective2: 'rule-minor-el-2' as RuleId,
+export const REQS = {
+  fwis: 'requirement-fwis' as RequirementId,
+  dg1: 'requirement-dg1' as RequirementId,
+  dg1a: 'requirement-dg1-a' as RequirementId,
+  dg1b: 'requirement-dg1-b' as RequirementId,
+  dg1c: 'requirement-dg1-c' as RequirementId,
+  dg1Depts: 'requirement-dg1-depts' as RequirementId,
+  dg2: 'requirement-dg2' as RequirementId,
+  dg2a: 'requirement-dg2-a' as RequirementId,
+  dg2b: 'requirement-dg2-b' as RequirementId,
+  dg2c: 'requirement-dg2-c' as RequirementId,
+  dg3: 'requirement-dg3' as RequirementId,
+  dg3a: 'requirement-dg3-a' as RequirementId,
+  dg3b: 'requirement-dg3-b' as RequirementId,
+  dg3c: 'requirement-dg3-c' as RequirementId,
+  ad: 'requirement-ad' as RequirementId,
+  lpap: 'requirement-lpap' as RequirementId,
+  core: 'requirement-core' as RequirementId,
+  calc: 'requirement-calc' as RequirementId,
+  math102: 'requirement-math102' as RequirementId,
+  math212: 'requirement-math212' as RequirementId,
+  comp140: 'requirement-comp140' as RequirementId,
+  comp182: 'requirement-comp182' as RequirementId,
+  comp215: 'requirement-comp215' as RequirementId,
+  comp222: 'requirement-comp222' as RequirementId,
+  comp312: 'requirement-comp312' as RequirementId,
+  comp321: 'requirement-comp321' as RequirementId,
+  comp382: 'requirement-comp382' as RequirementId,
+  probStat: 'requirement-probstat' as RequirementId,
+  design: 'requirement-design' as RequirementId,
+  breadth: 'requirement-breadth' as RequirementId,
+  breadthA: 'requirement-breadth-a' as RequirementId,
+  breadthB: 'requirement-breadth-b' as RequirementId,
+  breadthC: 'requirement-breadth-c' as RequirementId,
+  breadthD: 'requirement-breadth-d' as RequirementId,
+  electives: 'requirement-electives' as RequirementId,
+  footnote2: 'requirement-footnote-2' as RequirementId,
+  freeElectives: 'requirement-free-electives' as RequirementId,
+  minorRoot: 'requirement-minor-root' as RequirementId,
+  stat310: 'requirement-minor-stat310' as RequirementId,
+  stat315: 'requirement-minor-stat315' as RequirementId,
+  stat410: 'requirement-minor-stat410' as RequirementId,
+  stat413: 'requirement-minor-stat413' as RequirementId,
+  minorElective1: 'requirement-minor-el-1' as RequirementId,
+  minorElective2: 'requirement-minor-el-2' as RequirementId,
 } as const;
 
 const universitySource = {
   url: 'https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/',
 };
 
-const courseRule = (
-  id: RuleId,
+const courseRequirement = (
+  id: RequirementId,
   label: string,
   include: CourseFilter,
-): Rule => ({
+): Requirement => ({
   id,
   label,
   source: universitySource,
   body: {kind: 'course', filter: include, semesters: 1},
 });
 
-const codeRule = (id: RuleId, raw: string, hours?: number): Rule => ({
+const codeRequirement = (
+  id: RequirementId,
+  raw: string,
+  hours?: number,
+): Requirement => ({
   id,
   label: raw,
   source: {url: `${GA}engineering/computer-science/computer-science-bscs/`},
@@ -127,18 +131,18 @@ const codeRule = (id: RuleId, raw: string, hours?: number): Rule => ({
 });
 
 const distributionGroup = (
-  id: RuleId,
-  slots: [RuleId, RuleId, RuleId],
+  id: RequirementId,
+  slots: [RequirementId, RequirementId, RequirementId],
   attribute: 'GRP1' | 'GRP2' | 'GRP3',
   label: string,
-): Rule => ({
+): Requirement => ({
   id,
   label,
   source: universitySource,
   body: {
     kind: 'all',
     of: slots.map(slotId =>
-      courseRule(slotId, label, {
+      courseRequirement(slotId, label, {
         include: [{kind: 'attribute', attribute}],
         exclude: [],
       }),
@@ -155,22 +159,22 @@ export const universityProgram: Program = {
   credential: '',
   totalCredits: creditsFromHours(31),
   source: universitySource,
-  retiredRules: [],
+  retiredRequirements: [],
   root: {
-    id: 'rule-university-root' as RuleId,
+    id: 'requirement-university-root' as RequirementId,
     label: 'University graduation requirements',
     source: universitySource,
     body: {
       kind: 'all',
       of: [
-        courseRule(RULES.fwis, 'FWIS', {
+        courseRequirement(REQS.fwis, 'FWIS', {
           include: [
             {kind: 'numberRange', subject: 'FWIS', low: 101, high: 299},
           ],
           exclude: [],
         }),
         {
-          id: RULES.dg1,
+          id: REQS.dg1,
           label: 'Distribution Group I',
           source: universitySource,
           body: {
@@ -178,14 +182,14 @@ export const universityProgram: Program = {
             of: [
               ...(
                 distributionGroup(
-                  'rule-dg1-inner' as RuleId,
-                  [RULES.dg1a, RULES.dg1b, RULES.dg1c],
+                  'requirement-dg1-inner' as RequirementId,
+                  [REQS.dg1a, REQS.dg1b, REQS.dg1c],
                   'GRP1',
                   'Distribution Group I',
-                ).body as {kind: 'all'; of: Rule[]}
+                ).body as {kind: 'all'; of: Requirement[]}
               ).of,
               {
-                id: RULES.dg1Depts,
+                id: REQS.dg1Depts,
                 label: 'From at least two departments',
                 source: universitySource,
                 body: {
@@ -197,21 +201,21 @@ export const universityProgram: Program = {
           },
         },
         distributionGroup(
-          RULES.dg2,
-          [RULES.dg2a, RULES.dg2b, RULES.dg2c],
+          REQS.dg2,
+          [REQS.dg2a, REQS.dg2b, REQS.dg2c],
           'GRP2',
           'Distribution Group II',
         ),
         distributionGroup(
-          RULES.dg3,
-          [RULES.dg3a, RULES.dg3b, RULES.dg3c],
+          REQS.dg3,
+          [REQS.dg3a, REQS.dg3b, REQS.dg3c],
           'GRP3',
           'Distribution Group III',
         ),
-        // A credits rule with scope `any`, not a slot: the AD course is the
+        // A credits requirement with scope `any`, not a slot: the AD course is the
         // same card that fills a distribution slot, and must count for both.
         {
-          id: RULES.ad,
+          id: REQS.ad,
           label: 'Analyzing Diversity',
           source: universitySource,
           body: {
@@ -224,7 +228,7 @@ export const universityProgram: Program = {
             },
           },
         },
-        courseRule(RULES.lpap, 'LPAP', {
+        courseRequirement(REQS.lpap, 'LPAP', {
           include: [{kind: 'subject', subject: 'LPAP'}],
           exclude: [],
         }),
@@ -246,23 +250,23 @@ export const bscsProgram: Program = {
   credential: 'BSCS',
   totalCredits: creditsFromHours(120),
   source: bscsSource,
-  retiredRules: [],
+  retiredRequirements: [],
   root: {
-    id: 'rule-bscs-root' as RuleId,
+    id: 'requirement-bscs-root' as RequirementId,
     label: 'Bachelor of Science in Computer Science (BSCS)',
     source: bscsSource,
     body: {
       kind: 'all',
       of: [
         {
-          id: RULES.core,
+          id: REQS.core,
           label: 'Core Requirements',
           source: bscsSource,
           body: {
             kind: 'all',
             of: [
               {
-                id: RULES.calc,
+                id: REQS.calc,
                 label: 'MATH 101 or MATH 105',
                 source: bscsSource,
                 hours: fixed(3),
@@ -278,17 +282,17 @@ export const bscsProgram: Program = {
                   semesters: 1,
                 },
               },
-              codeRule(RULES.math102, 'MATH 102', 3),
-              codeRule(RULES.math212, 'MATH 212', 3),
-              codeRule(RULES.comp140, 'COMP 140', 4),
-              codeRule(RULES.comp182, 'COMP 182', 4),
-              codeRule(RULES.comp215, 'COMP 215', 4),
-              codeRule(RULES.comp222, 'COMP 222', 4),
-              codeRule(RULES.comp312, 'COMP 312', 4),
-              codeRule(RULES.comp321, 'COMP 321', 4),
-              codeRule(RULES.comp382, 'COMP 382', 4),
+              codeRequirement(REQS.math102, 'MATH 102', 3),
+              codeRequirement(REQS.math212, 'MATH 212', 3),
+              codeRequirement(REQS.comp140, 'COMP 140', 4),
+              codeRequirement(REQS.comp182, 'COMP 182', 4),
+              codeRequirement(REQS.comp215, 'COMP 215', 4),
+              codeRequirement(REQS.comp222, 'COMP 222', 4),
+              codeRequirement(REQS.comp312, 'COMP 312', 4),
+              codeRequirement(REQS.comp321, 'COMP 321', 4),
+              codeRequirement(REQS.comp382, 'COMP 382', 4),
               {
-                id: RULES.probStat,
+                id: REQS.probStat,
                 label:
                   'Select 1 course from ELEC 303, STAT 310 / ECON 307, STAT 311, STAT 312, STAT 315 / DSCI 301',
                 source: bscsSource,
@@ -315,7 +319,7 @@ export const bscsProgram: Program = {
           },
         },
         {
-          id: RULES.design,
+          id: REQS.design,
           label: 'Design Requirement',
           source: bscsSource,
           hours: fixed(4),
@@ -332,21 +336,21 @@ export const bscsProgram: Program = {
           },
         },
         {
-          id: RULES.breadth,
+          id: REQS.breadth,
           label: 'Breadth Requirements',
           source: bscsSource,
           body: {
             kind: 'all',
             of: [
-              codeRule(RULES.breadthA, 'COMP 318', 4),
-              codeRule(RULES.breadthB, 'COMP 421', 4),
-              codeRule(RULES.breadthC, 'COMP 411', 4),
-              codeRule(RULES.breadthD, 'COMP 412', 4),
+              codeRequirement(REQS.breadthA, 'COMP 318', 4),
+              codeRequirement(REQS.breadthB, 'COMP 421', 4),
+              codeRequirement(REQS.breadthC, 'COMP 411', 4),
+              codeRequirement(REQS.breadthD, 'COMP 412', 4),
             ],
           },
         },
         {
-          id: RULES.electives,
+          id: REQS.electives,
           label: 'Select 2 courses from COMP at the 300 level or above',
           source: bscsSource,
           hours: fixed(3),
@@ -372,7 +376,7 @@ export const bscsProgram: Program = {
           },
         },
         {
-          id: RULES.freeElectives,
+          id: REQS.freeElectives,
           label: 'Additional credit hours to complete degree requirements',
           source: bscsSource,
           body: {
@@ -383,7 +387,7 @@ export const bscsProgram: Program = {
           },
         },
         {
-          id: RULES.footnote2,
+          id: REQS.footnote2,
           label: 'Footnote 2',
           source: bscsSource,
           body: {
@@ -407,20 +411,20 @@ export const statsMinorProgram: Program = {
   credential: 'Minor',
   totalCredits: creditsFromHours(18),
   source: minorSource,
-  retiredRules: [],
+  retiredRequirements: [],
   root: {
-    id: RULES.minorRoot,
+    id: REQS.minorRoot,
     label: 'Minor in Statistics',
     source: minorSource,
     body: {
       kind: 'all',
       of: [
-        {...codeRule(RULES.stat310, 'STAT 310', 3), source: minorSource},
-        {...codeRule(RULES.stat315, 'STAT 315', 3), source: minorSource},
-        {...codeRule(RULES.stat410, 'STAT 410', 3), source: minorSource},
-        {...codeRule(RULES.stat413, 'STAT 413', 3), source: minorSource},
+        {...codeRequirement(REQS.stat310, 'STAT 310', 3), source: minorSource},
+        {...codeRequirement(REQS.stat315, 'STAT 315', 3), source: minorSource},
+        {...codeRequirement(REQS.stat410, 'STAT 410', 3), source: minorSource},
+        {...codeRequirement(REQS.stat413, 'STAT 413', 3), source: minorSource},
         {
-          id: RULES.minorElective1,
+          id: REQS.minorElective1,
           label: 'STAT elective at the 400 level or above',
           source: minorSource,
           hours: fixed(3),
@@ -734,7 +738,7 @@ const entry = (raw: string): EntryId => {
 const planned = (
   raw: string,
   hours: number,
-  fills: RuleId[] = [],
+  fills: RequirementId[] = [],
 ): PlannedCourse => ({
   id: entry(raw),
   course: code(raw),
@@ -774,12 +778,12 @@ const incoming: ManualCourseCard[] = [
     title: 'Intro Psychology, Houston CC',
     credits: creditsFromHours(3),
     institution: 'Houston Community College',
-    fills: [RULES.dg1b],
+    fills: [REQS.dg1b],
     // No Rice code, so its pin is a claim, not a match; the student recorded
     // why. The sidebar shows it "on your say-so" and never counts it as met.
     claims: [
       {
-        rule: RULES.dg1b,
+        requirement: REQS.dg1b,
         basis: {kind: 'registrarPosted'},
         note: 'Posted on my transfer evaluation',
       },
@@ -794,7 +798,9 @@ export const plan: Plan = {
   matriculation: {academicYear: 2025, season: 'fall'},
   programs: [UNIVERSITY_ID, BSCS_ID, STATS_MINOR_ID],
   incomingCredit: incoming,
-  selfChecks: [{rule: RULES.dg1Depts, reason: 'other', note: 'HIST and PSYC'}],
+  selfChecks: [
+    {requirement: REQS.dg1Depts, reason: 'other', note: 'HIST and PSYC'},
+  ],
   terms: [
     rice(
       TERMS.fall24,
@@ -877,7 +883,16 @@ export const plan: Plan = {
               title: 'Universidad Politécnica',
               credits: creditsFromHours(4),
               institution: 'Universidad Politécnica de Madrid',
-              fills: [RULES.electives],
+              fills: [REQS.electives],
+              // Pinned by the student with the advisor's word, so the sidebar
+              // shows it "on your say-so", never as met.
+              claims: [
+                {
+                  requirement: REQS.electives,
+                  basis: {kind: 'advisorApproved', who: 'Dr. Kavraki'},
+                  note: 'Approved as a COMP elective before departure',
+                },
+              ],
             },
             {
               id: entry('Spanish Literature'),
@@ -922,7 +937,7 @@ export const favorites: CourseCode[] = [
   'ECON 100',
 ].map(code);
 
-/** Stand-in for the catalog query a rule's suggestion strip makes (`08-board-interaction.md`). */
+/** Stand-in for the catalog query a requirement's suggestion strip makes (`08-board-interaction.md`). */
 export const catalogCandidates: CourseCode[] = courseFacts.courses.map(
   i => i.code,
 );

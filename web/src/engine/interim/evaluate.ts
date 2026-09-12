@@ -2,7 +2,7 @@
  * Interim TypeScript evaluator. `skyspace-core::evaluate` is the real one and
  * arrives through wasm; this keeps the board live until then and follows the
  * same steps (`03-requirements.md`): collect cards, flatten slots, apply
- * choices, match, run credit rules, fold.
+ * choices, match, run credit requirements, fold.
  *
  * Known simplification: matching is greedy in document order, not maximum
  * bipartite matching. The COMP 140 case can come out wrong here.
@@ -25,9 +25,9 @@ import {
   type ProgramReport,
   type Progress,
   type Report,
-  type Rule,
-  type RuleId,
-  type RuleReport,
+  type Requirement,
+  type RequirementId,
+  type RequirementReport,
   type SelfCheckReason,
   type TermId,
   type Warning,
@@ -46,13 +46,13 @@ type Card = {
   term?: TermId;
   code?: CourseCode;
   credits: Credits;
-  fills: RuleId[];
+  fills: RequirementId[];
   claims: FillClaim[];
   origin?: CreditOrigin;
 };
 
 type Slot = {
-  rule: RuleId;
+  requirement: RequirementId;
   filter: CourseFilter;
 };
 
@@ -103,11 +103,11 @@ function collectCards(plan: Plan, facts: CourseFacts): Card[] {
   return cards;
 }
 
-function flattenSlots(rule: Rule, out: Slot[]): void {
-  const body = rule.body;
+function flattenSlots(requirement: Requirement, out: Slot[]): void {
+  const body = requirement.body;
   if (body.kind === 'course') {
     for (let i = 0; i < body.semesters; i += 1) {
-      out.push({rule: rule.id, filter: body.filter});
+      out.push({requirement: requirement.id, filter: body.filter});
     }
   } else if (body.kind === 'all' || body.kind === 'select') {
     for (const child of body.of) {
@@ -130,9 +130,9 @@ function slotNeedsAttribute(slot: Slot): boolean {
 
 function emptyProgress(): Progress {
   return {
-    rulesMet: 0,
-    rulesClaimed: 0,
-    rulesCheckable: 0,
+    requirementsMet: 0,
+    requirementsClaimed: 0,
+    requirementsCheckable: 0,
     creditsMet: 0,
     creditsRequired: 0,
     creditsUnknown: 0,
@@ -143,9 +143,9 @@ function emptyProgress(): Progress {
 
 function addProgress(a: Progress, b: Progress): Progress {
   return {
-    rulesMet: a.rulesMet + b.rulesMet,
-    rulesClaimed: a.rulesClaimed + b.rulesClaimed,
-    rulesCheckable: a.rulesCheckable + b.rulesCheckable,
+    requirementsMet: a.requirementsMet + b.requirementsMet,
+    requirementsClaimed: a.requirementsClaimed + b.requirementsClaimed,
+    requirementsCheckable: a.requirementsCheckable + b.requirementsCheckable,
     creditsMet: a.creditsMet + b.creditsMet,
     creditsRequired: a.creditsRequired + b.creditsRequired,
     creditsUnknown: a.creditsUnknown + b.creditsUnknown,
@@ -154,7 +154,7 @@ function addProgress(a: Progress, b: Progress): Progress {
   };
 }
 
-type Assignment = Map<RuleId, Card[]>;
+type Assignment = Map<RequirementId, Card[]>;
 
 type Matching = {
   assigned: Assignment;
@@ -174,7 +174,7 @@ function matchCards(
   const claimed = new Set<EntryId>();
   const slotTaken = new Array<boolean>(slots.length).fill(false);
   const free: Card[] = [];
-  const ruleIds = new Set(slots.map(s => s.rule));
+  const requirementIds = new Set(slots.map(s => s.requirement));
 
   const give = (slotIndex: number, card: Card): void => {
     const slot = slots[slotIndex];
@@ -182,20 +182,20 @@ function matchCards(
       return;
     }
     slotTaken[slotIndex] = true;
-    const list = assigned.get(slot.rule) ?? [];
+    const list = assigned.get(slot.requirement) ?? [];
     list.push(card);
-    assigned.set(slot.rule, list);
+    assigned.set(slot.requirement, list);
   };
 
-  // Choices first: a card pinned to a rule in this program takes that rule's first free slot.
+  // Choices first: a card pinned to a requirement in this program takes that requirement's first free slot.
   for (const card of cards) {
-    const choice = card.fills.find(r => ruleIds.has(r));
+    const choice = card.fills.find(r => requirementIds.has(r));
     if (choice === undefined) {
       free.push(card);
       continue;
     }
     const slotIndex = slots.findIndex(
-      (s, i) => s.rule === choice && !slotTaken[i],
+      (s, i) => s.requirement === choice && !slotTaken[i],
     );
     if (slotIndex === -1) {
       free.push(card);
@@ -217,18 +217,18 @@ function matchCards(
       claimed.add(card.entry);
       warnings.push({
         kind: 'incomingCreditIneligible',
-        value: {entry: card.entry, rule: choice, origin: card.origin},
+        value: {entry: card.entry, requirement: choice, origin: card.origin},
       });
     } else if (rejected) {
       claimed.add(card.entry);
       if (card.term !== undefined) {
         warnings.push({
-          kind: 'ruleChoiceUnmatched',
+          kind: 'requirementChoiceUnmatched',
           value: {
             term: card.term,
             entry: card.entry,
-            rule: choice,
-            basis: card.claims.find(c => c.rule === choice)?.basis,
+            requirement: choice,
+            basis: card.claims.find(c => c.requirement === choice)?.basis,
           },
         });
       }
@@ -304,27 +304,27 @@ function creditsMetBy(cards: Card[]): Credits {
   return cards.reduce((sum, c) => sum + c.credits, 0);
 }
 
-function evaluateRule(
-  rule: Rule,
+function evaluateRequirement(
+  requirement: Requirement,
   program: Program,
   assigned: Assignment,
   claimed: Set<EntryId>,
   consumed: Set<EntryId>,
   cards: Card[],
   facts: CourseFacts,
-  confirmed: Map<RuleId, SelfCheckReason>,
-  claims: Map<RuleId, TermId>,
-): RuleReport {
-  const body = rule.body;
+  confirmed: Map<RequirementId, SelfCheckReason>,
+  claims: Map<RequirementId, TermId>,
+): RequirementReport {
+  const body = requirement.body;
   const base = {
-    rule: rule.id,
-    label: rule.label,
-    source: rule.source,
-    claimedIn: claims.get(rule.id),
+    requirement: requirement.id,
+    label: requirement.label,
+    source: requirement.source,
+    claimedIn: claims.get(requirement.id),
   };
 
   if (body.kind === 'nonCourse' || body.kind === 'unverifiable') {
-    const reason = confirmed.get(rule.id);
+    const reason = confirmed.get(requirement.id);
     const progress = emptyProgress();
     progress.selfChecks = 1;
     progress.selfChecksConfirmed = reason === undefined ? 0 : 1;
@@ -343,21 +343,23 @@ function evaluateRule(
   }
 
   if (body.kind === 'course') {
-    const filled = assigned.get(rule.id) ?? [];
+    const filled = assigned.get(requirement.id) ?? [];
     const matched = filled.filter(c => !claimed.has(c.entry));
     const progress = emptyProgress();
-    progress.rulesCheckable = 1;
+    progress.requirementsCheckable = 1;
     const met = matched.length >= body.semesters;
-    progress.rulesMet = met ? 1 : 0;
-    progress.rulesClaimed = !met && filled.length > matched.length ? 1 : 0;
+    progress.requirementsMet = met ? 1 : 0;
+    progress.requirementsClaimed =
+      !met && filled.length > matched.length ? 1 : 0;
     progress.creditsMet = creditsMetBy(filled);
     const single =
       body.filter.include.length === 1 &&
       body.filter.include[0]?.kind === 'code'
         ? body.filter.include[0].code
         : undefined;
-    if (rule.hours !== undefined) {
-      progress.creditsRequired = creditRangeMin(rule.hours) * body.semesters;
+    if (requirement.hours !== undefined) {
+      progress.creditsRequired =
+        creditRangeMin(requirement.hours) * body.semesters;
     } else if (single !== undefined && courseInfo(facts, single)) {
       const info = courseInfo(facts, single);
       progress.creditsRequired =
@@ -382,7 +384,7 @@ function evaluateRule(
   }
 
   if (body.kind === 'credits') {
-    // `Additional` counts only cards filling no other rule; a free-elective
+    // `Additional` counts only cards filling no other requirement; a free-elective
     // allowance consumes cards in board order until it is full, so
     // fills-no-requirement fires only past the allowance (`04-planning.md`).
     const eligible = cards.filter(
@@ -402,11 +404,11 @@ function evaluateRule(
       total += card.credits;
     }
     const progress = emptyProgress();
-    progress.rulesCheckable = 1;
+    progress.requirementsCheckable = 1;
     progress.creditsMet = creditsMetBy(matching);
     progress.creditsRequired = body.minimum;
     const met = progress.creditsMet >= body.minimum;
-    progress.rulesMet = met ? 1 : 0;
+    progress.requirementsMet = met ? 1 : 0;
     const outcome: Outcome = met
       ? {outcome: 'met'}
       : progress.creditsMet > 0
@@ -424,7 +426,7 @@ function evaluateRule(
 
   // all / select
   const children = body.of.map(child =>
-    evaluateRule(
+    evaluateRequirement(
       child,
       program,
       assigned,
@@ -444,7 +446,7 @@ function evaluateRule(
   let openSelfChecks = 0;
   for (const child of children) {
     progress = addProgress(progress, child.progress);
-    if (child.progress.rulesCheckable > 0) {
+    if (child.progress.requirementsCheckable > 0) {
       checkableChildren += 1;
       if (child.outcome.outcome === 'met') {
         metChildren += 1;
@@ -457,10 +459,10 @@ function evaluateRule(
     }
   }
   if (body.kind === 'select') {
-    progress.rulesMet = Math.min(metChildren, body.count);
-    progress.rulesCheckable = body.count;
-    if (rule.hours !== undefined) {
-      progress.creditsRequired = creditRangeMin(rule.hours);
+    progress.requirementsMet = Math.min(metChildren, body.count);
+    progress.requirementsCheckable = body.count;
+    if (requirement.hours !== undefined) {
+      progress.creditsRequired = creditRangeMin(requirement.hours);
     }
   }
   const met =
@@ -497,14 +499,14 @@ function evaluateProgram(
   facts: CourseFacts,
   warnings: Warning[],
 ): ProgramReport {
-  const confirmed = new Map<RuleId, SelfCheckReason>();
+  const confirmed = new Map<RequirementId, SelfCheckReason>();
   for (const check of plan.selfChecks) {
-    confirmed.set(check.rule, check.reason);
+    confirmed.set(check.requirement, check.reason);
   }
-  const claims = new Map<RuleId, TermId>();
+  const claims = new Map<RequirementId, TermId>();
   for (const term of plan.terms) {
     for (const claim of term.nonCourse) {
-      claims.set(claim.rule, term.id);
+      claims.set(claim.requirement, term.id);
     }
   }
   const {assigned, claimed} = matchCards(program, cards, facts, warnings);
@@ -514,7 +516,7 @@ function evaluateProgram(
       consumed.add(card.entry);
     }
   }
-  const root = evaluateRule(
+  const root = evaluateRequirement(
     program.root,
     program,
     assigned,
@@ -548,9 +550,24 @@ function warningsFor(
   const {plan, facts} = bundle;
   const out: Warning[] = [];
 
-  // Fills no requirement: a course card in no rule's filledBy across every program.
+  // Hours typed by hand: a card with no Rice equivalent, or one the student
+  // overrode. Rice posts what the registrar decides; we cannot check it.
+  const manualCards = [
+    ...plan.incomingCredit,
+    ...plan.terms.flatMap(t => (isAwayTerm(t.kind) ? t.kind.away.cards : [])),
+  ];
+  for (const card of manualCards) {
+    if (card.riceEquivalent === undefined || card.creditsSource === 'manual') {
+      out.push({
+        kind: 'manualCredits',
+        value: {entry: card.id, credits: card.credits},
+      });
+    }
+  }
+
+  // Fills no requirement: a course card in no requirement's filledBy across every program.
   const filled = new Set<EntryId>();
-  const walk = (r: RuleReport): void => {
+  const walk = (r: RequirementReport): void => {
     for (const e of r.filledBy) {
       filled.add(e);
     }
@@ -720,17 +737,22 @@ function warningsFor(
     }
   }
 
-  // Self-checks, so an unverifiable rule is never silent.
+  // Self-checks, so an unverifiable requirement is never silent.
   for (const report of reports) {
     const program: ProgramId = report.program;
-    const visit = (r: RuleReport): void => {
+    const visit = (r: RequirementReport): void => {
       if (
         r.outcome.outcome === 'needsStudentCheck' &&
         r.outcome.confirmed === undefined
       ) {
         out.push({
           kind: 'selfCheck',
-          value: {program, rule: r.rule, label: r.label, text: r.label},
+          value: {
+            program,
+            requirement: r.requirement,
+            label: r.label,
+            text: r.label,
+          },
         });
       }
       r.children.forEach(visit);
@@ -762,9 +784,9 @@ export function evaluateInterim(bundle: PlanBundle): Report {
   // Plan-level progress: a course in two programs is still one course.
   const progress = emptyProgress();
   for (const r of reports) {
-    progress.rulesMet += r.progress.rulesMet;
-    progress.rulesClaimed += r.progress.rulesClaimed;
-    progress.rulesCheckable += r.progress.rulesCheckable;
+    progress.requirementsMet += r.progress.requirementsMet;
+    progress.requirementsClaimed += r.progress.requirementsClaimed;
+    progress.requirementsCheckable += r.progress.requirementsCheckable;
     progress.creditsUnknown += r.progress.creditsUnknown;
     progress.selfChecks += r.progress.selfChecks;
     progress.selfChecksConfirmed += r.progress.selfChecksConfirmed;
@@ -800,7 +822,7 @@ function doubleCounted(
     if (program === undefined || program.kind === 'university') {
       continue;
     }
-    const visit = (r: RuleReport): void => {
+    const visit = (r: RequirementReport): void => {
       for (const entry of r.filledBy) {
         const set = programsOf.get(entry) ?? new Set<ProgramId>();
         set.add(report.program);

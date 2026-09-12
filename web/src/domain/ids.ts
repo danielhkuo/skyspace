@@ -1,6 +1,6 @@
 /**
  * Identifier newtypes, mirroring `skyspace-core`. All are UUID strings on the
- * wire. The brand stops a `TermId` from being passed where a `RuleId` is wanted.
+ * wire. The brand stops a `TermId` from being passed where a `RequirementId` is wanted.
  */
 declare const brand: unique symbol;
 type Branded<T, Name extends string> = T & {readonly [brand]: Name};
@@ -8,7 +8,7 @@ type Branded<T, Name extends string> = T & {readonly [brand]: Name};
 export type PlanId = Branded<string, 'PlanId'>;
 export type TermId = Branded<string, 'TermId'>;
 export type EntryId = Branded<string, 'EntryId'>;
-export type RuleId = Branded<string, 'RuleId'>;
+export type RequirementId = Branded<string, 'RequirementId'>;
 export type ProgramId = Branded<string, 'ProgramId'>;
 export type CollectionId = Branded<string, 'CollectionId'>;
 

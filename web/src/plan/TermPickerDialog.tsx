@@ -16,7 +16,8 @@ import {
   type TermId,
 } from '../domain';
 import {engine} from '../engine';
-import {previewLine} from './labels';
+import {previewLine, termName} from './labels';
+import {duplicateOf} from './useBoardDrag';
 import {amberInk, greenInk} from './paint';
 
 type TermPickerDialogProps = {
@@ -53,6 +54,8 @@ export function TermPickerDialog({
     return new Map(rows.map(r => [r.term, previewLine(r, bundle.plan)]));
   }, [bundle, report, course, credits]);
 
+  const already =
+    course === undefined ? undefined : duplicateOf(bundle, course);
   return (
     <Dialog
       isOpen={isOpen}
@@ -68,37 +71,47 @@ export function TermPickerDialog({
         <Text as="p" size="lg" weight="semibold">
           Add {course === undefined ? '' : formatCourseCode(course)} to…
         </Text>
+        {already !== undefined && (
+          <Text size="sm">
+            Already in{' '}
+            {already === 'incoming'
+              ? 'incoming credit'
+              : termName(bundle.plan, already)}
+            . Rice gives credit once; move it from there instead.
+          </Text>
+        )}
         <Stack gap={0} width="100%">
-          {bundle.plan.terms
-            .filter(t => !isOffTerm(t.kind))
-            .map(term => {
-              const line = previews.get(term.id);
-              const tone =
-                line?.tone === 'amber'
-                  ? amberInk
-                  : line?.tone === 'green'
-                    ? greenInk
-                    : undefined;
-              return (
-                <Item
-                  key={term.id}
-                  label={shortTermLabel(term.position)}
-                  density="compact"
-                  layout="inline"
-                  endContent={
-                    <Text type="supporting" textWrap="nowrap" style={tone}>
-                      {isRiceTerm(term.kind)
-                        ? (line?.text ?? '')
-                        : 'becomes a manual card'}
-                    </Text>
-                  }
-                  onClick={() => {
-                    onPick(term.id);
-                    onClose();
-                  }}
-                />
-              );
-            })}
+          {already === undefined &&
+            bundle.plan.terms
+              .filter(t => !isOffTerm(t.kind))
+              .map(term => {
+                const line = previews.get(term.id);
+                const tone =
+                  line?.tone === 'amber'
+                    ? amberInk
+                    : line?.tone === 'green'
+                      ? greenInk
+                      : undefined;
+                return (
+                  <Item
+                    key={term.id}
+                    label={shortTermLabel(term.position)}
+                    density="compact"
+                    layout="inline"
+                    endContent={
+                      <Text type="supporting" textWrap="nowrap" style={tone}>
+                        {isRiceTerm(term.kind)
+                          ? (line?.text ?? '')
+                          : 'becomes a manual card'}
+                      </Text>
+                    }
+                    onClick={() => {
+                      onPick(term.id);
+                      onClose();
+                    }}
+                  />
+                );
+              })}
         </Stack>
       </Stack>
     </Dialog>

@@ -1,6 +1,6 @@
 /**
  * Fall 2026 (`202710`) sections for the courses `csStats.ts` knows, plus a
- * few MUSI rows so the "hide unscheduled" rule has something to hide. Mock
+ * few MUSI rows so the "hide unscheduled" requirement has something to hide. Mock
  * data for the demo and tests: shapes and label formats follow
  * `rice-data.md` §2; CRNs, instructors, times and seat counts are invented.
  * An invented CRN must never be linked to courses.rice.edu: Rice reuses

@@ -3,7 +3,7 @@
  * has no touch support for custom previews and cannot auto-scroll, so this
  * tracks the pointer itself. A drag lifts after 4 px of travel, previews every
  * term on lift, hit-tests registered targets on move, and mutates the plan on
- * drop. Targets are term islands, the saved tray, and rule rows.
+ * drop. Targets are term islands, the saved tray, and requirement rows.
  */
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
@@ -12,6 +12,8 @@ import {
   courseInfo,
   isAwayTerm,
   isOffTerm,
+  canonical,
+  courseKey,
   isRiceTerm,
   newEntryId,
   originForLabel,
@@ -22,7 +24,7 @@ import {
   type Program,
   type ProgramId,
   type Report,
-  type RuleId,
+  type RequirementId,
   type TermId,
 } from '../domain';
 import {engine} from '../engine';
@@ -37,20 +39,28 @@ const LONG_PRESS_MS = 300;
 /** What is being dragged: a board card, or a course from the tray or a chip. */
 export type DragPayload =
   | {kind: 'card'; entry: EntryId; course: CourseCode; credits: Credits}
-  | {kind: 'course'; course: CourseCode; credits: Credits; fills?: RuleId[]};
+  | {
+      kind: 'course';
+      course: CourseCode;
+      credits: Credits;
+      fills?: RequirementId[];
+    };
 
 /** Where the pointer is. Keys are strings so a DOM lookup can produce them. */
 export type DropTarget =
   | {kind: 'term'; term: TermId; slot: number}
   | {kind: 'tray'}
-  | {kind: 'rule'; program: ProgramId; rule: RuleId};
+  | {kind: 'requirement'; program: ProgramId; requirement: RequirementId};
 
 export function termTargetKey(term: TermId): string {
   return `term:${term}`;
 }
 export const TRAY_TARGET_KEY = 'tray';
-export function ruleTargetKey(program: ProgramId, rule: RuleId): string {
-  return `rule:${program}:${rule}`;
+export function requirementTargetKey(
+  program: ProgramId,
+  requirement: RequirementId,
+): string {
+  return `requirement:${program}:${requirement}`;
 }
 
 function parseTargetKey(key: string, slot: number): DropTarget | undefined {
@@ -60,13 +70,13 @@ function parseTargetKey(key: string, slot: number): DropTarget | undefined {
   if (key.startsWith('term:')) {
     return {kind: 'term', term: key.slice(5) as TermId, slot};
   }
-  if (key.startsWith('rule:')) {
-    const [, program, rule] = key.split(':');
-    if (program !== undefined && rule !== undefined) {
+  if (key.startsWith('requirement:')) {
+    const [, program, requirement] = key.split(':');
+    if (program !== undefined && requirement !== undefined) {
       return {
-        kind: 'rule',
+        kind: 'requirement',
         program: program as ProgramId,
-        rule: rule as RuleId,
+        requirement: requirement as RequirementId,
       };
     }
   }
@@ -79,7 +89,7 @@ export type DragState = {
   y: number;
   hovered?: DropTarget;
   previews: Map<TermId, IslandPreview>;
-  raisedRules: Set<RuleId>;
+  raisedRequirements: Set<RequirementId>;
   /** Lifted with the keyboard: arrows move the slot, Enter drops, Escape restores. */
   keyboard: boolean;
 };
@@ -103,7 +113,7 @@ export type BoardDrag = {
   onCoursePointerDown: (
     course: CourseCode,
     credits: Credits,
-    fills: RuleId[] | undefined,
+    fills: RequirementId[] | undefined,
     event: ReactPointerEvent<HTMLElement>,
   ) => void;
   registerTarget: (key: string, element: HTMLElement | null) => void;
@@ -117,7 +127,40 @@ export type BoardDrag = {
 type DragCallbacks = {
   /** A board card dropped on the tray: bookmark it. Removal is done here. */
   onPark: (course: CourseCode) => void;
+  /** A course added that is already on the board (and not repeatable): refused, say where it is. */
+  onDuplicate?: (course: CourseCode, term: TermId | 'incoming') => void;
 };
+
+/** The term already holding a course, unless Rice lets it repeat. */
+export function duplicateOf(
+  bundle: PlanBundle,
+  course: CourseCode,
+): TermId | 'incoming' | undefined {
+  if (courseInfo(bundle.facts, course)?.repeatable) {
+    return undefined;
+  }
+  const key = courseKey(canonical(bundle.facts, course));
+  const same = (c: CourseCode | undefined): boolean =>
+    c !== undefined && courseKey(canonical(bundle.facts, c)) === key;
+  if (bundle.plan.incomingCredit.some(c => same(c.riceEquivalent))) {
+    return 'incoming';
+  }
+  for (const term of bundle.plan.terms) {
+    if (
+      isRiceTerm(term.kind) &&
+      term.kind.rice.courses.some(c => same(c.course))
+    ) {
+      return term.id;
+    }
+    if (
+      isAwayTerm(term.kind) &&
+      term.kind.away.cards.some(c => same(c.riceEquivalent))
+    ) {
+      return term.id;
+    }
+  }
+  return undefined;
+}
 
 function slotIndexIn(island: HTMLElement, y: number, skip?: EntryId): number {
   const rows = [...island.querySelectorAll<HTMLElement>('[data-entry]')].filter(
@@ -175,12 +218,12 @@ export function useBoardDrag(
         payload.credits,
       );
       const previews = new Map<TermId, IslandPreview>();
-      const raised = new Set<RuleId>();
+      const raised = new Set<RequirementId>();
       for (const row of rows) {
         const line = previewLine(row, bundle.plan);
         previews.set(row.term, {...line, creditsAfter: row.creditsAfter});
-        for (const [, rule] of row.fills) {
-          raised.add(rule);
+        for (const [, requirement] of row.fills) {
+          raised.add(requirement);
         }
       }
       // Off terms get a preview entry too, so the island can dim itself.
@@ -195,7 +238,7 @@ export function useBoardDrag(
         y,
         hovered,
         previews,
-        raisedRules: raised,
+        raisedRequirements: raised,
         keyboard,
       });
     },
@@ -236,7 +279,7 @@ export function useBoardDrag(
         }
         return;
       }
-      if (target.kind === 'rule') {
+      if (target.kind === 'requirement') {
         if (payload.kind !== 'card') {
           return;
         }
@@ -248,7 +291,7 @@ export function useBoardDrag(
             type: 'setFills',
             entry: payload.entry,
             program,
-            rule: target.rule,
+            requirement: target.requirement,
           });
         }
         return;
@@ -256,6 +299,15 @@ export function useBoardDrag(
       const term = bundle.plan.terms.find(t => t.id === target.term);
       if (term === undefined || isOffTerm(term.kind)) {
         return;
+      }
+      // A course already on the board is refused, not duplicated: Rice gives
+      // credit once, and the student wanted to move it, not copy it.
+      if (payload.kind === 'course') {
+        const already = duplicateOf(bundle, payload.course);
+        if (already !== undefined) {
+          callbacks.onDuplicate?.(payload.course, already);
+          return;
+        }
       }
       if (isRiceTerm(term.kind)) {
         if (payload.kind === 'card') {
@@ -282,7 +334,7 @@ export function useBoardDrag(
       }
       if (isAwayTerm(term.kind)) {
         const title = courseInfo(bundle.facts, payload.course)?.title ?? '';
-        let fills: RuleId[] =
+        let fills: RequirementId[] =
           payload.kind === 'course' ? (payload.fills ?? []) : [];
         if (payload.kind === 'card') {
           const located = locateEntry(bundle.plan, payload.entry);
@@ -492,7 +544,7 @@ export function useBoardDrag(
     (
       course: CourseCode,
       credits: Credits,
-      fills: RuleId[] | undefined,
+      fills: RequirementId[] | undefined,
       event: ReactPointerEvent<HTMLElement>,
     ) => {
       if (event.button !== 0) {

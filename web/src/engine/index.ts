@@ -12,10 +12,13 @@ import type {
   PlanBundle,
   Program,
   Report,
-  RuleId,
+  RequirementId,
 } from '../domain';
 import {evaluateInterim, INTERIM_ENGINE_VERSION} from './interim/evaluate';
-import {previewPlacementInterim, ruleMatchesInterim} from './interim/preview';
+import {
+  previewPlacementInterim,
+  requirementMatchesInterim,
+} from './interim/preview';
 
 export type Engine = {
   evaluate: (bundle: PlanBundle) => Report;
@@ -26,9 +29,9 @@ export type Engine = {
     moving: EntryId | undefined,
     credits: Credits,
   ) => PlacementPreview[];
-  ruleMatches: (
+  requirementMatches: (
     program: Program,
-    rule: RuleId,
+    requirement: RequirementId,
     codes: CourseCode[],
     facts: CourseFacts,
   ) => CourseCode[];
@@ -38,6 +41,6 @@ export type Engine = {
 export const engine: Engine = {
   evaluate: evaluateInterim,
   previewPlacement: previewPlacementInterim,
-  ruleMatches: ruleMatchesInterim,
+  requirementMatches: requirementMatchesInterim,
   version: INTERIM_ENGINE_VERSION,
 };

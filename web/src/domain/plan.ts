@@ -3,7 +3,7 @@
  * a degree. The engine warns about it and never refuses an edit.
  */
 import type {CourseCode, Credits} from './course';
-import type {EntryId, PlanId, ProgramId, RuleId, TermId} from './ids';
+import type {EntryId, PlanId, ProgramId, RequirementId, TermId} from './ids';
 import type {CatalogYear, TermCode, TermPosition} from './term';
 
 export type PlannedCourse = {
@@ -11,17 +11,24 @@ export type PlannedCourse = {
   course: CourseCode;
   /** Editable: Rice publishes ranges. Zero when we hold no record, and zero is also real (recitals). */
   credits: Credits;
-  /** At most one rule per program. Never edits the rule. */
-  fills: RuleId[];
+  /** At most one requirement per program. Never edits the requirement. */
+  fills: RequirementId[];
   /** Why a pin that no longer matches should count. Without one, the pin is "unsure". */
   claims?: FillClaim[];
+  /** What this card was as a manual card, kept so Rice → Away → Rice loses nothing. */
+  carried?: {
+    origin: CreditOrigin;
+    code: string;
+    title: string;
+    institution?: string;
+  };
   note?: string;
 };
 
 /**
- * The student's stated reason for pinning a card to a rule the filter
+ * The student's stated reason for pinning a card to a requirement the filter
  * rejects. The engine never turns a claim into Met: it shows the card in
- * the slot, keeps the rule out of the met count, and repeats the basis on
+ * the slot, keeps the requirement out of the met count, and repeats the basis on
  * the PDF so an advisor can act on it. Proposed addition to `04-planning.md`.
  */
 export type FillBasis =
@@ -31,7 +38,11 @@ export type FillBasis =
   | {kind: 'registrarPosted'; on?: string}
   | {kind: 'unsure'};
 
-export type FillClaim = {rule: RuleId; basis: FillBasis; note?: string};
+export type FillClaim = {
+  requirement: RequirementId;
+  basis: FillBasis;
+  note?: string;
+};
 
 export type CreditOrigin =
   | 'transfer'
@@ -49,7 +60,13 @@ export type ManualCourseCard = {
   credits: Credits;
   institution?: string;
   riceEquivalent?: CourseCode;
-  fills: RuleId[];
+  /**
+   * Where the hours come from. Absent means the Rice equivalent's published
+   * hours (the normal case: credit is posted as a Rice course). `manual` is
+   * the student's own figure, which the engine flags: hours only, no course.
+   */
+  creditsSource?: 'equivalent' | 'manual';
+  fills: RequirementId[];
   claims?: FillClaim[];
   note?: string;
 };
@@ -61,7 +78,7 @@ export type TermKind =
   | 'off';
 
 export type NonCourseClaim = {
-  rule: RuleId;
+  requirement: RequirementId;
   label: string;
 };
 
@@ -77,7 +94,7 @@ export type SelfCheckReason =
   'transfer' | 'apOrIb' | 'studyAbroad' | 'advisorApproved' | 'other';
 
 export type SelfCheck = {
-  rule: RuleId;
+  requirement: RequirementId;
   reason: SelfCheckReason;
   note?: string;
 };

@@ -155,8 +155,9 @@ export function AccountPage() {
             </Text>
             <Text>
               Your rice.edu email address, the plans and schedules you build,
-              the courses you bookmark, and the self-checks and rule choices you
-              record with their reasons. Nothing else is tied to you.
+              the courses you bookmark, and the self-checks and requirement
+              choices you record with their reasons. Nothing else is tied to
+              you.
             </Text>
             <Text as="h2" size="lg" weight="semibold">
               What we never collect
@@ -171,8 +172,8 @@ export function AccountPage() {
             </Text>
             <Text>
               Course and section data comes from courses.rice.edu. Requirement
-              rules come from ga.rice.edu, extracted and then reviewed by a
-              person before they affect anyone&apos;s plan. Every seat count
+              requirements come from ga.rice.edu, extracted and then reviewed by
+              a person before they affect anyone&apos;s plan. Every seat count
               carries Rice&apos;s own timestamp.
             </Text>
             <Text as="h2" size="lg" weight="semibold">
@@ -180,7 +181,7 @@ export function AccountPage() {
             </Text>
             <Text>
               We count page views and searches without identifiers, to know
-              which subjects need better rule coverage. No third-party
+              which subjects need better requirement coverage. No third-party
               analytics, no advertising, no cross-site tracking.
             </Text>
             <Text as="h2" size="lg" weight="semibold">

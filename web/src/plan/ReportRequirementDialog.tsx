@@ -7,32 +7,32 @@ import {TextInput} from '@astryxdesign/core/TextInput';
 import {useState} from 'react';
 
 import {dataSource} from '../datasource';
-import type {Program, RuleReport} from '../domain';
+import type {Program, RequirementReport} from '../domain';
 import {islandHead, rowDivider} from './paint';
 
-type ReportRuleDialogProps = {
+type ReportRequirementDialogProps = {
   program: Program;
-  rule: RuleReport;
+  requirement: RequirementReport;
   onClose: () => void;
 };
 
-/** "Report this rule": a person reviews every report. The demo keeps it in this browser. */
-export function ReportRuleDialog({
+/** "Report this requirement": a person reviews every report. The demo keeps it in this browser. */
+export function ReportRequirementDialog({
   program,
-  rule,
+  requirement,
   onClose,
-}: ReportRuleDialogProps) {
+}: ReportRequirementDialogProps) {
   const [what, setWhat] = useState('');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
 
   const send = (): void => {
     void dataSource
-      .reportRule({
+      .reportRequirement({
         program: program.id,
-        rule: rule.rule,
-        label: rule.label,
-        sourceUrl: rule.source.url,
+        requirement: requirement.requirement,
+        label: requirement.label,
+        sourceUrl: requirement.source.url,
         text: what.trim(),
         email: email.trim() === '' ? undefined : email.trim(),
       })
@@ -59,7 +59,7 @@ export function ReportRuleDialog({
           style={islandHead}
         >
           <Text as="h3" size="sm" weight="semibold">
-            Report this rule
+            Report this requirement
           </Text>
           <Text type="supporting">A person reviews every report.</Text>
         </Stack>

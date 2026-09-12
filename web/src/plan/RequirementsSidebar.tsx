@@ -6,30 +6,30 @@ import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Link} from '@astryxdesign/core/Link';
 import {ProgressBar} from '@astryxdesign/core/ProgressBar';
 import {Section} from '@astryxdesign/core/Section';
-import {Stack} from '@astryxdesign/core/Stack';
+import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
-import {createContext, useContext, type ReactNode} from 'react';
+import {createContext, useContext, useState, type ReactNode} from 'react';
 
 import {
-  findRule,
+  findRequirement,
   formatCatalogYear,
   formatCourseCode,
-  formatCredits,
+  shortTermLabel,
   type EntryId,
   type Plan,
   type Program,
   type ProgramReport,
   type Report,
-  type RuleId,
-  type RuleReport,
+  type RequirementId,
+  type RequirementReport,
 } from '../domain';
 import {SELF_CHECK_REASON_LABEL} from './labels';
 import {HalfMark, HollowMark} from './marks';
 import {
   amberInk,
-  ruleRow,
-  ruleRowRaised,
+  requirementRow,
+  requirementRowRaised,
   selfCheckRow,
   violetInk,
 } from './paint';
@@ -40,24 +40,31 @@ type SidebarProps = {
   programs: Program[];
   report: Report;
   dispatch: (action: PlanAction) => void;
-  /** Rules whose progress would rise if the lifted card landed; painted with the accent wash. */
-  raisedRules?: Set<RuleId>;
-  /** Slot for the suggestion strip under an unmet rule (step 12). */
-  renderSuggestions?: (program: Program, rule: RuleReport) => ReactNode;
-  /** Slot for a drop-target wrapper around a rule row (step 12). */
-  wrapRule?: (program: Program, rule: RuleReport, row: ReactNode) => ReactNode;
-  /** Open the self-check dialog for a rule (`Plan 6 Rule Choice`). */
-  onOpenSelfCheck?: (program: Program, rule: RuleReport) => void;
-  /** Open "Which rule does this fill?" for a card. */
-  onChooseRule?: (entry: EntryId) => void;
+  /** Requirements whose progress would rise if the lifted card landed; painted with the accent wash. */
+  raisedRequirements?: Set<RequirementId>;
+  /** Slot for the suggestion strip under an unmet requirement (step 12). */
+  renderSuggestions?: (
+    program: Program,
+    requirement: RequirementReport,
+  ) => ReactNode;
+  /** Slot for a drop-target wrapper around a requirement row (step 12). */
+  wrapRequirement?: (
+    program: Program,
+    requirement: RequirementReport,
+    row: ReactNode,
+  ) => ReactNode;
+  /** Open the self-check dialog for a requirement (`Plan 6 Requirement Choice`). */
+  onOpenSelfCheck?: (program: Program, requirement: RequirementReport) => void;
+  /** Open "Which requirement does this fill?" for a card. */
+  onEditCourse?: (entry: EntryId) => void;
 };
 
-type SidebarActions = Pick<SidebarProps, 'onOpenSelfCheck' | 'onChooseRule'>;
+type SidebarActions = Pick<SidebarProps, 'onOpenSelfCheck' | 'onEditCourse'>;
 
 /** The two dialog openers, so deep rows need no prop threading. */
 const Actions = createContext<SidebarActions>({});
 
-function StatusMark({report}: {report: RuleReport}) {
+function StatusMark({report}: {report: RequirementReport}) {
   switch (report.outcome.outcome) {
     case 'met':
       return <Icon icon="check" size="sm" color="success" label="Met" />;
@@ -97,42 +104,10 @@ function entryLabel(
   return {label: `${card.code}${suffix}`, manual: card.fills.length > 0};
 }
 
-function FilledTokens({
-  plan,
-  entries,
-  claimed,
-}: {
-  plan: Plan;
-  entries: EntryId[];
-  claimed?: EntryId[];
-}) {
-  return (
-    <>
-      {entries.map(entry => {
-        const {label, manual} = entryLabel(plan, entry);
-        const bySayso = claimed?.includes(entry) ?? false;
-        return (
-          <Token
-            key={entry}
-            label={bySayso ? `${label} · on your say-so` : label}
-            size="sm"
-            color={bySayso || manual ? 'purple' : 'default'}
-            description={
-              bySayso
-                ? 'Pinned here by you; Skyspace cannot verify it and does not count it as met'
-                : undefined
-            }
-          />
-        );
-      })}
-    </>
-  );
-}
-
-/** "change" on a filled rule: open the rule chooser for the card, or pick which card first. */
+/** "change" on a filled requirement: open the requirement chooser for the card, or pick which card first. */
 function ChangeLink({plan, entries}: {plan: Plan; entries: EntryId[]}) {
-  const {onChooseRule} = useContext(Actions);
-  if (onChooseRule === undefined) {
+  const {onEditCourse} = useContext(Actions);
+  if (onEditCourse === undefined) {
     return null;
   }
   const only = entries[0];
@@ -143,7 +118,7 @@ function ChangeLink({plan, entries}: {plan: Plan; entries: EntryId[]}) {
         size="sm"
         onClick={e => {
           e.preventDefault();
-          onChooseRule(only);
+          onEditCourse(only);
         }}
       >
         change
@@ -162,39 +137,58 @@ function ChangeLink({plan, entries}: {plan: Plan; entries: EntryId[]}) {
             : located.where === 'rice'
               ? formatCourseCode(located.course.course)
               : located.card.code;
-        return {id: entry, label, onClick: () => onChooseRule(entry)};
+        return {id: entry, label, onClick: () => onEditCourse(entry)};
       })}
     />
   );
 }
 
-/** A leaf course rule, or a run of sibling slots collapsed to one row. */
+/** Where a card sits, for the expanded rows: "Fall 2024", or "Incoming credit". */
+function entryTerm(plan: Plan, entry: EntryId): string {
+  const located = locateEntry(plan, entry);
+  if (located === undefined || located.where === 'incoming') {
+    return 'Incoming credit';
+  }
+  const term = plan.terms.find(t => t.id === located.term);
+  return term === undefined ? '' : shortTermLabel(term.position);
+}
+
+/**
+ * A leaf course requirement, or a run of sibling slots, as exactly one line:
+ * mark, label, the codes filling it, and the count. Everything else (one row
+ * per card, the change link, suggestions) lives behind the chevron, so the
+ * list reads the same whether a requirement holds one card or eight.
+ */
 function LeafRow({
   plan,
   program,
-  rules,
+  requirements,
   label,
   raised,
   renderSuggestions,
-  wrapRule,
+  wrapRequirement,
 }: {
   plan: Plan;
   program: Program;
-  rules: RuleReport[];
+  requirements: RequirementReport[];
   label: string;
   raised: boolean;
   renderSuggestions?: SidebarProps['renderSuggestions'];
-  wrapRule?: SidebarProps['wrapRule'];
+  wrapRequirement?: SidebarProps['wrapRequirement'];
 }) {
-  const first = rules[0];
+  const [open, setOpen] = useState(false);
+  const first = requirements[0];
   if (first === undefined) {
     return null;
   }
-  const filled = rules.flatMap(r => r.filledBy);
-  const claimed = rules.flatMap(r => r.claimedBy);
-  const total = rules.reduce((n, r) => n + r.progress.rulesCheckable, 0);
-  const met = rules.reduce((n, r) => n + r.progress.rulesMet, 0);
-  const outcome: RuleReport = {
+  const filled = requirements.flatMap(r => r.filledBy);
+  const claimed = new Set(requirements.flatMap(r => r.claimedBy));
+  const total = requirements.reduce(
+    (n, r) => n + r.progress.requirementsCheckable,
+    0,
+  );
+  const met = requirements.reduce((n, r) => n + r.progress.requirementsMet, 0);
+  const outcome: RequirementReport = {
     ...first,
     outcome:
       met >= total
@@ -203,88 +197,163 @@ function LeafRow({
           ? {outcome: 'partial'}
           : {outcome: 'unmet'},
   };
-  const rule = findRule(program, first.rule);
+  const requirement = findRequirement(program, first.requirement);
   const isSelectLike =
-    rule?.body.kind === 'course' && rule.body.filter.include.length > 1;
-  const showCount = total > 1;
+    requirement?.body.kind === 'course' &&
+    requirement.body.filter.include.length > 1;
+  const unmet = outcome.outcome.outcome !== 'met';
+  const summary = filled
+    .map(e => {
+      const {label: code} = entryLabel(plan, e);
+      return claimed.has(e) ? `${code}*` : code;
+    })
+    .join(', ');
+  // The chevron has something to show when there are cards, a choice to make,
+  // or suggestions to offer; a met single-code requirement is just a line.
+  const expandable =
+    filled.length > 0 || (unmet && renderSuggestions !== undefined);
+
   const row = (
     <Stack
       direction="horizontal"
       width="100%"
       gap={1.5}
       vAlign="center"
-      wrap="wrap"
       paddingInline={1.5}
       paddingBlock={1}
-      style={raised ? ruleRowRaised : ruleRow}
+      style={{
+        ...(raised ? requirementRowRaised : requirementRow),
+        cursor: expandable ? 'pointer' : undefined,
+      }}
+      onClick={expandable ? () => setOpen(v => !v) : undefined}
     >
       <StatusMark report={outcome} />
-      <Text size="sm">{label}</Text>
-      {showCount && (
-        <Text type="supporting" hasTabularNumbers>
+      <StackItem size="fill">
+        <Stack direction="horizontal" gap={1.5} vAlign="center" width="100%">
+          <Text size="sm" maxLines={1}>
+            {label}
+          </Text>
+          <Text type="supporting" maxLines={1}>
+            {summary}
+          </Text>
+        </Stack>
+      </StackItem>
+      {total > 1 && (
+        <Text type="supporting" hasTabularNumbers textWrap="nowrap">
           {raised
             ? `${met} of ${total} → ${Math.min(met + 1, total)} of ${total}`
             : `${met} of ${total}`}
         </Text>
       )}
-      <FilledTokens plan={plan} entries={filled} claimed={claimed} />
-      {isSelectLike && filled.length > 0 && (
-        <ChangeLink plan={plan} entries={filled} />
+      {expandable && (
+        <Icon
+          icon={open ? 'chevronDown' : 'chevronRight'}
+          size="sm"
+          color="secondary"
+          label={open ? 'Collapse' : 'Expand'}
+        />
       )}
     </Stack>
   );
-  const unmet = outcome.outcome.outcome !== 'met';
   return (
-    <Stack width="100%" gap={1}>
-      {wrapRule === undefined ? row : wrapRule(program, first, row)}
-      {unmet && renderSuggestions?.(program, first)}
+    <Stack width="100%" gap={0}>
+      {wrapRequirement === undefined
+        ? row
+        : wrapRequirement(program, first, row)}
+      {open && (
+        <Stack width="100%" gap={0} paddingInlineStart={3} paddingBlock={0.5}>
+          {filled.map(entry => {
+            const {label: code, manual} = entryLabel(plan, entry);
+            const bySayso = claimed.has(entry);
+            return (
+              <Stack
+                key={entry}
+                direction="horizontal"
+                width="100%"
+                gap={1.5}
+                vAlign="center"
+                paddingBlock={0.5}
+              >
+                <Text
+                  size="sm"
+                  weight="semibold"
+                  hasTabularNumbers
+                  textWrap="nowrap"
+                >
+                  {code}
+                </Text>
+                <Text type="supporting" textWrap="nowrap">
+                  {entryTerm(plan, entry)}
+                </Text>
+                {(bySayso || manual) && (
+                  <Token
+                    label={bySayso ? 'on your say-so' : 'your choice'}
+                    size="sm"
+                    color="purple"
+                    description={
+                      bySayso
+                        ? 'Pinned here by you; Skyspace cannot verify it and does not count it as met'
+                        : undefined
+                    }
+                  />
+                )}
+              </Stack>
+            );
+          })}
+          {isSelectLike && filled.length > 0 && (
+            <Stack direction="horizontal" width="100%" paddingBlock={0.5}>
+              <ChangeLink plan={plan} entries={filled} />
+            </Stack>
+          )}
+          {unmet && renderSuggestions?.(program, first)}
+        </Stack>
+      )}
     </Stack>
   );
 }
 
+/** One line: violet mark, the requirement's name, and a button into the dialog that holds the full text. */
 function SelfCheckRow({
-  rule,
+  requirement,
   program,
   dispatch,
 }: {
-  rule: RuleReport;
+  requirement: RequirementReport;
   program: Program;
   dispatch: SidebarProps['dispatch'];
 }) {
-  const source = findRule(program, rule.rule);
-  const text =
-    source?.body.kind === 'unverifiable'
-      ? source.body.text
-      : source?.body.kind === 'nonCourse'
-        ? source.body.description
-        : rule.label;
   const {onOpenSelfCheck} = useContext(Actions);
   const confirmed =
-    rule.outcome.outcome === 'needsStudentCheck' &&
-    rule.outcome.confirmed !== undefined;
+    requirement.outcome.outcome === 'needsStudentCheck' &&
+    requirement.outcome.confirmed !== undefined;
   return (
     <Stack
+      direction="horizontal"
       width="100%"
-      gap={1}
-      align="start"
+      gap={1.5}
+      vAlign="center"
       paddingInline={1.5}
-      paddingBlock={1.5}
+      paddingBlock={1}
       style={selfCheckRow}
     >
-      <Stack direction="horizontal" gap={1} vAlign="center" wrap="wrap">
-        <Token label="Check this yourself" size="sm" color="purple" />
-        <Text type="supporting" size="xsm">
-          Skyspace can't verify it and doesn't count it
+      <Icon
+        icon={HollowMark}
+        size="sm"
+        label={confirmed ? 'Confirmed by you' : 'Check this yourself'}
+        style={violetInk}
+      />
+      <StackItem size="fill">
+        <Text size="sm" maxLines={1}>
+          {requirement.label}
         </Text>
-      </Stack>
-      <Text size="sm">{text}</Text>
+      </StackItem>
       {confirmed ? (
-        <Stack direction="horizontal" gap={1.5} vAlign="center" wrap="wrap">
-          <Text size="sm" weight="medium" style={violetInk}>
+        <>
+          <Text type="supporting" textWrap="nowrap" style={violetInk}>
             Confirmed ·{' '}
-            {rule.outcome.outcome === 'needsStudentCheck' &&
-            rule.outcome.confirmed !== undefined
-              ? SELF_CHECK_REASON_LABEL[rule.outcome.confirmed]
+            {requirement.outcome.outcome === 'needsStudentCheck' &&
+            requirement.outcome.confirmed !== undefined
+              ? SELF_CHECK_REASON_LABEL[requirement.outcome.confirmed]
               : ''}
           </Text>
           <Link
@@ -292,7 +361,7 @@ function SelfCheckRow({
             size="sm"
             onClick={e => {
               e.preventDefault();
-              onOpenSelfCheck?.(program, rule);
+              onOpenSelfCheck?.(program, requirement);
             }}
           >
             edit
@@ -302,18 +371,22 @@ function SelfCheckRow({
             size="sm"
             onClick={e => {
               e.preventDefault();
-              dispatch({type: 'clearSelfCheck', rule: rule.rule});
+              dispatch({
+                type: 'clearSelfCheck',
+                requirement: requirement.requirement,
+              });
             }}
           >
             clear
           </Link>
-        </Stack>
+        </>
       ) : (
         <Button
-          label="Mark satisfied…"
-          variant="secondary"
+          label="Check yourself"
+          variant="ghost"
           size="sm"
-          onClick={() => onOpenSelfCheck?.(program, rule)}
+          endContent={<Icon icon="chevronRight" size="sm" />}
+          onClick={() => onOpenSelfCheck?.(program, requirement)}
         />
       )}
     </Stack>
@@ -321,24 +394,24 @@ function SelfCheckRow({
 }
 
 /** Render an `all`/`select` node's children, collapsing sibling slots with one label. */
-function RuleChildren({
+function RequirementChildren({
   plan,
   program,
   node,
   depth,
   dispatch,
-  raisedRules,
+  raisedRequirements,
   renderSuggestions,
-  wrapRule,
+  wrapRequirement,
 }: {
   plan: Plan;
   program: Program;
-  node: RuleReport;
+  node: RequirementReport;
   depth: number;
   dispatch: SidebarProps['dispatch'];
-  raisedRules?: Set<RuleId>;
+  raisedRequirements?: Set<RequirementId>;
   renderSuggestions?: SidebarProps['renderSuggestions'];
-  wrapRule?: SidebarProps['wrapRule'];
+  wrapRequirement?: SidebarProps['wrapRequirement'];
 }) {
   const out: ReactNode[] = [];
   const children = node.children;
@@ -348,13 +421,13 @@ function RuleChildren({
     if (child === undefined) {
       break;
     }
-    const source = findRule(program, child.rule);
+    const source = findRequirement(program, child.requirement);
     const kind = source?.body.kind;
     if (kind === 'nonCourse' || kind === 'unverifiable') {
       out.push(
         <SelfCheckRow
-          key={child.rule}
-          rule={child}
+          key={child.requirement}
+          requirement={child}
           program={program}
           dispatch={dispatch}
         />,
@@ -364,7 +437,7 @@ function RuleChildren({
     }
     if (kind === 'course' || kind === 'credits') {
       // Collapse a run of leaf siblings that share a label into one row.
-      const run: RuleReport[] = [child];
+      const run: RequirementReport[] = [child];
       let j = i + 1;
       while (j < children.length) {
         const next = children[j];
@@ -380,40 +453,44 @@ function RuleChildren({
       }
       out.push(
         <LeafRow
-          key={child.rule}
+          key={child.requirement}
           plan={plan}
           program={program}
-          rules={run}
+          requirements={run}
           label={child.label}
-          raised={run.some(r => raisedRules?.has(r.rule) ?? false)}
+          raised={run.some(
+            r => raisedRequirements?.has(r.requirement) ?? false,
+          )}
           renderSuggestions={renderSuggestions}
-          wrapRule={wrapRule}
+          wrapRequirement={wrapRequirement}
         />,
       );
       i = j;
       continue;
     }
     // An area (all/select): a heading, then its children.
-    const areaCount = child.progress.rulesCheckable;
-    const areaMet = child.progress.rulesMet;
+    const areaCount = child.progress.requirementsCheckable;
+    const areaMet = child.progress.requirementsMet;
     // A group whose children are all same-labelled slots reads as one row with a count.
     const allSlots =
       child.children.length > 0 &&
       child.children.every(c => {
-        const k = findRule(program, c.rule)?.body.kind;
+        const k = findRequirement(program, c.requirement)?.body.kind;
         return c.label === child.label && k === 'course';
       });
     if (allSlots) {
       out.push(
         <LeafRow
-          key={child.rule}
+          key={child.requirement}
           plan={plan}
           program={program}
-          rules={child.children}
+          requirements={child.children}
           label={child.label}
-          raised={child.children.some(r => raisedRules?.has(r.rule) ?? false)}
+          raised={child.children.some(
+            r => raisedRequirements?.has(r.requirement) ?? false,
+          )}
           renderSuggestions={renderSuggestions}
-          wrapRule={wrapRule}
+          wrapRequirement={wrapRequirement}
         />,
       );
     } else if (
@@ -421,35 +498,29 @@ function RuleChildren({
       child.children.every(
         c =>
           c.label === child.label ||
-          findRule(program, c.rule)?.body.kind === 'unverifiable',
+          findRequirement(program, c.requirement)?.body.kind === 'unverifiable',
       )
     ) {
       // Distribution Group I: three slots plus a self-check under one label.
       const slots = child.children.filter(c => c.label === child.label);
       const checks = child.children.filter(c => c.label !== child.label);
       out.push(
-        <Stack
-          key={child.rule}
-          width="100%"
-          gap={0.5}
-          align="start"
-          style={checks.length > 0 ? selfCheckRow : undefined}
-          paddingInlineStart={checks.length > 0 ? 1.5 : 0}
-          paddingBlock={checks.length > 0 ? 1 : 0}
-        >
+        <Stack key={child.requirement} width="100%" gap={0} align="start">
           <LeafRow
             plan={plan}
             program={program}
-            rules={slots}
+            requirements={slots}
             label={child.label}
-            raised={slots.some(r => raisedRules?.has(r.rule) ?? false)}
+            raised={slots.some(
+              r => raisedRequirements?.has(r.requirement) ?? false,
+            )}
             renderSuggestions={renderSuggestions}
-            wrapRule={wrapRule}
+            wrapRequirement={wrapRequirement}
           />
           {checks.map(check => (
             <SelfCheckRow
-              key={check.rule}
-              rule={check}
+              key={check.requirement}
+              requirement={check}
               program={program}
               dispatch={dispatch}
             />
@@ -459,7 +530,7 @@ function RuleChildren({
     } else {
       out.push(
         <Stack
-          key={child.rule}
+          key={child.requirement}
           width="100%"
           gap={1.5}
           paddingBlockStart={depth === 0 ? 1 : 0}
@@ -479,15 +550,15 @@ function RuleChildren({
               </Text>
             )}
           </Stack>
-          <RuleChildren
+          <RequirementChildren
             plan={plan}
             program={program}
             node={child}
             depth={depth + 1}
             dispatch={dispatch}
-            raisedRules={raisedRules}
+            raisedRequirements={raisedRequirements}
             renderSuggestions={renderSuggestions}
-            wrapRule={wrapRule}
+            wrapRequirement={wrapRequirement}
           />
         </Stack>,
       );
@@ -502,18 +573,18 @@ function ProgramGroup({
   program,
   report,
   dispatch,
-  raisedRules,
+  raisedRequirements,
   renderSuggestions,
-  wrapRule,
+  wrapRequirement,
   defaultOpen,
 }: {
   plan: Plan;
   program: Program;
   report: ProgramReport;
   dispatch: SidebarProps['dispatch'];
-  raisedRules?: Set<RuleId>;
+  raisedRequirements?: Set<RequirementId>;
   renderSuggestions?: SidebarProps['renderSuggestions'];
-  wrapRule?: SidebarProps['wrapRule'];
+  wrapRequirement?: SidebarProps['wrapRequirement'];
   defaultOpen: boolean;
 }) {
   const {progress} = report;
@@ -528,12 +599,10 @@ function ProgramGroup({
           vAlign="center"
         >
           <Text type="supporting" hasTabularNumbers>
-            {progress.rulesMet} of {progress.rulesCheckable} rules
-            {progress.rulesClaimed > 0
-              ? ` · ${progress.rulesClaimed} on your say-so`
-              : ''}{' '}
-            · {formatCredits(progress.creditsMet)} of{' '}
-            {formatCredits(creditsRequired)} credit hours
+            {progress.requirementsMet} of {progress.requirementsCheckable} reqs
+            {progress.requirementsClaimed > 0
+              ? ` · ${progress.requirementsClaimed} on your say-so`
+              : ''}
           </Text>
           <Link href={program.source.url} size="sm" isExternalLink>
             source
@@ -541,7 +610,7 @@ function ProgramGroup({
         </Stack>
         {report.evaluatedWith !== report.catalogYear && (
           <Text size="sm" style={amberInk}>
-            No reviewed rules for catalog year{' '}
+            No reviewed requirements for catalog year{' '}
             {formatCatalogYear(report.catalogYear)} yet. Showing{' '}
             {formatCatalogYear(report.evaluatedWith)} instead; Rice lets you
             follow any year from matriculation to graduation, so confirm which
@@ -550,12 +619,12 @@ function ProgramGroup({
         )}
         <Stack width="100%" gap={2}>
           <ProgressBar
-            label="Rules met"
-            value={progress.rulesMet}
-            max={Math.max(progress.rulesCheckable, 1)}
+            label="Requirements met"
+            value={progress.requirementsMet}
+            max={Math.max(progress.requirementsCheckable, 1)}
             variant="accent"
             hasValueLabel
-            formatValueLabel={(v, m) => `${v} of ${m} rules`}
+            formatValueLabel={(v, m) => `${v} of ${m} requirements`}
           />
           <ProgressBar
             label="Credit hours"
@@ -566,15 +635,15 @@ function ProgramGroup({
             formatValueLabel={(v, m) => `${v} of ${m} credit hours`}
           />
         </Stack>
-        <RuleChildren
+        <RequirementChildren
           plan={plan}
           program={program}
           node={report.root}
           depth={0}
           dispatch={dispatch}
-          raisedRules={raisedRules}
+          raisedRequirements={raisedRequirements}
           renderSuggestions={renderSuggestions}
-          wrapRule={wrapRule}
+          wrapRequirement={wrapRequirement}
         />
       </Stack>
     </Collapsible>
@@ -586,14 +655,14 @@ export function RequirementsSidebar({
   programs,
   report,
   dispatch,
-  raisedRules,
+  raisedRequirements,
   renderSuggestions,
-  wrapRule,
+  wrapRequirement,
   onOpenSelfCheck,
-  onChooseRule,
+  onEditCourse,
 }: SidebarProps) {
   return (
-    <Actions.Provider value={{onOpenSelfCheck, onChooseRule}}>
+    <Actions.Provider value={{onOpenSelfCheck, onEditCourse}}>
       <Section
         variant="section"
         dividers={['start']}
@@ -601,13 +670,20 @@ export function RequirementsSidebar({
         width="100%"
         height="100%"
       >
-        <Stack width="100%" height="100%" gap={2} padding={3} isScrollable>
+        <Stack
+          width="100%"
+          height="100%"
+          gap={2}
+          padding={3}
+          isScrollable
+          style={{overflowX: 'hidden'}}
+        >
           <Stack width="100%" gap={0.5}>
             <Text as="p" size="lg" weight="semibold">
               Requirements
             </Text>
             <Text type="supporting">
-              Confirm with your advisor. Rules link to the General
+              Confirm with your advisor. Requirements link to the General
               Announcements.
             </Text>
           </Stack>
@@ -623,8 +699,8 @@ export function RequirementsSidebar({
                       {program?.name ?? 'Program'}
                     </Text>
                     <Text size="sm">
-                      No reviewed rules for this program yet. Your courses still
-                      count toward University requirements.
+                      No reviewed requirements for this program yet. Your
+                      courses still count toward University requirements.
                     </Text>
                     <Link
                       href="mailto:sugarlanddevs@gmail.com?subject=Skyspace%3A%20request%20a%20program"
@@ -649,9 +725,9 @@ export function RequirementsSidebar({
                   program={program}
                   report={programReport}
                   dispatch={dispatch}
-                  raisedRules={raisedRules}
+                  raisedRequirements={raisedRequirements}
                   renderSuggestions={renderSuggestions}
-                  wrapRule={wrapRule}
+                  wrapRequirement={wrapRequirement}
                   defaultOpen={i < 2}
                 />
               </Stack>

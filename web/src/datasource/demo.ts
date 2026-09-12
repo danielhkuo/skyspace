@@ -28,12 +28,12 @@ import {
   FALL_2026_LABEL,
   fallSections,
 } from '../fixtures/fallSections';
-import type {DataSource, RuleReport, Session} from './types';
+import type {DataSource, RequirementReport, Session} from './types';
 
-const PLAN_KEY = 'skyspace.demo.plan.v1.';
+const PLAN_KEY = 'skyspace.demo.plan.v2.';
 const FAVORITES_KEY = 'skyspace.demo.favorites.v1';
-const REPORTS_KEY = 'skyspace.demo.rule-reports.v1';
-const CURRENT_PLAN_KEY = 'skyspace.demo.current-plan.v1';
+const REPORTS_KEY = 'skyspace.demo.requirement-reports.v1';
+const CURRENT_PLAN_KEY = 'skyspace.demo.current-plan.v2';
 const SESSION_KEY = 'skyspace.demo.session.v1';
 
 function read<T>(key: string, isValid: (v: unknown) => v is T): T | undefined {
@@ -238,9 +238,10 @@ export const demoDataSource: DataSource = {
     return {};
   },
 
-  async reportRule(report: RuleReport): Promise<void> {
+  async reportRequirement(report: RequirementReport): Promise<void> {
     const existing =
-      read(REPORTS_KEY, (v): v is RuleReport[] => Array.isArray(v)) ?? [];
+      read(REPORTS_KEY, (v): v is RequirementReport[] => Array.isArray(v)) ??
+      [];
     write(REPORTS_KEY, [
       ...existing,
       {...report, at: new Date().toISOString()},

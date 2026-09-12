@@ -78,17 +78,9 @@ export function PlanHeader({
       >
         <Stack gap={0.5} align="start">
           <Stack direction="horizontal" gap={1} vAlign="center">
-            <Text as="p" size="lg" weight="semibold" textWrap="nowrap">
-              {plan.name}
-            </Text>
             <DropdownMenu
-              button={{
-                label: 'Switch plan',
-                variant: 'ghost',
-                size: 'sm',
-                isIconOnly: true,
-                icon: <Icon icon="chevronDown" size="sm" />,
-              }}
+              button={{label: plan.name, variant: 'ghost', size: 'md'}}
+              hasChevron
               items={[
                 {
                   id: 'current',

@@ -1,5 +1,5 @@
 /**
- * `preview_placement` and `rule_matches` (`08-board-interaction.md`), in
+ * `preview_placement` and `requirement_matches` (`08-board-interaction.md`), in
  * TypeScript until the wasm exports land. Reads the same index and filter the
  * evaluator reads, so preview and post-drop warning agree.
  */
@@ -9,7 +9,7 @@ import {
   isOffTerm,
   isRiceTerm,
   plannedCredits,
-  walkRules,
+  walkRequirements,
   type CourseCode,
   type CourseFacts,
   type CourseFilter,
@@ -20,21 +20,21 @@ import {
   type PrereqVerdict,
   type Program,
   type Report,
-  type RuleId,
-  type RuleReport,
+  type RequirementId,
+  type RequirementReport,
 } from '../../domain';
 import {canonical, courseInfo, filterMatches} from './filter';
 import {evaluatePrereq} from './prereq';
 import {buildTakenIndex, earliest} from './taken';
 
-function unmetRules(report: Report | undefined): Set<RuleId> {
-  const out = new Set<RuleId>();
+function unmetRequirements(report: Report | undefined): Set<RequirementId> {
+  const out = new Set<RequirementId>();
   if (report === undefined) {
     return out;
   }
-  const walk = (r: RuleReport): void => {
+  const walk = (r: RequirementReport): void => {
     if (r.outcome.outcome !== 'met') {
-      out.add(r.rule);
+      out.add(r.requirement);
     }
     r.children.forEach(walk);
   };
@@ -42,22 +42,24 @@ function unmetRules(report: Report | undefined): Set<RuleId> {
   return out;
 }
 
-/** Which rules' progress would rise if `code` joined the plan: a filter pass, not a matching. */
-export function rulesRaisedBy(
+/** Which requirements' progress would rise if `code` joined the plan: a filter pass, not a matching. */
+export function requirementsRaisedBy(
   bundle: PlanBundle,
   report: Report | undefined,
   code: CourseCode,
-): [Program['id'], RuleId][] {
+): [Program['id'], RequirementId][] {
   const canon = canonical(bundle.facts, code);
-  const open = unmetRules(report);
-  const out: [Program['id'], RuleId][] = [];
+  const open = unmetRequirements(report);
+  const out: [Program['id'], RequirementId][] = [];
   for (const program of bundle.programs) {
-    walkRules(program.root, rule => {
-      if (rule.body.kind !== 'course' || !open.has(rule.id)) {
+    walkRequirements(program.root, requirement => {
+      if (requirement.body.kind !== 'course' || !open.has(requirement.id)) {
         return;
       }
-      if (filterMatches(rule.body.filter, canon, bundle.facts) === 'yes') {
-        out.push([program.id, rule.id]);
+      if (
+        filterMatches(requirement.body.filter, canon, bundle.facts) === 'yes'
+      ) {
+        out.push([program.id, requirement.id]);
       }
     });
   }
@@ -83,7 +85,7 @@ export function previewPlacementInterim(
     already?.term !== undefined && info?.repeatable !== true
       ? already.term
       : undefined;
-  const fills = rulesRaisedBy(bundle, report, canon);
+  const fills = requirementsRaisedBy(bundle, report, canon);
 
   const out: PlacementPreview[] = [];
   for (const term of plan.terms) {
@@ -133,17 +135,20 @@ export function previewPlacementInterim(
   return out;
 }
 
-/** Which of `codes` match `rule`'s filter, canonicalised through `facts`. */
-export function ruleMatchesInterim(
+/** Which of `codes` match `requirement`'s filter, canonicalised through `facts`. */
+export function requirementMatchesInterim(
   program: Program,
-  ruleId: RuleId,
+  requirementId: RequirementId,
   codes: CourseCode[],
   facts: CourseFacts,
 ): CourseCode[] {
   let filter: CourseFilter | undefined;
-  walkRules(program.root, rule => {
-    if (rule.id === ruleId && rule.body.kind === 'course') {
-      filter = rule.body.filter;
+  walkRequirements(program.root, requirement => {
+    if (
+      requirement.id === requirementId &&
+      requirement.body.kind === 'course'
+    ) {
+      filter = requirement.body.filter;
     }
   });
   const f = filter;

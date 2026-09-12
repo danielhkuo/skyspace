@@ -16,8 +16,8 @@ import {
   type Credits,
   type PlanBundle,
   type Program,
-  type RuleId,
-  type RuleReport,
+  type RequirementId,
+  type RequirementReport,
 } from '../domain';
 import {engine} from '../engine';
 import {GripMark} from './marks';
@@ -25,17 +25,17 @@ import {chipStyle, subjectHue} from './paint';
 
 const CHIP_LIMIT = 4;
 
-type RuleSuggestionsProps = {
+type RequirementSuggestionsProps = {
   bundle: PlanBundle;
   program: Program;
-  rule: RuleReport;
+  requirement: RequirementReport;
   saved: CourseCode[];
   /** Stand-in for the catalog query; the real one is `GET /api/v1/sections` per `08-board-interaction.md`. */
   catalog: CourseCode[];
   onCoursePointerDown: (
     course: CourseCode,
     credits: Credits,
-    fills: RuleId[] | undefined,
+    fills: RequirementId[] | undefined,
     event: ReactPointerEvent<HTMLElement>,
   ) => void;
 };
@@ -48,15 +48,15 @@ type Chip = {
   saved: boolean;
 };
 
-/** Up to four draggable chips under an unmet rule: saved first, then offered this term. */
-export function RuleSuggestions({
+/** Up to four draggable chips under an unmet requirement: saved first, then offered this term. */
+export function RequirementSuggestions({
   bundle,
   program,
-  rule,
+  requirement,
   saved,
   catalog,
   onCoursePointerDown,
-}: RuleSuggestionsProps) {
+}: RequirementSuggestionsProps) {
   const [expanded, setExpanded] = useState(false);
 
   const inPlan = new Set<string>();
@@ -68,9 +68,9 @@ export function RuleSuggestions({
     }
   }
   const savedKeys = new Set(saved.map(courseKey));
-  const matched = engine.ruleMatches(
+  const matched = engine.requirementMatches(
     program,
-    rule.rule,
+    requirement.requirement,
     [...saved, ...catalog],
     bundle.facts,
   );
@@ -124,7 +124,12 @@ export function RuleSuggestions({
           paddingBlock={0.5}
           style={chipStyle(subjectHue(chip.course.subject))}
           onPointerDown={e =>
-            onCoursePointerDown(chip.course, chip.credits, [rule.rule], e)
+            onCoursePointerDown(
+              chip.course,
+              chip.credits,
+              [requirement.requirement],
+              e,
+            )
           }
         >
           <Icon

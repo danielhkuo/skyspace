@@ -1,3 +1,4 @@
+import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 import {AppShell} from '@astryxdesign/core/AppShell';
 import {Avatar} from '@astryxdesign/core/Avatar';
 import {Banner} from '@astryxdesign/core/Banner';
@@ -7,13 +8,14 @@ import {Icon} from '@astryxdesign/core/Icon';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TopNav, TopNavItem} from '@astryxdesign/core/TopNav';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useSyncExternalStore} from 'react';
 import {Outlet, useLocation, useNavigate} from 'react-router';
 
 import {dataSource} from '../datasource';
 
 import {DemoBanner} from './DemoBanner';
 import {NarrowViewportNotice} from './NarrowViewportNotice';
+import {getLeaveGuard, setLeaveGuard, subscribeLeaveGuard} from './leaveGuard';
 import {useSession} from './useSession';
 import {MIN_SUPPORTED_WIDTH, useViewportWidth} from './useViewportWidth';
 
@@ -30,6 +32,19 @@ export function Shell() {
   const navigate = useNavigate();
   const {session, signOut} = useSession();
   const [staleSince, setStaleSince] = useState<string | undefined>(undefined);
+  const guard = useSyncExternalStore(
+    subscribeLeaveGuard,
+    getLeaveGuard,
+    getLeaveGuard,
+  );
+  const [pendingHref, setPendingHref] = useState<string | undefined>(undefined);
+  const go = (href: string): void => {
+    if (guard !== undefined && !pathname.startsWith(href)) {
+      setPendingHref(href);
+    } else {
+      void navigate(href);
+    }
+  };
   useEffect(() => {
     void dataSource.freshness().then(f => setStaleSince(f.staleSince));
   }, []);
@@ -59,6 +74,10 @@ export function Shell() {
                   label={item.label}
                   href={item.href}
                   isSelected={pathname.startsWith(item.href)}
+                  onClick={e => {
+                    e.preventDefault();
+                    go(item.href);
+                  }}
                 />
               ))}
             </Stack>
@@ -107,6 +126,27 @@ export function Shell() {
         />
       }
     >
+      <AlertDialog
+        isOpen={pendingHref !== undefined}
+        onOpenChange={open => {
+          if (!open) {
+            setPendingHref(undefined);
+          }
+        }}
+        title="Leave this page?"
+        description={guard ?? ''}
+        cancelLabel="Stay"
+        actionLabel="Leave"
+        actionVariant="destructive"
+        onAction={() => {
+          const href = pendingHref;
+          setPendingHref(undefined);
+          setLeaveGuard(undefined);
+          if (href !== undefined) {
+            void navigate(href);
+          }
+        }}
+      />
       <Stack width="100%" height="100%" gap={0}>
         {staleSince !== undefined && (
           <Banner
