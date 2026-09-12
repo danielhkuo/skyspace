@@ -3,28 +3,27 @@ import {Button} from '@astryxdesign/core/Button';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
-import {useCallback, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
 
 import {
   courseKey,
+  creditRangeMin,
   formatCourseCode,
   isRiceTerm,
   shortTermLabel,
   type CourseCode,
   type EntryId,
+  type CourseInfo,
+  type PlanBundle,
   type Program,
   type RuleReport,
   type TermId,
   type Warning,
 } from '../domain';
-import {
-  bundle as fixtureBundle,
-  catalogCandidates,
-  savedCollections as fixtureCollections,
-  type SavedCollection,
-} from '../fixtures/csStats';
+import {dataSource, type SavedCollection} from '../datasource';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
+import {AddCourseDialog} from './AddCourseDialog';
 import {Board} from './Board';
 import {CardMenu} from './CardMenu';
 import {DragGhost} from './DragGhost';
@@ -33,6 +32,7 @@ import {PlanHeader} from './PlanHeader';
 import {RequirementsSidebar} from './RequirementsSidebar';
 import {RuleSuggestions} from './RuleSuggestions';
 import {SavedTray} from './SavedTray';
+import {TermPickerDialog} from './TermPickerDialog';
 import {ruleTargetKey, useBoardDrag} from './useBoardDrag';
 import {locateEntry, usePlan} from './usePlan';
 import {WarningsDrawer} from './WarningsDrawer';
@@ -51,8 +51,59 @@ function entryOf(warning: Warning): EntryId | undefined {
   }
 }
 
+/** Loads the plan from the data source, then hands it to the board. */
 export function PlanPage() {
-  const state = usePlan(fixtureBundle);
+  const [loaded, setLoaded] = useState<
+    | {
+        bundle: PlanBundle;
+        collections: SavedCollection[];
+        candidates: CourseCode[];
+      }
+    | undefined
+  >(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      dataSource.loadBundle(),
+      dataSource.loadCollections(),
+      dataSource.catalogCandidates(),
+    ]).then(([bundle, collections, candidates]) => {
+      if (!cancelled) {
+        setLoaded({bundle, collections, candidates});
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (loaded === undefined) {
+    return (
+      <Stack padding={4}>
+        <Text type="supporting">Loading plan…</Text>
+      </Stack>
+    );
+  }
+  return (
+    <PlanBoardPage
+      initial={loaded.bundle}
+      initialCollections={loaded.collections}
+      catalogCandidates={loaded.candidates}
+    />
+  );
+}
+
+type PlanBoardPageProps = {
+  initial: PlanBundle;
+  initialCollections: SavedCollection[];
+  catalogCandidates: CourseCode[];
+};
+
+function PlanBoardPage({
+  initial,
+  initialCollections,
+  catalogCandidates,
+}: PlanBoardPageProps) {
+  const state = usePlan(initial);
   const {bundle, report, fillsIndex, dispatch} = state;
   const width = useViewportWidth();
   const desktop = width >= DESKTOP_WIDTH;
@@ -62,7 +113,16 @@ export function PlanPage() {
     undefined,
   );
   const [collections, setCollections] =
-    useState<SavedCollection[]>(fixtureCollections);
+    useState<SavedCollection[]>(initialCollections);
+  useEffect(() => {
+    if (collections !== initialCollections) {
+      void dataSource.saveCollections(collections);
+    }
+  }, [collections, initialCollections]);
+  const [addingTo, setAddingTo] = useState<TermId | undefined>(undefined);
+  const [picking, setPicking] = useState<
+    {course: CourseCode; credits: number} | undefined
+  >(undefined);
 
   // Parking a card bookmarks it in the first collection; bookmarks are never removed by a drag.
   const park = useCallback((course: CourseCode) => {
@@ -145,7 +205,7 @@ export function PlanPage() {
         onCoursePointerDown={drag.onCoursePointerDown}
       />
     ),
-    [bundle, savedCourses, drag.onCoursePointerDown],
+    [bundle, savedCourses, catalogCandidates, drag.onCoursePointerDown],
   );
 
   const wrapRule = useCallback(
@@ -231,22 +291,18 @@ export function PlanPage() {
 
   const addTo = useCallback(
     (course: CourseCode) => {
-      // Non-drag path: the first future Rice term with room. The term picker is step 13.
-      const target = bundle.plan.terms.find(
-        t =>
-          isRiceTerm(t.kind) &&
-          t.position.academicYear >= bundle.today.academicYear,
+      const info: CourseInfo | undefined = bundle.facts.courses.find(
+        c => courseKey(c.code) === courseKey(course),
       );
-      if (target === undefined) {
-        return;
-      }
-      drag.dropOn(
-        {kind: 'course', course, credits: 300},
-        {kind: 'term', term: target.id, slot: Number.MAX_SAFE_INTEGER},
-      );
+      setPicking({
+        course,
+        credits: info === undefined ? 300 : creditRangeMin(info.credits),
+      });
     },
-    [bundle, drag],
+    [bundle.facts.courses],
   );
+
+  const addingToTerm = bundle.plan.terms.find(t => t.id === addingTo);
 
   return (
     <Stack width="100%" height="100%" gap={0}>
@@ -329,6 +385,7 @@ export function PlanPage() {
                   onRowPointerDown={drag.onRowPointerDown}
                   onRowKeyDown={onRowKeyDown}
                   renderMenu={renderMenu}
+                  onAddCourse={setAddingTo}
                   registerTarget={drag.registerTarget}
                 />
               </StackItem>
@@ -396,6 +453,43 @@ export function PlanPage() {
           />
         </BottomSheet>
       )}
+      <AddCourseDialog
+        isOpen={addingTo !== undefined}
+        termLabel={
+          addingToTerm === undefined
+            ? ''
+            : shortTermLabel(addingToTerm.position)
+        }
+        onClose={() => setAddingTo(undefined)}
+        onPick={(course, credits) => {
+          if (addingTo !== undefined) {
+            drag.dropOn(
+              {kind: 'course', course, credits},
+              {kind: 'term', term: addingTo, slot: Number.MAX_SAFE_INTEGER},
+            );
+          }
+        }}
+      />
+      <TermPickerDialog
+        isOpen={picking !== undefined}
+        course={picking?.course}
+        credits={picking?.credits ?? 0}
+        bundle={bundle}
+        report={report}
+        onClose={() => setPicking(undefined)}
+        onPick={term => {
+          if (picking !== undefined) {
+            drag.dropOn(
+              {
+                kind: 'course',
+                course: picking.course,
+                credits: picking.credits,
+              },
+              {kind: 'term', term, slot: Number.MAX_SAFE_INTEGER},
+            );
+          }
+        }}
+      />
       {drag.state !== undefined && (
         <DragGhost
           drag={drag.state}

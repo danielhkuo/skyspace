@@ -26,7 +26,7 @@ import {
 } from '../domain';
 import {courseInfo} from '../engine/interim/filter';
 import {rulesRaisedBy} from '../engine/interim/preview';
-import type {SavedCollection} from '../fixtures/csStats';
+import type {SavedCollection} from '../datasource';
 import {GripMark} from './marks';
 import {
   grabbable,

@@ -36,6 +36,7 @@ type BoardProps = {
   onRowPointerDown?: (entry: EntryId, event: PointerEvent<HTMLElement>) => void;
   onRowKeyDown?: (entry: EntryId, event: KeyboardEvent<HTMLElement>) => void;
   renderMenu?: (entry: EntryId, term: TermId) => ReactNode;
+  onAddCourse?: (term: TermId) => void;
   registerTarget?: (key: string, element: HTMLElement | null) => void;
   /** Rows of islands; two per row on desktop, one on tablet. */
   columns: 1 | 2;
@@ -99,6 +100,7 @@ export function Board({
   onRowPointerDown,
   onRowKeyDown,
   renderMenu,
+  onAddCourse,
   registerTarget,
   columns,
   rowMinHeight,
@@ -197,6 +199,7 @@ export function Board({
                 onRowKeyDown={onRowKeyDown}
                 renderMenu={renderMenu}
                 rowMinHeight={rowMinHeight}
+                onAddCourse={() => onAddCourse?.(term.id)}
                 islandRef={el => registerTarget?.(termTargetKey(term.id), el)}
               />
             )),

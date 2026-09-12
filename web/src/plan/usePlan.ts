@@ -24,7 +24,7 @@ import {
 } from '../domain';
 import {engine} from '../engine';
 import {warningTerm} from './labels';
-import {loadPlan, savePlan, SAVE_DEBOUNCE_MS} from './persistence';
+import {dataSource} from '../datasource';
 
 export type PlanAction =
   | {type: 'replace'; plan: Plan}
@@ -265,17 +265,21 @@ export type PlanState = {
   dispatch: (action: PlanAction) => void;
 };
 
+/** Debounced save: a burst of drops is one write (`08-board-interaction.md`). */
+const SAVE_DEBOUNCE_MS = 500;
+
 export function usePlan(initial: PlanBundle): PlanState {
-  const [plan, dispatch] = useReducer(
-    reducePlan,
-    initial.plan,
-    seed => loadPlan(seed.id) ?? seed,
-  );
-  // Debounced save: a burst of drops is one write (`08-board-interaction.md`).
+  const [plan, dispatch] = useReducer(reducePlan, initial.plan);
   useEffect(() => {
-    const timer = setTimeout(() => savePlan(plan), SAVE_DEBOUNCE_MS);
+    if (plan === initial.plan) {
+      return undefined;
+    }
+    const timer = setTimeout(
+      () => void dataSource.savePlan(plan),
+      SAVE_DEBOUNCE_MS,
+    );
     return () => clearTimeout(timer);
-  }, [plan]);
+  }, [plan, initial.plan]);
   const bundle = useMemo(() => ({...initial, plan}), [initial, plan]);
   const report = useMemo(() => engine.evaluate(bundle), [bundle]);
   const fillsIndex = useMemo(

@@ -1,11 +1,12 @@
 import {AppShell} from '@astryxdesign/core/AppShell';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
-import {Stack} from '@astryxdesign/core/Stack';
+import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TopNav, TopNavItem} from '@astryxdesign/core/TopNav';
 import {Outlet, useLocation} from 'react-router';
 
+import {DemoBanner} from './DemoBanner';
 import {NarrowViewportNotice} from './NarrowViewportNotice';
 import {MIN_SUPPORTED_WIDTH, useViewportWidth} from './useViewportWidth';
 
@@ -63,7 +64,12 @@ export function Shell() {
         />
       }
     >
-      <Outlet />
+      <Stack width="100%" height="100%" gap={0}>
+        <DemoBanner />
+        <StackItem size="fill">
+          <Outlet />
+        </StackItem>
+      </Stack>
     </AppShell>
   );
 }

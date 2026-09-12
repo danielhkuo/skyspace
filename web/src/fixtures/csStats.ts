@@ -891,11 +891,7 @@ export const bundle: PlanBundle = {
 
 // -------------------------------------------------------------------- saved
 
-export type SavedCollection = {
-  id: string;
-  name: string;
-  courses: CourseCode[];
-};
+import type {SavedCollection} from '../datasource/types';
 
 export const savedCollections: SavedCollection[] = [
   {
