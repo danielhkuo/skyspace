@@ -9,7 +9,6 @@ import {
   TableRow,
 } from '@astryxdesign/core/Table';
 import {Text} from '@astryxdesign/core/Text';
-import {Token} from '@astryxdesign/core/Token';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 import type {CSSProperties} from 'react';
 
@@ -19,7 +18,6 @@ import {
   formatCreditRange,
   formatInstructors,
   formatMeetings,
-  isDistributionGroup,
   type CourseCode,
   type Crn,
   type Section,
@@ -39,16 +37,17 @@ type ResultsTableProps = {
  * Fixed layout, so the header row owns the column widths. Structural widths
  * are the one place raw px belongs (`web/AGENTS.md`); each clears the widest
  * thing it holds: the seat timestamp, Rice's "1 TO 4", the star button.
+ * No tags column: the pane shows the distribution group, and the title
+ * needs the room at 1440 once the rail and pane take theirs.
  */
 const col = (px: number): CSSProperties => ({width: px, maxWidth: px});
 const COLS = {
   code: col(84),
-  sec: col(48),
-  inst: col(100),
-  meets: col(128),
-  cr: col(58),
-  seats: col(116),
-  tags: col(66),
+  sec: col(44),
+  inst: col(96),
+  meets: col(120),
+  cr: col(50),
+  seats: col(104),
   star: col(44),
 };
 const fixedLayout: CSSProperties = {tableLayout: 'fixed', width: '100%'};
@@ -87,7 +86,6 @@ export function ResultsTable({
           <TableHeaderCell style={COLS.meets}>Meets</TableHeaderCell>
           <TableHeaderCell style={COLS.cr}>Cr</TableHeaderCell>
           <TableHeaderCell style={COLS.seats}>Seats</TableHeaderCell>
-          <TableHeaderCell style={COLS.tags}>Tags</TableHeaderCell>
           <TableHeaderCell style={COLS.star}>
             <VisuallyHidden>Favorite</VisuallyHidden>
           </TableHeaderCell>
@@ -95,14 +93,13 @@ export function ResultsTable({
       </TableHeader>
       <TableBody>
         {rows.map((section, i) => {
-          const {listing, detail} = section;
+          const {listing} = section;
           const previous = rows[i - 1];
           const repeat =
             previous !== undefined &&
             courseKey(previous.listing.code) === courseKey(listing.code);
           const isSelected = listing.crn === selected;
           const meets = formatMeetings(listing);
-          const tags = (detail?.attributes ?? []).filter(isDistributionGroup);
           const starred = isFavorite(listing.code);
           const cell = isSelected ? selectedCell : undefined;
           return (
@@ -160,11 +157,6 @@ export function ResultsTable({
               </TableCell>
               <TableCell style={cell}>
                 <SeatSummary seats={section.seats} layout="cell" />
-              </TableCell>
-              <TableCell style={cell}>
-                {tags.map(tag => (
-                  <Token key={tag} label={tag} size="sm" />
-                ))}
               </TableCell>
               <TableCell style={cell}>
                 <IconButton

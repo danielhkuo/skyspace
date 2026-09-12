@@ -13,10 +13,6 @@ export function catalogSearchHref(code: CourseCode): string {
   return `/catalog?q=${encodeURIComponent(formatCourseCode(code))}`;
 }
 
-export function classHref(section: Section): string {
-  return `/class/${section.listing.term}/${section.listing.crn}`;
-}
-
 /** "COMP 140 · 001 · CRN 12422". */
 export function sectionIdentity(section: Section): string {
   const {code, section: number, crn} = section.listing;

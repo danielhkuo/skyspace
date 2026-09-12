@@ -32,9 +32,7 @@ type SectionDetailBodyProps = {
   onAddToPlan: (() => void) | undefined;
   /** "Fall 2024" when the course is already on the board. */
   placedIn: string | undefined;
-  /** Section headings: `label` in the pane, `h2` on the page. */
-  headings: 'pane' | 'page';
-  /** Rendered after the description: the page's sections table and fills card. */
+  /** Rendered after the description: the course's other sections and the fills card. */
   children?: ReactNode;
   /** Control size; the tablet artboard uses `md`. */
   size: 'sm' | 'md';
@@ -43,7 +41,7 @@ type SectionDetailBodyProps = {
 const RICE_COURSE =
   'https://courses.rice.edu/courses/!SWKSCAT.cat?p_action=COURSE';
 
-/** Everything below a section's title, shared by the catalog pane and the class page. */
+/** Everything below a section's title in the pane. */
 export function SectionDetailBody({
   section,
   prereq,
@@ -51,21 +49,15 @@ export function SectionDetailBody({
   onToggleFavorite,
   onAddToPlan,
   placedIn,
-  headings,
   children,
   size,
 }: SectionDetailBodyProps) {
   const {listing, detail, seats} = section;
-  const heading = (text: string): ReactNode =>
-    headings === 'page' ? (
-      <Text as="h2" size="lg" weight="semibold">
-        {text}
-      </Text>
-    ) : (
-      <Text as="h3" type="label" weight="semibold">
-        {text}
-      </Text>
-    );
+  const heading = (text: string): ReactNode => (
+    <Text as="h3" type="label" weight="semibold">
+      {text}
+    </Text>
+  );
   const dates = listing.meetings.find(m => m.dates !== undefined)?.dates;
   const distribution = (detail?.attributes ?? []).filter(a => a !== 'AD');
   const attributeTokens = [
@@ -74,7 +66,7 @@ export function SectionDetailBody({
   ];
 
   return (
-    <Stack width="100%" gap={headings === 'page' ? 5 : 3} align="start">
+    <Stack width="100%" gap={3} align="start">
       <Stack direction="horizontal" width="100%" gap={1} wrap="wrap">
         <Token
           label={`${formatCreditRange(listing.credits)} credits`}
@@ -129,15 +121,15 @@ export function SectionDetailBody({
           }
           onClick={onToggleFavorite}
         />
-        {placedIn !== undefined && (
-          <Text type="supporting" textWrap="nowrap">
-            In your plan · {placedIn} ·{' '}
-            <Link href="/plan" type="inherit">
-              open
-            </Link>
-          </Text>
-        )}
       </Stack>
+      {placedIn !== undefined && (
+        <Text type="supporting">
+          In your plan · {placedIn} ·{' '}
+          <Link href="/plan" type="inherit">
+            open
+          </Link>
+        </Text>
+      )}
 
       <Card padding={3} width="100%">
         <Stack width="100%" gap={1} align="start">
@@ -207,7 +199,7 @@ export function SectionDetailBody({
             ))}
           </Stack>
         )}
-        <Text size={headings === 'page' ? undefined : 'sm'} color="secondary">
+        <Text size="sm" color="secondary">
           {detail?.description ??
             'Rice publishes no description for this section.'}
         </Text>

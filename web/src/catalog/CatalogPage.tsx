@@ -9,7 +9,7 @@ import {Section} from '@astryxdesign/core/Section';
 import {Skeleton} from '@astryxdesign/core/Skeleton';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
-import {useCallback, useMemo, useState} from 'react';
+import {useCallback, useMemo, useState, type CSSProperties} from 'react';
 import {useSearchParams} from 'react-router';
 
 import {
@@ -18,6 +18,7 @@ import {
   type Crn,
   type Section as CourseSection,
 } from '../domain';
+import {engine} from '../engine';
 import {FavoritesFooter} from './FavoritesFooter';
 import {FilterRail, SearchBox, type QueryPatch} from './FilterRail';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
@@ -33,15 +34,22 @@ import {
 } from './query';
 import {ResultsTable} from './ResultsTable';
 import {SectionRows} from './SectionRows';
-import {placedEntry} from './fills';
-import {classHref, sectionIdentity} from './labels';
+import {FillsCard} from './FillsCard';
+import {summarizeFills} from './fills';
+import {sectionIdentity} from './labels';
+import {OtherSections} from './OtherSections';
 import {SectionDetailBody} from './SectionDetailBody';
 import {useAddToPlan} from './useAddToPlan';
 import {useCatalogData} from './useCatalogData';
 import {useFavorites} from './useFavorites';
 
 const RAIL_WIDTH = 240;
-const PANE_WIDTH = 420;
+const PANE_WIDTH = 480;
+/** The pane scrolls down only; anything wider than it is a bug, not a scrollbar. */
+const clipX: CSSProperties = {overflowX: 'hidden'};
+/** Rail and pane keep their width; the results column is what gives. */
+const fixedColumn: CSSProperties = {flexShrink: 0};
+const givingColumn: CSSProperties = {minWidth: 0};
 const SORTS: SortKey[] = ['relevance', 'code', 'credits', 'openSeats'];
 
 /** Find sections in a term: rail, results, pane. The whole search is in the URL. */
@@ -73,6 +81,27 @@ export function CatalogPage() {
       : sections.find(s => s.listing.crn === query.crn);
 
   const select = (crn: Crn): void => patch({crn}, 'push');
+
+  const report = useMemo(
+    () => (data === undefined ? undefined : engine.evaluate(data.bundle)),
+    [data],
+  );
+  const fills = useMemo(
+    () =>
+      data === undefined || report === undefined || selected === undefined
+        ? undefined
+        : summarizeFills(data.bundle, report, selected.listing.code),
+    [data, report, selected],
+  );
+  const siblings = useMemo(
+    () =>
+      selected === undefined
+        ? []
+        : sections.filter(s =>
+            sameCourse(s.listing.code, selected.listing.code),
+          ),
+    [sections, selected],
+  );
 
   const rail = (
     <FilterRail
@@ -189,9 +218,6 @@ export function CatalogPage() {
               {selected.listing.title}
             </Text>
           </Stack>
-          <Link href={classHref(selected)} size="sm">
-            Open as page
-          </Link>
         </Stack>
         <SectionDetailBody
           section={selected}
@@ -211,10 +237,23 @@ export function CatalogPage() {
                     creditRangeMin(selected.listing.credits),
                   )
           }
-          placedIn={placedEntry(data.bundle, selected.listing.code)?.term}
-          headings="pane"
+          placedIn={fills?.placedIn}
           size={desktop ? 'sm' : 'md'}
-        />
+        >
+          {siblings.length > 1 && (
+            <Stack width="100%" gap={1} align="start">
+              <Text as="h3" type="label" weight="semibold">
+                All sections
+              </Text>
+              <OtherSections
+                sections={siblings}
+                current={selected.listing.crn}
+                onSelect={select}
+              />
+            </Stack>
+          )}
+          {fills !== undefined && <FillsCard fills={fills} />}
+        </SectionDetailBody>
       </Stack>
     );
 
@@ -304,13 +343,14 @@ export function CatalogPage() {
         padding={0}
         width={RAIL_WIDTH}
         height="100%"
+        style={fixedColumn}
       >
         <Stack width="100%" height="100%" isScrollable>
           {rail}
         </Stack>
       </Section>
 
-      <StackItem size="fill">
+      <StackItem size="fill" style={givingColumn}>
         <Stack width="100%" height="100%" gap={0}>
           {countsRow}
           <Divider />
@@ -330,8 +370,9 @@ export function CatalogPage() {
         padding={0}
         width={PANE_WIDTH}
         height="100%"
+        style={fixedColumn}
       >
-        <Stack width="100%" height="100%" isScrollable>
+        <Stack width="100%" height="100%" isScrollable style={clipX}>
           {detail ?? (
             <Stack width="100%" height="100%" vAlign="center" padding={3}>
               <EmptyState
