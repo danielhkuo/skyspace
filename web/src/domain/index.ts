@@ -5,3 +5,4 @@ export * from './plan';
 export * from './program';
 export * from './report';
 export * from './term';
+export * from './section';

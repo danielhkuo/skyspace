@@ -6,15 +6,23 @@ import {
   courseKey,
   type CourseCode,
   type CourseInfo,
+  type Crn,
   type Plan,
   type PlanBundle,
   type PlanId,
+  type Section,
+  type TermCode,
 } from '../domain';
 import {
   bundle as fixtureBundle,
   catalogCandidates as fixtureCandidates,
   favorites as fixtureFavorites,
 } from '../fixtures/csStats';
+import {
+  FALL_2026,
+  FALL_2026_LABEL,
+  fallSections,
+} from '../fixtures/fallSections';
 import type {DataSource} from './types';
 
 const PLAN_KEY = 'skyspace.demo.plan.v1.';
@@ -105,5 +113,19 @@ export const demoDataSource: DataSource = {
 
   async catalogCandidates() {
     return fixtureCandidates;
+  },
+
+  async currentTerm() {
+    return {code: FALL_2026, label: FALL_2026_LABEL};
+  },
+
+  async listSections(term: TermCode): Promise<Section[]> {
+    return term === FALL_2026 ? fallSections : [];
+  },
+
+  async getSection(term: TermCode, crn: Crn): Promise<Section | undefined> {
+    return term === FALL_2026
+      ? fallSections.find(s => s.listing.crn === crn)
+      : undefined;
   },
 };
