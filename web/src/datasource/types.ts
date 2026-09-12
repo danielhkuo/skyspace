@@ -5,6 +5,7 @@
  * pages are already shaped for a network round trip.
  */
 import type {
+  CatalogQuery,
   CourseCode,
   CourseInfo,
   Crn,
@@ -12,6 +13,7 @@ import type {
   PlanBundle,
   PlanId,
   Section,
+  SectionPage,
   TermCode,
 } from '../domain';
 
@@ -31,7 +33,12 @@ export type DataSource = {
   catalogCandidates(): Promise<CourseCode[]>;
   /** The term the catalog shows; the demo has exactly one. */
   currentTerm(): Promise<{code: TermCode; label: string}>;
-  /** Every section Rice lists for the term, in Rice's order. */
-  listSections(term: TermCode): Promise<Section[]>;
+  /** One page of sections: `GET /api/v1/sections` (`06-api.md`). Never the whole term. */
+  searchSections(term: TermCode, query: CatalogQuery): Promise<SectionPage>;
   getSection(term: TermCode, crn: Crn): Promise<Section | undefined>;
+  /** Every section of one course in the term, for the pane's "All sections". */
+  courseSections(term: TermCode, code: CourseCode): Promise<Section[]>;
+  /** Reference lists the rail offers: Rice's `SUBJECTS` and `SESSIONS`. */
+  listSubjects(term: TermCode): Promise<string[]>;
+  listPartsOfTerm(term: TermCode): Promise<string[]>;
 };

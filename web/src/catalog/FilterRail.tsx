@@ -22,7 +22,7 @@ import {
 } from '../domain';
 import {
   activeFilterCount,
-  EMPTY_QUERY,
+  DEFAULT_QUERY,
   LEVELS,
   parseTimeText,
   type CatalogQuery,
@@ -65,7 +65,7 @@ export function FilterRail({
           .filter(
             s =>
               s.startsWith(subjectFind.trim().toUpperCase()) &&
-              !query.subjects.includes(s),
+              !query.subject.includes(s),
           )
           .slice(0, 8);
 
@@ -91,7 +91,7 @@ export function FilterRail({
             onEnter={() => {
               const first = subjectMatches[0];
               if (first !== undefined) {
-                onChange({subjects: [...query.subjects, first]});
+                onChange({subject: [...query.subject, first]});
                 setSubjectFind('');
               }
             }}
@@ -104,23 +104,23 @@ export function FilterRail({
                   label={s}
                   size="sm"
                   onClick={() => {
-                    onChange({subjects: [...query.subjects, s]});
+                    onChange({subject: [...query.subject, s]});
                     setSubjectFind('');
                   }}
                 />
               ))}
             </Stack>
           )}
-          {query.subjects.length > 0 && (
+          {query.subject.length > 0 && (
             <Stack direction="horizontal" gap={1} wrap="wrap">
-              {query.subjects.map(s => (
+              {query.subject.map(s => (
                 <Token
                   key={s}
                   label={s}
                   size="sm"
                   color="cyan"
                   onRemove={() =>
-                    onChange({subjects: query.subjects.filter(x => x !== s)})
+                    onChange({subject: query.subject.filter(x => x !== s)})
                   }
                 />
               ))}
@@ -136,10 +136,8 @@ export function FilterRail({
               key={a}
               label={ATTRIBUTE_LABEL[a].replace('Distribution ', '')}
               size="sm"
-              value={query.distribution.includes(a)}
-              onChange={() =>
-                onChange({distribution: toggleIn(query.distribution, a)})
-              }
+              value={query.attr.includes(a)}
+              onChange={() => onChange({attr: toggleIn(query.attr, a)})}
               width="100%"
             />
           ))}
@@ -153,9 +151,9 @@ export function FilterRail({
               key={level}
               label={level === 500 ? '500+' : String(level)}
               size="sm"
-              isPressed={query.levels.includes(level)}
+              isPressed={query.level.includes(level)}
               onPressedChange={() =>
-                onChange({levels: toggleIn(query.levels, level)})
+                onChange({level: toggleIn(query.level, level)})
               }
             />
           ))}
@@ -209,7 +207,9 @@ export function FilterRail({
 
       <Collapsible
         trigger="Credits"
-        defaultIsOpen={query.creditHours !== undefined}
+        defaultIsOpen={
+          query.creditsMin !== undefined || query.creditsMax !== undefined
+        }
       >
         <Stack direction="horizontal" gap={1} paddingBlock={1.5} wrap="wrap">
           {[1, 2, 3, 4].map(hours => (
@@ -217,9 +217,15 @@ export function FilterRail({
               key={hours}
               label={String(hours)}
               size="sm"
-              isPressed={query.creditHours === hours}
+              isPressed={
+                query.creditsMin === hours * 100 &&
+                query.creditsMax === hours * 100
+              }
               onPressedChange={pressed =>
-                onChange({creditHours: pressed ? hours : undefined})
+                onChange({
+                  creditsMin: pressed ? hours * 100 : undefined,
+                  creditsMax: pressed ? hours * 100 : undefined,
+                })
               }
             />
           ))}
@@ -228,7 +234,7 @@ export function FilterRail({
 
       <Collapsible
         trigger="Part of term"
-        defaultIsOpen={query.partOfTerm !== undefined}
+        defaultIsOpen={query.partOfTerm.length > 0}
       >
         <Stack gap={1} paddingBlock={1.5} width="100%">
           {partsOfTerm.map(pot => (
@@ -236,9 +242,9 @@ export function FilterRail({
               key={pot}
               label={pot}
               size="sm"
-              value={query.partOfTerm === pot}
-              onChange={checked =>
-                onChange({partOfTerm: checked ? pot : undefined})
+              value={query.partOfTerm.includes(pot)}
+              onChange={() =>
+                onChange({partOfTerm: toggleIn(query.partOfTerm, pot)})
               }
               width="100%"
             />
@@ -252,8 +258,8 @@ export function FilterRail({
         <Switch
           label="Open seats only"
           size="sm"
-          value={query.openOnly}
-          onChange={checked => onChange({openOnly: checked})}
+          value={query.openSeatsOnly}
+          onChange={checked => onChange({openSeatsOnly: checked})}
           labelPosition="start"
           labelSpacing="spread"
           width="100%"
@@ -261,8 +267,8 @@ export function FilterRail({
         <Switch
           label="Hide unscheduled sections"
           size="sm"
-          value={!query.showUnscheduled}
-          onChange={checked => onChange({showUnscheduled: !checked})}
+          value={query.scheduledOnly}
+          onChange={checked => onChange({scheduledOnly: checked})}
           labelPosition="start"
           labelSpacing="spread"
           width="100%"
@@ -276,7 +282,7 @@ export function FilterRail({
               type="inherit"
               onClick={e => {
                 e.preventDefault();
-                onChange({showUnscheduled: true});
+                onChange({scheduledOnly: false});
               }}
             >
               show
@@ -291,7 +297,7 @@ export function FilterRail({
           variant="ghost"
           size="sm"
           isDisabled={activeFilterCount(query) === 0 && query.q === ''}
-          onClick={() => onChange({...EMPTY_QUERY, crn: query.crn})}
+          onClick={() => onChange({...DEFAULT_QUERY})}
         />
       </Stack>
     </Stack>

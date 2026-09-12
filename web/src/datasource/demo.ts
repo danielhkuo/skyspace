@@ -2,8 +2,11 @@
  * Demo data source: the CS + Stats fixture, with edits kept in localStorage
  * so a reload keeps the board and "Reset" throws them away. No network.
  */
+import {applyQuery, partsOfTermIn, subjectsIn} from '../catalog/query';
 import {
   courseKey,
+  sameCourse,
+  type CatalogQuery,
   type CourseCode,
   type CourseInfo,
   type Crn,
@@ -11,6 +14,7 @@ import {
   type PlanBundle,
   type PlanId,
   type Section,
+  type SectionPage,
   type TermCode,
 } from '../domain';
 import {
@@ -58,8 +62,41 @@ function remove(key: string): void {
   }
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null;
+
+const isTermKind = (v: unknown): boolean =>
+  v === 'off' ||
+  (isRecord(v) &&
+    (('rice' in v &&
+      isRecord(v['rice']) &&
+      Array.isArray(v['rice']['courses'])) ||
+      ('away' in v &&
+        isRecord(v['away']) &&
+        Array.isArray(v['away']['cards']))));
+
+const isTerm = (v: unknown): boolean =>
+  isRecord(v) &&
+  typeof v['id'] === 'string' &&
+  isRecord(v['position']) &&
+  typeof v['position']['academicYear'] === 'number' &&
+  ['fall', 'spring', 'summer'].includes(String(v['position']['season'])) &&
+  isTermKind(v['kind']) &&
+  Array.isArray(v['nonCourse']);
+
+/**
+ * Shape check on what localStorage hands back. A stale or hand-edited
+ * document falls back to the fixture rather than blanking the board.
+ */
 const isPlan = (v: unknown): v is Plan =>
-  typeof v === 'object' && v !== null && 'terms' in v && 'programs' in v;
+  isRecord(v) &&
+  typeof v['id'] === 'string' &&
+  typeof v['name'] === 'string' &&
+  Array.isArray(v['programs']) &&
+  Array.isArray(v['incomingCredit']) &&
+  Array.isArray(v['selfChecks']) &&
+  Array.isArray(v['terms']) &&
+  v['terms'].every(isTerm);
 
 const isCourseCodes = (v: unknown): v is CourseCode[] =>
   Array.isArray(v) &&
@@ -119,13 +156,30 @@ export const demoDataSource: DataSource = {
     return {code: FALL_2026, label: FALL_2026_LABEL};
   },
 
-  async listSections(term: TermCode): Promise<Section[]> {
-    return term === FALL_2026 ? fallSections : [];
+  async searchSections(
+    term: TermCode,
+    query: CatalogQuery,
+  ): Promise<SectionPage> {
+    return applyQuery(term === FALL_2026 ? fallSections : [], query);
   },
 
   async getSection(term: TermCode, crn: Crn): Promise<Section | undefined> {
     return term === FALL_2026
       ? fallSections.find(s => s.listing.crn === crn)
       : undefined;
+  },
+
+  async courseSections(term: TermCode, code: CourseCode): Promise<Section[]> {
+    return term === FALL_2026
+      ? fallSections.filter(s => sameCourse(s.listing.code, code))
+      : [];
+  },
+
+  async listSubjects(term: TermCode): Promise<string[]> {
+    return term === FALL_2026 ? subjectsIn(fallSections) : [];
+  },
+
+  async listPartsOfTerm(term: TermCode): Promise<string[]> {
+    return term === FALL_2026 ? partsOfTermIn(fallSections) : [];
   },
 };

@@ -1,73 +1,47 @@
 /**
- * The catalog's search state, and the pure function that applies it to a
- * list of sections. The state lives in the URL (`features/catalog.md`: a
- * filtered search must be shareable), so this module owns the round trip
- * between `CatalogQuery` and `URLSearchParams` as well.
+ * The catalog's search state, shaped like the API's `CatalogQuery`
+ * (`06-api.md`), and its round trip through the URL (`features/catalog.md`:
+ * a filtered search must be shareable). The demo data source runs
+ * `applyQuery` over the fixture; the API runs one SQL statement. Pages see
+ * only `searchSections(query)`.
  */
 import {
   courseKey,
   courseLevel,
   creditRangeMax,
   creditRangeMin,
-  creditsFromHours,
   isScheduled,
   seatStatus,
   seatsOpen,
   timedMeetings,
   DAYS,
+  DEFAULT_QUERY,
+  LEVELS,
+  MAX_LIMIT,
   type Attribute,
+  type CatalogQuery,
+  type Credits,
   type Crn,
   type Day,
   type MinuteOfDay,
   type Section,
+  type SectionPage,
+  type SortKey,
 } from '../domain';
 
-export type SortKey = 'relevance' | 'code' | 'credits' | 'openSeats';
+export {DEFAULT_QUERY, LEVELS, SORT_LABEL} from '../domain';
+export type {CatalogQuery} from '../domain';
 
-export const SORT_LABEL: Record<SortKey, string> = {
-  relevance: 'Relevance',
-  code: 'Course number',
-  credits: 'Credits',
-  openSeats: 'Open seats',
-};
-
-/** Course levels the rail offers; `500` means 500 and above. */
-export const LEVELS = [100, 200, 300, 400, 500] as const;
-
-export type CatalogQuery = {
-  q: string;
-  subjects: string[];
-  distribution: Attribute[];
-  levels: number[];
-  days: Day[];
-  startsAfter?: MinuteOfDay;
-  endsBefore?: MinuteOfDay;
-  /** Credit hours; a range matches when it can be taken for this many. */
-  creditHours?: number;
-  partOfTerm?: string;
-  openOnly: boolean;
-  /** Off by default: 58% of rows have no meeting time (`rice-data.md` §2). */
-  showUnscheduled: boolean;
-  sort: SortKey;
-  /** The section open in the detail pane. */
+/** What the catalog URL holds: the query, and which section the pane shows. */
+export type CatalogUrlState = {
+  query: CatalogQuery;
   crn?: Crn;
 };
 
-export const EMPTY_QUERY: CatalogQuery = {
-  q: '',
-  subjects: [],
-  distribution: [],
-  levels: [],
-  days: [],
-  openOnly: false,
-  showUnscheduled: false,
-  sort: 'relevance',
-};
-
 const ATTRIBUTES: Attribute[] = ['GRP1', 'GRP2', 'GRP3', 'AD'];
-const SORTS: SortKey[] = ['relevance', 'code', 'credits', 'openSeats'];
+const SORTS: SortKey[] = ['relevance', 'courseNumber', 'credits', 'openSeats'];
 
-/** Subjects whose rows are never hidden as unscheduled: lessons and recitals are the course load. */
+/** Lessons and recitals are the course load, so these rows are never hidden. */
 const ALWAYS_SHOWN_SUBJECTS = new Set(['MUSI']);
 
 // -------------------------------------------------------------------- URL
@@ -83,62 +57,71 @@ const minutes = (raw: string | null): MinuteOfDay | undefined => {
   return n >= 0 && n < 1440 ? n : undefined;
 };
 
-export function parseQuery(params: URLSearchParams): CatalogQuery {
+/** Credits ride in the URL as hours (`cmin=1.5`), on the wire as hundredths. */
+const hours = (raw: string | null): Credits | undefined =>
+  raw !== null && /^\d+(\.\d{1,2})?$/.test(raw)
+    ? Math.round(Number(raw) * 100)
+    : undefined;
+
+const formatHours = (credits: Credits): string =>
+  String(credits / 100).replace(/\.0+$/, '');
+
+export function parseCatalogUrl(params: URLSearchParams): CatalogUrlState {
   const sort = params.get('sort');
-  const cr = params.get('cr');
-  const crn = params.get('crn');
-  const pot = params.get('pot');
-  const q: CatalogQuery = {
+  const query: CatalogQuery = {
+    ...DEFAULT_QUERY,
     q: params.get('q') ?? '',
-    subjects: list(params.get('subj')).map(s => s.toUpperCase()),
-    distribution: list(params.get('dist'))
+    subject: list(params.get('subj')).map(s => s.toUpperCase()),
+    attr: list(params.get('attr'))
       .map(s => s.toUpperCase())
       .filter((s): s is Attribute => (ATTRIBUTES as string[]).includes(s)),
-    levels: list(params.get('level'))
+    level: list(params.get('level'))
       .map(Number)
       .filter(n => (LEVELS as readonly number[]).includes(n)),
     days: (params.get('days') ?? '')
       .toUpperCase()
       .split('')
       .filter((d): d is Day => (DAYS as string[]).includes(d)),
-    openOnly: params.get('open') === '1',
-    showUnscheduled: params.get('unsched') === '1',
+    partOfTerm: list(params.get('pot')),
+    openSeatsOnly: params.get('open') === '1',
+    scheduledOnly: params.get('unsched') !== '1',
     sort: SORTS.includes(sort as SortKey) ? (sort as SortKey) : 'relevance',
   };
-  const after = minutes(params.get('after'));
-  const before = minutes(params.get('before'));
-  if (after !== undefined) {
-    q.startsAfter = after;
+  const startsAfter = minutes(params.get('after'));
+  const endsBefore = minutes(params.get('before'));
+  const creditsMin = hours(params.get('cmin'));
+  const creditsMax = hours(params.get('cmax'));
+  if (startsAfter !== undefined) {
+    query.startsAfter = startsAfter;
   }
-  if (before !== undefined) {
-    q.endsBefore = before;
+  if (endsBefore !== undefined) {
+    query.endsBefore = endsBefore;
   }
-  if (cr !== null && /^\d+(\.\d+)?$/.test(cr)) {
-    q.creditHours = Number(cr);
+  if (creditsMin !== undefined) {
+    query.creditsMin = creditsMin;
   }
-  if (pot !== null && pot !== '') {
-    q.partOfTerm = pot;
+  if (creditsMax !== undefined) {
+    query.creditsMax = creditsMax;
   }
-  if (crn !== null && /^\d{5}$/.test(crn)) {
-    q.crn = crn;
-  }
-  return q;
+  const crn = params.get('crn');
+  return crn !== null && /^\d{5}$/.test(crn) ? {query, crn} : {query};
 }
 
-/** Only non-default values are written, so an untouched catalog has a bare URL. */
-export function serializeQuery(query: CatalogQuery): URLSearchParams {
+/** Only non-default values are written, so an untouched catalog has a bare URL. Paging never enters the URL. */
+export function serializeCatalogUrl(state: CatalogUrlState): URLSearchParams {
+  const {query, crn} = state;
   const params = new URLSearchParams();
   if (query.q !== '') {
     params.set('q', query.q);
   }
-  if (query.subjects.length > 0) {
-    params.set('subj', query.subjects.join(','));
+  if (query.subject.length > 0) {
+    params.set('subj', query.subject.join(','));
   }
-  if (query.distribution.length > 0) {
-    params.set('dist', query.distribution.join(','));
+  if (query.attr.length > 0) {
+    params.set('attr', query.attr.join(','));
   }
-  if (query.levels.length > 0) {
-    params.set('level', query.levels.join(','));
+  if (query.level.length > 0) {
+    params.set('level', query.level.join(','));
   }
   if (query.days.length > 0) {
     params.set('days', query.days.join(''));
@@ -149,39 +132,42 @@ export function serializeQuery(query: CatalogQuery): URLSearchParams {
   if (query.endsBefore !== undefined) {
     params.set('before', String(query.endsBefore));
   }
-  if (query.creditHours !== undefined) {
-    params.set('cr', String(query.creditHours));
+  if (query.creditsMin !== undefined) {
+    params.set('cmin', formatHours(query.creditsMin));
   }
-  if (query.partOfTerm !== undefined) {
-    params.set('pot', query.partOfTerm);
+  if (query.creditsMax !== undefined) {
+    params.set('cmax', formatHours(query.creditsMax));
   }
-  if (query.openOnly) {
+  if (query.partOfTerm.length > 0) {
+    params.set('pot', query.partOfTerm.join(','));
+  }
+  if (query.openSeatsOnly) {
     params.set('open', '1');
   }
-  if (query.showUnscheduled) {
+  if (!query.scheduledOnly) {
     params.set('unsched', '1');
   }
   if (query.sort !== 'relevance') {
     params.set('sort', query.sort);
   }
-  if (query.crn !== undefined) {
-    params.set('crn', query.crn);
+  if (crn !== undefined) {
+    params.set('crn', crn);
   }
   return params;
 }
 
-/** How many filters are set, for the tablet "Filters (3)" button. The search box and the pane are not filters. */
+/** How many filters are set, for the tablet "Filters (3)" button. Search, sort and paging are not filters. */
 export function activeFilterCount(query: CatalogQuery): number {
   return (
-    query.subjects.length +
-    query.distribution.length +
-    query.levels.length +
+    query.subject.length +
+    query.attr.length +
+    query.level.length +
     (query.days.length > 0 ? 1 : 0) +
     (query.startsAfter === undefined ? 0 : 1) +
     (query.endsBefore === undefined ? 0 : 1) +
-    (query.creditHours === undefined ? 0 : 1) +
-    (query.partOfTerm === undefined ? 0 : 1) +
-    (query.openOnly ? 1 : 0)
+    (query.creditsMin === undefined && query.creditsMax === undefined ? 0 : 1) +
+    query.partOfTerm.length +
+    (query.openSeatsOnly ? 1 : 0)
   );
 }
 
@@ -240,20 +226,20 @@ function searchRank(section: Section, q: string): number | undefined {
 function passesFilters(section: Section, query: CatalogQuery): boolean {
   const {listing, seats, detail} = section;
   if (
-    query.subjects.length > 0 &&
-    !query.subjects.includes(listing.code.subject.toUpperCase())
+    query.subject.length > 0 &&
+    !query.subject.includes(listing.code.subject.toUpperCase())
   ) {
     return false;
   }
-  if (query.distribution.length > 0) {
+  if (query.attr.length > 0) {
     const have = detail?.attributes ?? [];
-    if (!query.distribution.some(a => have.includes(a))) {
+    if (!query.attr.some(a => have.includes(a))) {
       return false;
     }
   }
-  if (query.levels.length > 0) {
+  if (query.level.length > 0) {
     const level = Math.min(courseLevel(listing.code), 500);
-    if (!query.levels.includes(level)) {
+    if (!query.level.includes(level)) {
       return false;
     }
   }
@@ -275,25 +261,26 @@ function passesFilters(section: Section, query: CatalogQuery): boolean {
       return false;
     }
   }
-  if (query.creditHours !== undefined) {
-    const want = creditsFromHours(query.creditHours);
+  if (query.creditsMin !== undefined || query.creditsMax !== undefined) {
+    const lo = query.creditsMin ?? 0;
+    const hi = query.creditsMax ?? Number.MAX_SAFE_INTEGER;
     const {credits} = listing;
     const ok =
       credits.kind === 'either'
-        ? credits.value.includes(want)
-        : creditRangeMin(credits) <= want && want <= creditRangeMax(credits);
+        ? credits.value.some(c => lo <= c && c <= hi)
+        : creditRangeMin(credits) <= hi && lo <= creditRangeMax(credits);
     if (!ok) {
       return false;
     }
   }
   if (
-    query.partOfTerm !== undefined &&
-    listing.partOfTerm !== query.partOfTerm
+    query.partOfTerm.length > 0 &&
+    (listing.partOfTerm === undefined ||
+      !query.partOfTerm.includes(listing.partOfTerm))
   ) {
     return false;
   }
-  if (query.openOnly) {
-    // Not polled is not the same as full, but "open seats only" cannot vouch for it.
+  if (query.openSeatsOnly) {
     if (seats === undefined) {
       return false;
     }
@@ -305,30 +292,24 @@ function passesFilters(section: Section, query: CatalogQuery): boolean {
   return true;
 }
 
-export type CatalogResult = {
-  rows: Section[];
-  /** Rows the unscheduled rule hid; shown as a count so nothing vanishes silently. */
-  hiddenUnscheduled: number;
-  courseCount: number;
-};
-
+/** The demo's stand-in for the API's SQL: filter, rank, sort, then one page. */
 export function applyQuery(
   sections: Section[],
   query: CatalogQuery,
-): CatalogResult {
+): SectionPage {
   const ranked: {section: Section; rank: number}[] = [];
-  let hiddenUnscheduled = 0;
+  let unscheduledHidden = 0;
   for (const section of sections) {
     const rank = searchRank(section, query.q);
     if (rank === undefined || !passesFilters(section, query)) {
       continue;
     }
     if (
-      !query.showUnscheduled &&
+      query.scheduledOnly &&
       !isScheduled(section.listing) &&
       !ALWAYS_SHOWN_SUBJECTS.has(section.listing.code.subject.toUpperCase())
     ) {
-      hiddenUnscheduled += 1;
+      unscheduledHidden += 1;
       continue;
     }
     ranked.push({section, rank});
@@ -344,7 +325,7 @@ export function applyQuery(
     switch (query.sort) {
       case 'relevance':
         return x.rank - y.rank || byCode(x.section, y.section);
-      case 'code':
+      case 'courseNumber':
         return byCode(x.section, y.section);
       case 'credits':
         return (
@@ -359,19 +340,29 @@ export function applyQuery(
     }
   });
 
-  const rows = ranked.map(r => r.section);
-  const courses = new Set(rows.map(r => courseKey(r.listing.code)));
-  return {rows, hiddenUnscheduled, courseCount: courses.size};
+  const all = ranked.map(r => r.section);
+  const limit = Math.max(1, Math.min(query.limit, MAX_LIMIT));
+  const offset = Math.max(0, query.offset);
+  const rows = all.slice(offset, offset + limit);
+  return {
+    rows,
+    total: all.length,
+    offset,
+    limit,
+    hasMore: offset + rows.length < all.length,
+    unscheduledHidden,
+    courseCount: new Set(all.map(s => courseKey(s.listing.code))).size,
+  };
 }
 
-/** Distinct subjects in the term, for the rail's subject finder. */
+/** Distinct subjects in a term, for the rail's subject finder. The API has `SUBJECTS` for this. */
 export function subjectsIn(sections: Section[]): string[] {
   return [
     ...new Set(sections.map(s => s.listing.code.subject.toUpperCase())),
   ].sort();
 }
 
-/** Distinct part-of-term labels in the term, in first-seen order. */
+/** Distinct part-of-term labels in a term, in first-seen order. The API has `SESSIONS`. */
 export function partsOfTermIn(sections: Section[]): string[] {
   const out: string[] = [];
   for (const s of sections) {

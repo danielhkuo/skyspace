@@ -1,11 +1,12 @@
 import {useCallback, useEffect, useState} from 'react';
 
 import {dataSource} from '../datasource';
-import type {Plan, PlanBundle, Section, TermCode} from '../domain';
+import type {Plan, PlanBundle, TermCode} from '../domain';
 
 export type CatalogData = {
   term: {code: TermCode; label: string};
-  sections: Section[];
+  subjects: string[];
+  partsOfTerm: string[];
   /** For prerequisites, exclusions and "fills in your plan". */
   bundle: PlanBundle;
 };
@@ -29,12 +30,13 @@ export function useCatalogData(): CatalogState {
     let live = true;
     void (async () => {
       const term = await dataSource.currentTerm();
-      const [sections, bundle] = await Promise.all([
-        dataSource.listSections(term.code),
+      const [subjects, partsOfTerm, bundle] = await Promise.all([
+        dataSource.listSubjects(term.code),
+        dataSource.listPartsOfTerm(term.code),
         dataSource.loadBundle(),
       ]);
       if (live) {
-        setData({term, sections, bundle});
+        setData({term, subjects, partsOfTerm, bundle});
       }
     })();
     return () => {

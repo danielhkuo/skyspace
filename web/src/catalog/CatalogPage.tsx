@@ -9,29 +9,35 @@ import {Section} from '@astryxdesign/core/Section';
 import {Skeleton} from '@astryxdesign/core/Skeleton';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
-import {useCallback, useMemo, useState, type CSSProperties} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from 'react';
 import {useSearchParams} from 'react-router';
 
+import {dataSource} from '../datasource';
 import {
   creditRangeMin,
   sameCourse,
+  type CatalogQuery,
   type Crn,
   type Section as CourseSection,
+  type SectionPage,
 } from '../domain';
 import {engine} from '../engine';
 import {FavoritesFooter} from './FavoritesFooter';
-import {FilterRail, SearchBox, type QueryPatch} from './FilterRail';
+import {FilterRail, SearchBox} from './FilterRail';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
 import {
   activeFilterCount,
-  applyQuery,
-  parseQuery,
-  partsOfTermIn,
-  serializeQuery,
+  parseCatalogUrl,
+  serializeCatalogUrl,
   SORT_LABEL,
-  subjectsIn,
-  type SortKey,
 } from './query';
+import type {SortKey} from '../domain';
 import {ResultsTable} from './ResultsTable';
 import {SectionRows} from './SectionRows';
 import {FillsCard} from './FillsCard';
@@ -50,7 +56,11 @@ const clipX: CSSProperties = {overflowX: 'hidden'};
 /** Rail and pane keep their width; the results column is what gives. */
 const fixedColumn: CSSProperties = {flexShrink: 0};
 const givingColumn: CSSProperties = {minWidth: 0};
-const SORTS: SortKey[] = ['relevance', 'code', 'credits', 'openSeats'];
+const SORTS: SortKey[] = ['relevance', 'courseNumber', 'credits', 'openSeats'];
+
+type UrlPatch = Partial<CatalogQuery> & {crn?: Crn | undefined};
+
+type Results = {key: string; rows: CourseSection[]; page: SectionPage};
 
 /** Find sections in a term: rail, results, pane. The whole search is in the URL. */
 export function CatalogPage() {
@@ -60,27 +70,94 @@ export function CatalogPage() {
   const [params, setParams] = useSearchParams();
   const desktop = useViewportWidth() >= DESKTOP_WIDTH;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const query = useMemo(() => parseQuery(params), [params]);
+  const {query, crn} = useMemo(() => parseCatalogUrl(params), [params]);
+  const queryKey = serializeCatalogUrl({query}).toString();
 
   const patch = useCallback(
-    (change: QueryPatch, mode: 'replace' | 'push' = 'replace') => {
-      const next = serializeQuery({...parseQuery(params), ...change});
+    (change: UrlPatch, mode: 'replace' | 'push' = 'replace') => {
+      const current = parseCatalogUrl(params);
+      const {crn: nextCrn, ...queryChange} = change;
+      const next = serializeCatalogUrl({
+        query: {...current.query, ...queryChange, offset: 0},
+        crn: 'crn' in change ? nextCrn : current.crn,
+      });
       void setParams(next, {replace: mode === 'replace'});
     },
     [params, setParams],
   );
 
-  const sections = useMemo(() => data?.sections ?? [], [data]);
-  const result = useMemo(() => applyQuery(sections, query), [sections, query]);
-  const subjects = useMemo(() => subjectsIn(sections), [sections]);
-  const partsOfTerm = useMemo(() => partsOfTermIn(sections), [sections]);
+  // One page at a time, like the API. A new query starts over; "Load more" appends.
+  const [results, setResults] = useState<Results | undefined>(undefined);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const term = data?.term.code;
+  useEffect(() => {
+    if (term === undefined) {
+      return;
+    }
+    let live = true;
+    void dataSource.searchSections(term, {...query, offset: 0}).then(page => {
+      if (live) {
+        setResults({key: queryKey, rows: page.rows, page});
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [term, query, queryKey]);
+  const loadMore = (): void => {
+    if (term === undefined || results === undefined || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    void dataSource
+      .searchSections(term, {...query, offset: results.rows.length})
+      .then(page => {
+        setResults(prev =>
+          prev === undefined || prev.key !== queryKey
+            ? prev
+            : {...prev, rows: [...prev.rows, ...page.rows], page},
+        );
+      })
+      .finally(() => setLoadingMore(false));
+  };
+  const result = results?.key === queryKey ? results : undefined;
+  const rows = result?.rows ?? [];
+  const subjects = data?.subjects ?? [];
+  const partsOfTerm = data?.partsOfTerm ?? [];
 
-  const selected: CourseSection | undefined =
-    query.crn === undefined
-      ? undefined
-      : sections.find(s => s.listing.crn === query.crn);
+  // The pane's section comes from its own fetch, so it opens even when the results do not hold it.
+  const [pane, setPane] = useState<
+    {crn: Crn; section: CourseSection; siblings: CourseSection[]} | undefined
+  >(undefined);
+  useEffect(() => {
+    if (term === undefined || crn === undefined) {
+      return;
+    }
+    let live = true;
+    void dataSource.getSection(term, crn).then(async section => {
+      if (section === undefined) {
+        if (live) {
+          setPane(undefined);
+        }
+        return;
+      }
+      const siblings = await dataSource.courseSections(
+        term,
+        section.listing.code,
+      );
+      if (live) {
+        setPane({crn, section, siblings});
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [term, crn]);
+  const selected =
+    crn !== undefined && pane?.crn === crn ? pane.section : undefined;
+  const siblings = selected === undefined ? [] : (pane?.siblings ?? []);
 
-  const select = (crn: Crn): void => patch({crn}, 'push');
+  const select = (next: Crn): void => patch({crn: next}, 'push');
 
   const report = useMemo(
     () => (data === undefined ? undefined : engine.evaluate(data.bundle)),
@@ -93,15 +170,6 @@ export function CatalogPage() {
         : summarizeFills(data.bundle, report, selected.listing.code),
     [data, report, selected],
   );
-  const siblings = useMemo(
-    () =>
-      selected === undefined
-        ? []
-        : sections.filter(s =>
-            sameCourse(s.listing.code, selected.listing.code),
-          ),
-    [sections, selected],
-  );
 
   const rail = (
     <FilterRail
@@ -109,7 +177,7 @@ export function CatalogPage() {
       onChange={patch}
       subjects={subjects}
       partsOfTerm={partsOfTerm}
-      hiddenUnscheduled={result.hiddenUnscheduled}
+      hiddenUnscheduled={result?.page.unscheduledHidden ?? 0}
       showSearch={desktop}
       size={desktop ? 'sm' : 'md'}
     />
@@ -125,15 +193,16 @@ export function CatalogPage() {
       paddingBlock={1.5}
     >
       <Stack direction="horizontal" gap={1} vAlign="center">
-        {data === undefined ? (
+        {result === undefined ? (
           <Skeleton width={120} height={20} />
         ) : (
           <>
             <Text weight="medium" size="sm">
-              {result.rows.length} section{result.rows.length === 1 ? '' : 's'}
+              {result.page.total} section{result.page.total === 1 ? '' : 's'}
             </Text>
             <Text type="supporting">
-              · {result.courseCount} course{result.courseCount === 1 ? '' : 's'}
+              · {result.page.courseCount} course
+              {result.page.courseCount === 1 ? '' : 's'}
             </Text>
           </>
         )}
@@ -153,19 +222,19 @@ export function CatalogPage() {
     </Stack>
   );
 
-  const results =
-    data === undefined ? (
+  const resultsView =
+    result === undefined ? (
       <Stack width="100%" gap={1.5} padding={2}>
         {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
           <Skeleton key={i} width="100%" height={20} index={i} />
         ))}
       </Stack>
-    ) : result.rows.length === 0 ? (
+    ) : rows.length === 0 ? (
       <EmptyState
         title="No sections match"
         description={
-          result.hiddenUnscheduled > 0
-            ? `${result.hiddenUnscheduled} unscheduled section${result.hiddenUnscheduled === 1 ? ' is' : 's are'} hidden. Show them, or remove a filter.`
+          result.page.unscheduledHidden > 0
+            ? `${result.page.unscheduledHidden} unscheduled section${result.page.unscheduledHidden === 1 ? ' is' : 's are'} hidden. Show them, or remove a filter.`
             : 'Try removing a filter or searching for a code like COMP 140.'
         }
         actions={
@@ -174,7 +243,7 @@ export function CatalogPage() {
             size="sm"
             onClick={e => {
               e.preventDefault();
-              patch({showUnscheduled: true});
+              patch({scheduledOnly: false});
             }}
           >
             Show unscheduled sections
@@ -184,21 +253,34 @@ export function CatalogPage() {
       />
     ) : desktop ? (
       <ResultsTable
-        rows={result.rows}
-        selected={query.crn}
+        rows={rows}
+        selected={crn}
         onSelect={select}
         isFavorite={favorites.isFavorite}
         onToggleFavorite={favorites.toggle}
       />
     ) : (
       <SectionRows
-        rows={result.rows}
-        selected={query.crn}
+        rows={rows}
+        selected={crn}
         onSelect={select}
         isFavorite={favorites.isFavorite}
         onToggleFavorite={favorites.toggle}
       />
     );
+
+  const loadMoreRow =
+    result !== undefined && result.page.hasMore ? (
+      <Stack width="100%" padding={2} align="center">
+        <Button
+          label={`Load more (${result.page.total - rows.length} left)`}
+          variant="secondary"
+          size="sm"
+          isLoading={loadingMore}
+          onClick={loadMore}
+        />
+      </Stack>
+    ) : null;
 
   const detail =
     selected === undefined || data === undefined ? undefined : (
@@ -284,7 +366,8 @@ export function CatalogPage() {
         {countsRow}
         <Divider />
         <StackItem size="fill" isScrollable>
-          {results}
+          {resultsView}
+          {loadMoreRow}
         </StackItem>
         <FavoritesFooter
           favorites={favorites.favorites ?? []}
@@ -355,7 +438,8 @@ export function CatalogPage() {
           {countsRow}
           <Divider />
           <StackItem size="fill" isScrollable>
-            {results}
+            {resultsView}
+            {loadMoreRow}
           </StackItem>
           <FavoritesFooter
             favorites={favorites.favorites ?? []}
