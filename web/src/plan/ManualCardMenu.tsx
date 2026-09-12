@@ -16,6 +16,7 @@ type ManualCardMenuProps = {
   where: TermId | 'incoming';
   plan: Plan;
   dispatch: (action: PlanAction) => void;
+  onChooseRule: () => void;
 };
 
 /**
@@ -27,6 +28,7 @@ export function ManualCardMenu({
   where,
   plan,
   dispatch,
+  onChooseRule,
 }: ManualCardMenuProps) {
   const entry: EntryId = card.id;
   const targets = [
@@ -66,6 +68,12 @@ export function ManualCardMenu({
               },
               {type: 'divider' as const},
             ]),
+        {
+          id: 'fill',
+          label: 'Which rule it fills…',
+          description: 'Pin it to a rule and say why it should count',
+          onClick: onChooseRule,
+        },
         {
           id: 'remove',
           label: 'Remove',

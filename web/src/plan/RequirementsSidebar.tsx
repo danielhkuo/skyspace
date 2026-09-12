@@ -1,17 +1,19 @@
-import {CheckboxInput} from '@astryxdesign/core/CheckboxInput';
 import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Icon} from '@astryxdesign/core/Icon';
+import {Button} from '@astryxdesign/core/Button';
+import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Link} from '@astryxdesign/core/Link';
 import {ProgressBar} from '@astryxdesign/core/ProgressBar';
 import {Section} from '@astryxdesign/core/Section';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
-import type {ReactNode} from 'react';
+import {createContext, useContext, type ReactNode} from 'react';
 
 import {
   findRule,
+  formatCatalogYear,
   formatCourseCode,
   formatCredits,
   type EntryId,
@@ -22,8 +24,15 @@ import {
   type RuleId,
   type RuleReport,
 } from '../domain';
+import {SELF_CHECK_REASON_LABEL} from './labels';
 import {HalfMark, HollowMark} from './marks';
-import {ruleRow, ruleRowRaised, selfCheckRow, violetInk} from './paint';
+import {
+  amberInk,
+  ruleRow,
+  ruleRowRaised,
+  selfCheckRow,
+  violetInk,
+} from './paint';
 import {locateEntry, type PlanAction} from './usePlan';
 
 type SidebarProps = {
@@ -37,7 +46,16 @@ type SidebarProps = {
   renderSuggestions?: (program: Program, rule: RuleReport) => ReactNode;
   /** Slot for a drop-target wrapper around a rule row (step 12). */
   wrapRule?: (program: Program, rule: RuleReport, row: ReactNode) => ReactNode;
+  /** Open the self-check dialog for a rule (`Plan 6 Rule Choice`). */
+  onOpenSelfCheck?: (program: Program, rule: RuleReport) => void;
+  /** Open "Which rule does this fill?" for a card. */
+  onChooseRule?: (entry: EntryId) => void;
 };
+
+type SidebarActions = Pick<SidebarProps, 'onOpenSelfCheck' | 'onChooseRule'>;
+
+/** The two dialog openers, so deep rows need no prop threading. */
+const Actions = createContext<SidebarActions>({});
 
 function StatusMark({report}: {report: RuleReport}) {
   switch (report.outcome.outcome) {
@@ -79,21 +97,74 @@ function entryLabel(
   return {label: `${card.code}${suffix}`, manual: card.fills.length > 0};
 }
 
-function FilledTokens({plan, entries}: {plan: Plan; entries: EntryId[]}) {
+function FilledTokens({
+  plan,
+  entries,
+  claimed,
+}: {
+  plan: Plan;
+  entries: EntryId[];
+  claimed?: EntryId[];
+}) {
   return (
     <>
       {entries.map(entry => {
         const {label, manual} = entryLabel(plan, entry);
+        const bySayso = claimed?.includes(entry) ?? false;
         return (
           <Token
             key={entry}
-            label={label}
+            label={bySayso ? `${label} · on your say-so` : label}
             size="sm"
-            color={manual ? 'purple' : 'default'}
+            color={bySayso || manual ? 'purple' : 'default'}
+            description={
+              bySayso
+                ? 'Pinned here by you; Skyspace cannot verify it and does not count it as met'
+                : undefined
+            }
           />
         );
       })}
     </>
+  );
+}
+
+/** "change" on a filled rule: open the rule chooser for the card, or pick which card first. */
+function ChangeLink({plan, entries}: {plan: Plan; entries: EntryId[]}) {
+  const {onChooseRule} = useContext(Actions);
+  if (onChooseRule === undefined) {
+    return null;
+  }
+  const only = entries[0];
+  if (entries.length === 1 && only !== undefined) {
+    return (
+      <Link
+        href="#"
+        size="sm"
+        onClick={e => {
+          e.preventDefault();
+          onChooseRule(only);
+        }}
+      >
+        change
+      </Link>
+    );
+  }
+  return (
+    <DropdownMenu
+      button={{label: 'change', variant: 'ghost', size: 'sm'}}
+      hasChevron
+      items={entries.map(entry => {
+        const located = locateEntry(plan, entry);
+        const label =
+          located === undefined
+            ? 'Card'
+            : located.where === 'rice'
+              ? formatCourseCode(located.course.course)
+              : located.card.code;
+        return {id: entry, label, onClick: () => onChooseRule(entry)};
+      })}
+    />
   );
 }
 
@@ -120,6 +191,7 @@ function LeafRow({
     return null;
   }
   const filled = rules.flatMap(r => r.filledBy);
+  const claimed = rules.flatMap(r => r.claimedBy);
   const total = rules.reduce((n, r) => n + r.progress.rulesCheckable, 0);
   const met = rules.reduce((n, r) => n + r.progress.rulesMet, 0);
   const outcome: RuleReport = {
@@ -155,11 +227,9 @@ function LeafRow({
             : `${met} of ${total}`}
         </Text>
       )}
-      <FilledTokens plan={plan} entries={filled} />
+      <FilledTokens plan={plan} entries={filled} claimed={claimed} />
       {isSelectLike && filled.length > 0 && (
-        <Link href="#" size="sm">
-          change
-        </Link>
+        <ChangeLink plan={plan} entries={filled} />
       )}
     </Stack>
   );
@@ -188,6 +258,7 @@ function SelfCheckRow({
       : source?.body.kind === 'nonCourse'
         ? source.body.description
         : rule.label;
+  const {onOpenSelfCheck} = useContext(Actions);
   const confirmed =
     rule.outcome.outcome === 'needsStudentCheck' &&
     rule.outcome.confirmed !== undefined;
@@ -207,19 +278,44 @@ function SelfCheckRow({
         </Text>
       </Stack>
       <Text size="sm">{text}</Text>
-      <CheckboxInput
-        label="I've confirmed this"
-        size="sm"
-        value={confirmed}
-        width="100%"
-        onChange={checked =>
-          dispatch(
-            checked
-              ? {type: 'confirmSelfCheck', rule: rule.rule, reason: 'other'}
-              : {type: 'clearSelfCheck', rule: rule.rule},
-          )
-        }
-      />
+      {confirmed ? (
+        <Stack direction="horizontal" gap={1.5} vAlign="center" wrap="wrap">
+          <Text size="sm" weight="medium" style={violetInk}>
+            Confirmed ·{' '}
+            {rule.outcome.outcome === 'needsStudentCheck' &&
+            rule.outcome.confirmed !== undefined
+              ? SELF_CHECK_REASON_LABEL[rule.outcome.confirmed]
+              : ''}
+          </Text>
+          <Link
+            href="#"
+            size="sm"
+            onClick={e => {
+              e.preventDefault();
+              onOpenSelfCheck?.(program, rule);
+            }}
+          >
+            edit
+          </Link>
+          <Link
+            href="#"
+            size="sm"
+            onClick={e => {
+              e.preventDefault();
+              dispatch({type: 'clearSelfCheck', rule: rule.rule});
+            }}
+          >
+            clear
+          </Link>
+        </Stack>
+      ) : (
+        <Button
+          label="Mark satisfied…"
+          variant="secondary"
+          size="sm"
+          onClick={() => onOpenSelfCheck?.(program, rule)}
+        />
+      )}
     </Stack>
   );
 }
@@ -432,14 +528,26 @@ function ProgramGroup({
           vAlign="center"
         >
           <Text type="supporting" hasTabularNumbers>
-            {progress.rulesMet} of {progress.rulesCheckable} rules ·{' '}
-            {formatCredits(progress.creditsMet)} of{' '}
+            {progress.rulesMet} of {progress.rulesCheckable} rules
+            {progress.rulesClaimed > 0
+              ? ` · ${progress.rulesClaimed} on your say-so`
+              : ''}{' '}
+            · {formatCredits(progress.creditsMet)} of{' '}
             {formatCredits(creditsRequired)} credit hours
           </Text>
           <Link href={program.source.url} size="sm" isExternalLink>
             source
           </Link>
         </Stack>
+        {report.evaluatedWith !== report.catalogYear && (
+          <Text size="sm" style={amberInk}>
+            No reviewed rules for catalog year{' '}
+            {formatCatalogYear(report.catalogYear)} yet. Showing{' '}
+            {formatCatalogYear(report.evaluatedWith)} instead; Rice lets you
+            follow any year from matriculation to graduation, so confirm which
+            one your degree audit uses.
+          </Text>
+        )}
         <Stack width="100%" gap={2}>
           <ProgressBar
             label="Rules met"
@@ -481,46 +589,76 @@ export function RequirementsSidebar({
   raisedRules,
   renderSuggestions,
   wrapRule,
+  onOpenSelfCheck,
+  onChooseRule,
 }: SidebarProps) {
   return (
-    <Section
-      variant="section"
-      dividers={['start']}
-      padding={0}
-      width="100%"
-      height="100%"
-    >
-      <Stack width="100%" height="100%" gap={2} padding={3} isScrollable>
-        <Stack width="100%" gap={0.5}>
-          <Text as="p" size="lg" weight="semibold">
-            Requirements
-          </Text>
-          <Text type="supporting">
-            Confirm with your advisor. Rules link to the General Announcements.
-          </Text>
+    <Actions.Provider value={{onOpenSelfCheck, onChooseRule}}>
+      <Section
+        variant="section"
+        dividers={['start']}
+        padding={0}
+        width="100%"
+        height="100%"
+      >
+        <Stack width="100%" height="100%" gap={2} padding={3} isScrollable>
+          <Stack width="100%" gap={0.5}>
+            <Text as="p" size="lg" weight="semibold">
+              Requirements
+            </Text>
+            <Text type="supporting">
+              Confirm with your advisor. Rules link to the General
+              Announcements.
+            </Text>
+          </Stack>
+          {plan.programs
+            .filter(id => !report.programs.some(r => r.program === id))
+            .map(id => {
+              const program = programs.find(p => p.id === id);
+              return (
+                <Stack key={id} width="100%" gap={2}>
+                  <Divider />
+                  <Stack width="100%" gap={1.5} align="start" paddingInline={2}>
+                    <Text as="h3" type="label" weight="semibold">
+                      {program?.name ?? 'Program'}
+                    </Text>
+                    <Text size="sm">
+                      No reviewed rules for this program yet. Your courses still
+                      count toward University requirements.
+                    </Text>
+                    <Link
+                      href="mailto:sugarlanddevs@gmail.com?subject=Skyspace%3A%20request%20a%20program"
+                      size="sm"
+                    >
+                      Request this program
+                    </Link>
+                  </Stack>
+                </Stack>
+              );
+            })}
+          {report.programs.map((programReport, i) => {
+            const program = programs.find(p => p.id === programReport.program);
+            if (program === undefined) {
+              return null;
+            }
+            return (
+              <Stack key={program.id} width="100%" gap={2}>
+                <Divider />
+                <ProgramGroup
+                  plan={plan}
+                  program={program}
+                  report={programReport}
+                  dispatch={dispatch}
+                  raisedRules={raisedRules}
+                  renderSuggestions={renderSuggestions}
+                  wrapRule={wrapRule}
+                  defaultOpen={i < 2}
+                />
+              </Stack>
+            );
+          })}
         </Stack>
-        {report.programs.map((programReport, i) => {
-          const program = programs.find(p => p.id === programReport.program);
-          if (program === undefined) {
-            return null;
-          }
-          return (
-            <Stack key={program.id} width="100%" gap={2}>
-              <Divider />
-              <ProgramGroup
-                plan={plan}
-                program={program}
-                report={programReport}
-                dispatch={dispatch}
-                raisedRules={raisedRules}
-                renderSuggestions={renderSuggestions}
-                wrapRule={wrapRule}
-                defaultOpen={i < 2}
-              />
-            </Stack>
-          );
-        })}
-      </Stack>
-    </Section>
+      </Section>
+    </Actions.Provider>
   );
 }

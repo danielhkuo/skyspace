@@ -60,7 +60,24 @@ describe('evaluate (interim)', () => {
           ),
         );
     expect(find('Analyzing Diversity')?.outcome.outcome).toBe('met');
-    expect(find('Distribution Group I')?.outcome.outcome).toBe('met');
+    // Group I holds a transfer card pinned by claim: shown, never met.
+    const groupOne = find('Distribution Group I');
+    expect(groupOne?.outcome.outcome).toBe('partial');
+    expect(groupOne?.children.flatMap(c => c.claimedBy)).toHaveLength(1);
+    expect(university?.progress.rulesClaimed).toBe(1);
+  });
+
+  it('never lets AP or IB credit fill a distribution slot', () => {
+    const ineligible = report.warnings.filter(
+      w => w.kind === 'incomingCreditIneligible',
+    );
+    expect(ineligible).toHaveLength(0);
+    const apOnGroup = flattenRuleReports(report).some(
+      r =>
+        r.label.startsWith('Distribution Group') &&
+        r.filledBy.some(e => String(e).includes('math-105')),
+    );
+    expect(apOnGroup).toBe(false);
   });
 
   it('gives the same report whatever order the terms are listed in', () => {

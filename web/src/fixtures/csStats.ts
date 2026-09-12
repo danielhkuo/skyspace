@@ -775,6 +775,15 @@ const incoming: ManualCourseCard[] = [
     credits: creditsFromHours(3),
     institution: 'Houston Community College',
     fills: [RULES.dg1b],
+    // No Rice code, so its pin is a claim, not a match; the student recorded
+    // why. The sidebar shows it "on your say-so" and never counts it as met.
+    claims: [
+      {
+        rule: RULES.dg1b,
+        basis: {kind: 'registrarPosted'},
+        note: 'Posted on my transfer evaluation',
+      },
+    ],
   },
 ];
 

@@ -32,6 +32,8 @@ import {
   type TermId,
   type Warning,
   creditRangeMin,
+  type CreditOrigin,
+  type FillClaim,
 } from '../../domain';
 import {canonical, courseInfo, filterMatches} from './filter';
 import {evaluatePrereq} from './prereq';
@@ -45,6 +47,8 @@ type Card = {
   code?: CourseCode;
   credits: Credits;
   fills: RuleId[];
+  claims: FillClaim[];
+  origin?: CreditOrigin;
 };
 
 type Slot = {
@@ -63,6 +67,8 @@ function collectCards(plan: Plan, facts: CourseFacts): Card[] {
           : canonical(facts, card.riceEquivalent),
       credits: card.credits,
       fills: card.fills,
+      claims: card.claims ?? [],
+      origin: card.origin,
     });
   }
   for (const term of plan.terms) {
@@ -74,6 +80,7 @@ function collectCards(plan: Plan, facts: CourseFacts): Card[] {
           code: canonical(facts, c.course),
           credits: c.credits,
           fills: c.fills,
+          claims: c.claims ?? [],
         });
       }
     } else if (isAwayTerm(term.kind)) {
@@ -87,6 +94,8 @@ function collectCards(plan: Plan, facts: CourseFacts): Card[] {
               : canonical(facts, c.riceEquivalent),
           credits: c.credits,
           fills: c.fills,
+          claims: c.claims ?? [],
+          origin: c.origin,
         });
       }
     }
@@ -107,9 +116,22 @@ function flattenSlots(rule: Rule, out: Slot[]): void {
   }
 }
 
+/** AP and IB credit counts toward the total and the major, never toward distribution or AD. */
+function originBarsAttributeSlots(card: Card): boolean {
+  return (
+    card.origin === 'advancedPlacement' ||
+    card.origin === 'internationalBaccalaureate'
+  );
+}
+
+function slotNeedsAttribute(slot: Slot): boolean {
+  return slot.filter.include.some(sel => sel.kind === 'attribute');
+}
+
 function emptyProgress(): Progress {
   return {
     rulesMet: 0,
+    rulesClaimed: 0,
     rulesCheckable: 0,
     creditsMet: 0,
     creditsRequired: 0,
@@ -122,6 +144,7 @@ function emptyProgress(): Progress {
 function addProgress(a: Progress, b: Progress): Progress {
   return {
     rulesMet: a.rulesMet + b.rulesMet,
+    rulesClaimed: a.rulesClaimed + b.rulesClaimed,
     rulesCheckable: a.rulesCheckable + b.rulesCheckable,
     creditsMet: a.creditsMet + b.creditsMet,
     creditsRequired: a.creditsRequired + b.creditsRequired,
@@ -133,15 +156,22 @@ function addProgress(a: Progress, b: Progress): Progress {
 
 type Assignment = Map<RuleId, Card[]>;
 
+type Matching = {
+  assigned: Assignment;
+  /** Cards sitting in a slot by the student's claim, not by the filter. */
+  claimed: Set<EntryId>;
+};
+
 function matchCards(
   program: Program,
   cards: Card[],
   facts: CourseFacts,
   warnings: Warning[],
-): Assignment {
+): Matching {
   const slots: Slot[] = [];
   flattenSlots(program.root, slots);
   const assigned: Assignment = new Map();
+  const claimed = new Set<EntryId>();
   const slotTaken = new Array<boolean>(slots.length).fill(false);
   const free: Card[] = [];
   const ruleIds = new Set(slots.map(s => s.rule));
@@ -173,16 +203,35 @@ function matchCards(
     }
     give(slotIndex, card);
     const slot = slots[slotIndex];
-    if (
-      slot !== undefined &&
-      card.code !== undefined &&
-      card.term !== undefined &&
-      filterMatches(slot.filter, card.code, facts) === 'no'
-    ) {
+    if (slot === undefined) {
+      continue;
+    }
+    // A pin the filter rejects is a claim: shown in the slot, never counted
+    // as met, and it must say why. AP/IB on an attribute slot is one too,
+    // whatever the filter says, because Rice's own policy rejects it.
+    const barred = originBarsAttributeSlots(card) && slotNeedsAttribute(slot);
+    const rejected =
+      card.code === undefined ||
+      filterMatches(slot.filter, card.code, facts) === 'no';
+    if (barred && card.origin !== undefined) {
+      claimed.add(card.entry);
       warnings.push({
-        kind: 'ruleChoiceUnmatched',
-        value: {term: card.term, entry: card.entry, rule: choice},
+        kind: 'incomingCreditIneligible',
+        value: {entry: card.entry, rule: choice, origin: card.origin},
       });
+    } else if (rejected) {
+      claimed.add(card.entry);
+      if (card.term !== undefined) {
+        warnings.push({
+          kind: 'ruleChoiceUnmatched',
+          value: {
+            term: card.term,
+            entry: card.entry,
+            rule: choice,
+            basis: card.claims.find(c => c.rule === choice)?.basis,
+          },
+        });
+      }
     }
   }
 
@@ -200,6 +249,9 @@ function matchCards(
     }
     slots.forEach((slot, slotIndex) => {
       if (slotTaken[slotIndex]) {
+        return;
+      }
+      if (originBarsAttributeSlots(card) && slotNeedsAttribute(slot)) {
         return;
       }
       const m = filterMatches(slot.filter, code, facts);
@@ -245,7 +297,7 @@ function matchCards(
       give(slotIndex, card);
     }
   });
-  return assigned;
+  return {assigned, claimed};
 }
 
 function creditsMetBy(cards: Card[]): Credits {
@@ -256,6 +308,7 @@ function evaluateRule(
   rule: Rule,
   program: Program,
   assigned: Assignment,
+  claimed: Set<EntryId>,
   consumed: Set<EntryId>,
   cards: Card[],
   facts: CourseFacts,
@@ -279,15 +332,24 @@ function evaluateRule(
       reason === undefined
         ? {outcome: 'needsStudentCheck'}
         : {outcome: 'needsStudentCheck', confirmed: reason};
-    return {...base, outcome, progress, filledBy: [], children: []};
+    return {
+      ...base,
+      outcome,
+      progress,
+      filledBy: [],
+      claimedBy: [],
+      children: [],
+    };
   }
 
   if (body.kind === 'course') {
     const filled = assigned.get(rule.id) ?? [];
+    const matched = filled.filter(c => !claimed.has(c.entry));
     const progress = emptyProgress();
     progress.rulesCheckable = 1;
-    const met = filled.length >= body.semesters;
+    const met = matched.length >= body.semesters;
     progress.rulesMet = met ? 1 : 0;
+    progress.rulesClaimed = !met && filled.length > matched.length ? 1 : 0;
     progress.creditsMet = creditsMetBy(filled);
     const single =
       body.filter.include.length === 1 &&
@@ -314,6 +376,7 @@ function evaluateRule(
       outcome,
       progress,
       filledBy: filled.map(c => c.entry),
+      claimedBy: filled.filter(c => claimed.has(c.entry)).map(c => c.entry),
       children: [],
     };
   }
@@ -354,6 +417,7 @@ function evaluateRule(
       outcome,
       progress,
       filledBy: matching.map(c => c.entry),
+      claimedBy: [],
       children: [],
     };
   }
@@ -364,6 +428,7 @@ function evaluateRule(
       child,
       program,
       assigned,
+      claimed,
       consumed,
       cards,
       facts,
@@ -420,6 +485,7 @@ function evaluateRule(
     outcome,
     progress,
     filledBy: [],
+    claimedBy: [],
     children,
   };
 }
@@ -441,7 +507,7 @@ function evaluateProgram(
       claims.set(claim.rule, term.id);
     }
   }
-  const assigned = matchCards(program, cards, facts, warnings);
+  const {assigned, claimed} = matchCards(program, cards, facts, warnings);
   const consumed = new Set<EntryId>();
   for (const list of assigned.values()) {
     for (const card of list) {
@@ -452,6 +518,7 @@ function evaluateProgram(
     program.root,
     program,
     assigned,
+    claimed,
     consumed,
     cards,
     facts,
@@ -696,6 +763,7 @@ export function evaluateInterim(bundle: PlanBundle): Report {
   const progress = emptyProgress();
   for (const r of reports) {
     progress.rulesMet += r.progress.rulesMet;
+    progress.rulesClaimed += r.progress.rulesClaimed;
     progress.rulesCheckable += r.progress.rulesCheckable;
     progress.creditsUnknown += r.progress.creditsUnknown;
     progress.selfChecks += r.progress.selfChecks;
@@ -712,6 +780,49 @@ export function evaluateInterim(bundle: PlanBundle): Report {
     engineVersion: INTERIM_ENGINE_VERSION,
     programs: reports,
     progress,
-    warnings: [...matchWarnings, ...warningsFor(bundle, reports, cards)],
+    warnings: [
+      ...matchWarnings,
+      ...warningsFor(bundle, reports, cards),
+      ...doubleCounted(bundle, reports, cards),
+    ],
   };
+}
+
+/** One card in the slots of two non-university programs: Rice caps the overlap; we cannot check the cap. */
+function doubleCounted(
+  bundle: PlanBundle,
+  reports: ProgramReport[],
+  cards: Card[],
+): Warning[] {
+  const programsOf = new Map<EntryId, Set<ProgramId>>();
+  for (const report of reports) {
+    const program = bundle.programs.find(p => p.id === report.program);
+    if (program === undefined || program.kind === 'university') {
+      continue;
+    }
+    const visit = (r: RuleReport): void => {
+      for (const entry of r.filledBy) {
+        const set = programsOf.get(entry) ?? new Set<ProgramId>();
+        set.add(report.program);
+        programsOf.set(entry, set);
+      }
+      r.children.forEach(visit);
+    };
+    visit(report.root);
+  }
+  const out: Warning[] = [];
+  for (const card of cards) {
+    const programs = programsOf.get(card.entry);
+    if (
+      programs !== undefined &&
+      programs.size > 1 &&
+      card.code !== undefined
+    ) {
+      out.push({
+        kind: 'doubleCounted',
+        value: {entry: card.entry, course: card.code, programs: [...programs]},
+      });
+    }
+  }
+  return out;
 }

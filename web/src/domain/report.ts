@@ -4,7 +4,7 @@
  */
 import type {CourseCode, Credits} from './course';
 import type {EntryId, PlanId, ProgramId, RuleId, TermId} from './ids';
-import type {SelfCheckReason} from './plan';
+import type {SelfCheckReason, CreditOrigin, FillBasis} from './plan';
 import type {SourceRef} from './program';
 import type {CatalogYear, Season} from './term';
 
@@ -17,6 +17,8 @@ export type Outcome =
 export type Progress = {
   rulesMet: number;
   rulesCheckable: number;
+  /** Rules held only by a pinned card the filter rejects: "on your say-so", never met. */
+  rulesClaimed: number;
   creditsMet: Credits;
   creditsRequired: Credits;
   /** Above zero, `creditsRequired` is a lower bound and the interface says so. */
@@ -33,6 +35,8 @@ export type RuleReport = {
   progress: Progress;
   /** Board order. Card ids, not codes: a lesson taken eight times is eight cards. */
   filledBy: EntryId[];
+  /** The subset of `filledBy` that sits there by claim, not by match. */
+  claimedBy: EntryId[];
   claimedIn?: TermId;
   children: RuleReport[];
 };
@@ -73,7 +77,17 @@ export type Warning =
     }
   | {
       kind: 'ruleChoiceUnmatched';
-      value: {term: TermId; entry: EntryId; rule: RuleId};
+      value: {term: TermId; entry: EntryId; rule: RuleId; basis?: FillBasis};
+    }
+  /** AP and IB credit never counts toward distribution or Analyzing Diversity (`rice-data.md` §10). */
+  | {
+      kind: 'incomingCreditIneligible';
+      value: {entry: EntryId; rule: RuleId; origin: CreditOrigin};
+    }
+  /** One card filling rules in two programs; Rice limits the overlap and we cannot check it. */
+  | {
+      kind: 'doubleCounted';
+      value: {entry: EntryId; course: CourseCode; programs: ProgramId[]};
     }
   | {
       kind: 'ruleChoiceMissing';

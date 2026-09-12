@@ -13,8 +13,25 @@ export type PlannedCourse = {
   credits: Credits;
   /** At most one rule per program. Never edits the rule. */
   fills: RuleId[];
+  /** Why a pin that no longer matches should count. Without one, the pin is "unsure". */
+  claims?: FillClaim[];
   note?: string;
 };
+
+/**
+ * The student's stated reason for pinning a card to a rule the filter
+ * rejects. The engine never turns a claim into Met: it shows the card in
+ * the slot, keeps the rule out of the met count, and repeats the basis on
+ * the PDF so an advisor can act on it. Proposed addition to `04-planning.md`.
+ */
+export type FillBasis =
+  | {kind: 'earlierCatalog'; catalogYear?: CatalogYear}
+  | {kind: 'advisorApproved'; who?: string; on?: string}
+  | {kind: 'petitionGranted'; on?: string}
+  | {kind: 'registrarPosted'; on?: string}
+  | {kind: 'unsure'};
+
+export type FillClaim = {rule: RuleId; basis: FillBasis; note?: string};
 
 export type CreditOrigin =
   | 'transfer'
@@ -33,6 +50,7 @@ export type ManualCourseCard = {
   institution?: string;
   riceEquivalent?: CourseCode;
   fills: RuleId[];
+  claims?: FillClaim[];
   note?: string;
 };
 

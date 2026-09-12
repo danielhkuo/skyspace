@@ -18,6 +18,9 @@ import {
   termKindName,
   walkRules,
   type EntryId,
+  type ProgramId,
+  type CatalogYear,
+  type FillClaim,
   type ManualCourseCard,
   type Plan,
   type PlanBundle,
@@ -45,6 +48,10 @@ export type PlanAction =
   | {type: 'moveManualCard'; entry: EntryId; to: TermId | 'incoming'}
   | {type: 'removeEntry'; entry: EntryId}
   | {type: 'setFills'; entry: EntryId; program: Program; rule: RuleId}
+  /** Drop the pin for one program; the matcher decides again. */
+  | {type: 'clearFill'; entry: EntryId; program: Program}
+  /** Why a pin the filter rejects should count. Replaces any claim on that rule. */
+  | {type: 'setFillClaim'; entry: EntryId; claim: FillClaim}
   | {type: 'setCredits'; entry: EntryId; credits: number}
   /** Change a term's kind and label. Refused when cards would be lost; see `termKindChangeBlocker`. */
   | {
@@ -59,6 +66,10 @@ export type PlanAction =
   | {type: 'addTermAfter'; after: TermId}
   /** Remove a term that holds no cards. */
   | {type: 'removeTerm'; term: TermId}
+  | {type: 'renamePlan'; name: string}
+  | {type: 'setCatalogYear'; year: CatalogYear}
+  /** The programs a plan follows; University stays. Pins to a dropped program's rules go with it. */
+  | {type: 'setPrograms'; programs: ProgramId[]; available: Program[]}
   | {
       type: 'confirmSelfCheck';
       rule: RuleId;
@@ -330,6 +341,24 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
       return mapEntry(plan, action.entry, card => ({
         ...card,
         fills: [...card.fills.filter(r => !inProgram.has(r)), action.rule],
+        claims: (card.claims ?? []).filter(c => !inProgram.has(c.rule)),
+      }));
+    }
+    case 'setFillClaim':
+      return mapEntry(plan, action.entry, card => ({
+        ...card,
+        claims: [
+          ...(card.claims ?? []).filter(c => c.rule !== action.claim.rule),
+          action.claim,
+        ],
+      }));
+    case 'clearFill': {
+      const inProgram = new Set<RuleId>();
+      walkRules(action.program.root, r => inProgram.add(r.id));
+      return mapEntry(plan, action.entry, card => ({
+        ...card,
+        fills: card.fills.filter(r => !inProgram.has(r)),
+        claims: (card.claims ?? []).filter(c => !inProgram.has(c.rule)),
       }));
     }
     case 'setCredits':
@@ -399,6 +428,55 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
         ...plan,
         terms: [...plan.terms, term].sort((a, b) =>
           compareTermPosition(a.position, b.position),
+        ),
+      };
+    }
+    case 'renamePlan':
+      return {
+        ...plan,
+        name: action.name.trim() === '' ? plan.name : action.name.trim(),
+      };
+    case 'setCatalogYear':
+      return {...plan, catalogYear: action.year};
+    case 'setPrograms': {
+      const dropped = new Set<RuleId>();
+      for (const program of action.available) {
+        if (
+          plan.programs.includes(program.id) &&
+          !action.programs.includes(program.id)
+        ) {
+          walkRules(program.root, r => dropped.add(r.id));
+        }
+      }
+      const strip = <T extends {fills: RuleId[]; claims?: FillClaim[]}>(
+        card: T,
+      ): T => ({
+        ...card,
+        fills: card.fills.filter(r => !dropped.has(r)),
+        claims: (card.claims ?? []).filter(c => !dropped.has(c.rule)),
+      });
+      return {
+        ...plan,
+        programs: action.programs,
+        selfChecks: plan.selfChecks.filter(s => !dropped.has(s.rule)),
+        incomingCredit: plan.incomingCredit.map(strip),
+        terms: plan.terms.map(term =>
+          isRiceTerm(term.kind)
+            ? {
+                ...term,
+                kind: {
+                  rice: {
+                    ...term.kind.rice,
+                    courses: term.kind.rice.courses.map(strip),
+                  },
+                },
+              }
+            : isAwayTerm(term.kind)
+              ? {
+                  ...term,
+                  kind: {away: {cards: term.kind.away.cards.map(strip)}},
+                }
+              : term,
         ),
       };
     }

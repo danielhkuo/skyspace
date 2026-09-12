@@ -5,11 +5,80 @@
 import {
   formatCourseCode,
   shortTermLabel,
+  walkRules,
+  type CreditOrigin,
+  type FillBasis,
   type PlacementPreview,
   type Plan,
+  type Program,
+  type RuleId,
+  type SelfCheckReason,
   type TermId,
   type Warning,
 } from '../domain';
+
+export const FILL_BASIS_LABEL: Record<FillBasis['kind'], string> = {
+  earlierCatalog: 'It counted under the catalog year I took it',
+  advisorApproved: 'My advisor approved the substitution',
+  petitionGranted: 'A petition was granted',
+  registrarPosted: 'The registrar posted it on my degree audit',
+  unsure: "I'm not sure it counts",
+};
+
+const ORIGIN_NAME: Record<CreditOrigin, string> = {
+  transfer: 'Transfer',
+  advancedPlacement: 'AP',
+  internationalBaccalaureate: 'IB',
+  studyAbroad: 'Study abroad',
+  other: 'Outside',
+};
+
+/** The first sentence of an unmatched-pin warning: what the student said, or that they said nothing. */
+export function basisText(basis: FillBasis | undefined): string {
+  switch (basis?.kind) {
+    case 'earlierCatalog':
+      return `Doesn't match this rule in the plan's catalog year; you said it counted${basis.catalogYear === undefined ? '' : ` in ${basis.catalogYear}-${String(basis.catalogYear + 1).slice(2)}`}.`;
+    case 'advisorApproved':
+      return `Doesn't match this rule as published; you recorded an advisor-approved substitution${basis.who === undefined ? '' : ` (${basis.who}${basis.on === undefined ? '' : `, ${basis.on}`})`}.`;
+    case 'petitionGranted':
+      return `Doesn't match this rule as published; you recorded a granted petition${basis.on === undefined ? '' : ` (${basis.on})`}.`;
+    case 'registrarPosted':
+      return "Doesn't match this rule as published; you recorded that the registrar posted it on your degree audit.";
+    case 'unsure':
+    case undefined:
+      return "Doesn't match this rule as published, and no reason is recorded.";
+  }
+}
+
+export const SELF_CHECK_REASON_LABEL: Record<SelfCheckReason, string> = {
+  transfer: 'Transfer credit',
+  apOrIb: 'AP or IB',
+  studyAbroad: 'Study abroad',
+  advisorApproved: 'Advisor-approved substitution',
+  other: 'Other',
+};
+
+/** "Core › COMP 140" for every rule of a program: the area, then the rule. */
+export function rulePaths(program: Program): Map<RuleId, string> {
+  const paths = new Map<RuleId, string>();
+  const root = program.root;
+  if (root.body.kind !== 'all' && root.body.kind !== 'select') {
+    paths.set(root.id, root.label);
+    return paths;
+  }
+  for (const area of root.body.of) {
+    const short = area.label.replace(/ Requirements?$/i, '');
+    walkRules(area, rule => {
+      paths.set(
+        rule.id,
+        rule === area || rule.label === area.label
+          ? area.label
+          : `${short} › ${rule.label}`,
+      );
+    });
+  }
+  return paths;
+}
 
 export function termName(plan: Plan, id: TermId): string {
   const term = plan.terms.find(t => t.id === id);
@@ -30,7 +99,11 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'programYearSubstituted':
       return `Evaluated with the ${warning.value.used}-${String(warning.value.used + 1).slice(2)} rules instead.`;
     case 'ruleChoiceUnmatched':
-      return "Doesn't match this rule · your choice.";
+      return `${basisText(warning.value.basis)} Skyspace can't verify Rice will count it; check your degree audit in Esther or ask your advisor.`;
+    case 'incomingCreditIneligible':
+      return `${ORIGIN_NAME[warning.value.origin]} credit counts toward your total and your major, not toward distribution or Analyzing Diversity. Not counted here; your Esther degree audit shows what the registrar posted.`;
+    case 'doubleCounted':
+      return 'Counted toward two programs. Rice limits how many courses may overlap, and Skyspace cannot check that limit; ask your advisor.';
     case 'ruleChoiceMissing':
       return warning.value.retired
         ? 'The rule you chose was retired in review.'
@@ -74,6 +147,10 @@ export function warningSubject(warning: Warning): string {
       return formatCourseCode(warning.value.blocked);
     case 'selfCheck':
       return warning.value.label;
+    case 'incomingCreditIneligible':
+      return 'Incoming credit';
+    case 'doubleCounted':
+      return formatCourseCode(warning.value.course);
     case 'overSemesterLoad':
     case 'ruleChoiceUnmatched':
     case 'ruleChoiceMissing':
@@ -119,7 +196,11 @@ export function warningChip(warning: Warning): string | undefined {
     case 'duplicateCourse':
       return 'Also elsewhere in the plan';
     case 'ruleChoiceUnmatched':
-      return "Doesn't match this rule · your choice";
+      return 'On your say-so · not verified';
+    case 'incomingCreditIneligible':
+      return 'AP/IB: not for distribution';
+    case 'doubleCounted':
+      return 'Counted in two programs';
     case 'prerequisiteUnparsed':
       return 'Prerequisites could not be read';
     default:

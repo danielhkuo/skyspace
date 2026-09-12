@@ -28,6 +28,7 @@ type CardMenuProps = {
   dispatch: (action: PlanAction) => void;
   dropOn: (payload: DragPayload, target: DropTarget) => void;
   onPark: (course: CourseCode) => void;
+  onChooseRule: () => void;
 };
 
 /**
@@ -44,6 +45,7 @@ export function CardMenu({
   dispatch,
   dropOn,
   onPark,
+  onChooseRule,
 }: CardMenuProps) {
   const [previews, setPreviews] = useState<Map<TermId, PlacementPreview>>(
     new Map(),
@@ -92,6 +94,12 @@ export function CardMenu({
       items={[
         {type: 'section', title: 'Move to…', id: 'move', items: moveItems},
         {type: 'divider'},
+        {
+          id: 'fill',
+          label: 'Which rule it fills…',
+          description: 'Pin it to a rule, or let Skyspace decide',
+          onClick: onChooseRule,
+        },
         {
           id: 'park',
           label: 'Park in Saved',
