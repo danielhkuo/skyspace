@@ -1,0 +1,6 @@
+# Words that are proper nouns, not code identifiers.
+# clippy::doc_markdown fires on intra-word capitals, so each of these would
+# otherwise need backticks in every doc comment that mentions it.
+# "Skyspace" is deliberately absent: it has no intra-word capital and does not
+# trip the lint. ".." keeps clippy's own default list as well.
+doc-valid-idents = ["CourseLeaf", "NetID", "WebAssembly", "PostgreSQL", ".."]

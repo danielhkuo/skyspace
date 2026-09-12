@@ -1,0 +1,13 @@
+[package]
+name = "skyspace-core"
+description = "Pure degree-requirement and scheduling engine for Skyspace."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+
+[dev-dependencies]

@@ -1,18 +1,27 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 build/
+target/
+*.tsbuildinfo
+
+# Environment
 .env
 .env.*
 !.env.template
 
-# Pulled data — regenerate with the scripts, do not commit
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
+# Planning documents stay local
+docs/
+
+# Pulled Rice data. Regenerate with the scripts in scripts/
+/*.json
+!/package.json
 data/
 *.gz
 
+# Editor and os
 .DS_Store
 *.log
 .idea/
