@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.template
+
+# Pulled data — regenerate with the scripts, do not commit
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+data/
+*.gz
+
+.DS_Store
+*.log
+.idea/
+.vscode/
