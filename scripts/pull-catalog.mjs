@@ -85,7 +85,11 @@ const parseRows = html =>
       );
 
       const mtg = cell(row, 'cls-mtg');
-      const meetingRaw = decode(mtg.match(/data-mtg-type="CLAS"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/)?.[1]?.replace(/<[^>]+>/g, '') ?? '');
+      // Rice emits one inner <div> per meeting pattern (COMP 222: "3:00PM - 3:50PM MWF" then "4:00PM - 5:15PM R").
+      const clasInner = mtg.match(/data-mtg-type="CLAS"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/)?.[1] ?? '';
+      const meetings = [...clasInner.matchAll(/<div[^>]*>([\s\S]*?)<\/div>/g)]
+        .map(([, inner]) => parseMeeting(decode(inner.replace(/<[^>]+>/g, ''))))
+        .filter(Boolean);
       const finalExam = decode(mtg.match(/data-mtg-type="FINL"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/)?.[1]?.replace(/<[^>]+>/g, '') ?? '');
 
       return {
@@ -97,7 +101,7 @@ const parseRows = html =>
         title: text(cell(row, 'cls-ttl')),
         partOfTerm: text(cell(row, 'cls-ses')),
         instructors,
-        meeting: parseMeeting(meetingRaw),
+        meetings,
         finalExam: finalExam || null,
         credits: text(cell(row, 'cls-crd')),
         detailUrl: `${BASE}.cat?p_action=COURSE&p_term=${TERM}&p_crn=${crn}`,
