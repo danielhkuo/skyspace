@@ -1,13 +1,20 @@
 import {AppShell} from '@astryxdesign/core/AppShell';
+import {Avatar} from '@astryxdesign/core/Avatar';
+import {Banner} from '@astryxdesign/core/Banner';
+import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TopNav, TopNavItem} from '@astryxdesign/core/TopNav';
-import {Outlet, useLocation} from 'react-router';
+import {useEffect, useState} from 'react';
+import {Outlet, useLocation, useNavigate} from 'react-router';
+
+import {dataSource} from '../datasource';
 
 import {DemoBanner} from './DemoBanner';
 import {NarrowViewportNotice} from './NarrowViewportNotice';
+import {useSession} from './useSession';
 import {MIN_SUPPORTED_WIDTH, useViewportWidth} from './useViewportWidth';
 
 const NAV = [
@@ -20,6 +27,12 @@ const NAV = [
 export function Shell() {
   const width = useViewportWidth();
   const {pathname} = useLocation();
+  const navigate = useNavigate();
+  const {session, signOut} = useSession();
+  const [staleSince, setStaleSince] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    void dataSource.freshness().then(f => setStaleSince(f.staleSince));
+  }, []);
 
   if (width < MIN_SUPPORTED_WIDTH) {
     return <NarrowViewportNotice />;
@@ -58,13 +71,52 @@ export function Shell() {
                 size="sm"
                 endContent={<Icon icon="chevronDown" size="sm" />}
               />
-              <Button label="Sign in" variant="secondary" size="sm" />
+              {session ? (
+                <DropdownMenu
+                  button={{
+                    label: session.name,
+                    variant: 'ghost',
+                    size: 'sm',
+                    icon: <Avatar name={session.name} size="sm" />,
+                  }}
+                  alignment="end"
+                  items={[
+                    {
+                      id: 'account',
+                      label: 'Account and privacy',
+                      onClick: () => void navigate('/account'),
+                    },
+                    {type: 'divider'},
+                    {
+                      id: 'out',
+                      label: 'Sign out',
+                      onClick: () => void signOut(),
+                    },
+                  ]}
+                />
+              ) : (
+                <Button
+                  label="Sign in"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void navigate('/sign-in')}
+                />
+              )}
             </Stack>
           }
         />
       }
     >
       <Stack width="100%" height="100%" gap={0}>
+        {staleSince !== undefined && (
+          <Banner
+            status="warning"
+            container="section"
+            collapsible={false}
+            isDismissable
+            title={`Rice's course site has not answered since ${staleSince}. Showing the last good data.`}
+          />
+        )}
         <DemoBanner />
         <StackItem size="fill">
           <Outlet />

@@ -30,6 +30,9 @@ import {AddCourseDialog} from './AddCourseDialog';
 import {Board} from './Board';
 import {CardMenu} from './CardMenu';
 import {ManualCardMenu} from './ManualCardMenu';
+import {PlanSettingsDialog} from './PlanSettingsDialog';
+import {RuleChoiceDialog} from './RuleChoiceDialog';
+import {SelfCheckDialog} from './SelfCheckDialog';
 import {DragGhost} from './DragGhost';
 import {EditTermDialog} from './EditTermDialog';
 import {ruleHit} from './paint';
@@ -41,6 +44,7 @@ import {TermPickerDialog} from './TermPickerDialog';
 import {ruleTargetKey, useBoardDrag} from './useBoardDrag';
 import {locateEntry, usePlan, termRemoveBlocker} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
+import {LoadErrorCard} from '../shell/LoadErrorCard';
 
 const SIDEBAR_WIDTH = 400;
 
@@ -50,6 +54,8 @@ function entryOf(warning: Warning): EntryId | undefined {
     case 'ruleChoiceUnmatched':
     case 'ruleChoiceMissing':
     case 'attributeUnknown':
+    case 'incomingCreditIneligible':
+    case 'doubleCounted':
       return warning.value.entry;
     default:
       return undefined;
@@ -59,24 +65,49 @@ function entryOf(warning: Warning): EntryId | undefined {
 /** Loads the plan from the data source, then hands it to the board. */
 export function PlanPage() {
   const [loaded, setLoaded] = useState<
-    | {bundle: PlanBundle; favorites: CourseCode[]; candidates: CourseCode[]}
+    | {
+        bundle: PlanBundle;
+        favorites: CourseCode[];
+        candidates: CourseCode[];
+        available: Program[];
+      }
     | undefined
   >(undefined);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
       dataSource.loadBundle(),
       dataSource.loadFavorites(),
       dataSource.catalogCandidates(),
-    ]).then(([bundle, favorites, candidates]) => {
-      if (!cancelled) {
-        setLoaded({bundle, favorites, candidates});
-      }
-    });
+      dataSource.listPrograms(),
+    ])
+      .then(([bundle, favorites, candidates, available]) => {
+        if (!cancelled) {
+          setLoaded({bundle, favorites, candidates, available});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailed(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
+  if (failed) {
+    return (
+      <LoadErrorCard
+        what="your plan"
+        onRetry={() => {
+          setFailed(false);
+          setAttempt(n => n + 1);
+        }}
+      />
+    );
+  }
   if (loaded === undefined) {
     return (
       <Stack padding={4}>
@@ -89,17 +120,20 @@ export function PlanPage() {
       initial={loaded.bundle}
       initialFavorites={loaded.favorites}
       catalogCandidates={loaded.candidates}
+      available={loaded.available}
     />
   );
 }
 
 type PlanBoardPageProps = {
+  available: Program[];
   initial: PlanBundle;
   initialFavorites: CourseCode[];
   catalogCandidates: CourseCode[];
 };
 
 function PlanBoardPage({
+  available,
   initial,
   initialFavorites,
   catalogCandidates,
@@ -121,6 +155,13 @@ function PlanBoardPage({
   }, [favorites, initialFavorites]);
   const [addingTo, setAddingTo] = useState<TermId | undefined>(undefined);
   const [editingTerm, setEditingTerm] = useState<TermId | undefined>(undefined);
+  const [choosingRule, setChoosingRule] = useState<EntryId | undefined>(
+    undefined,
+  );
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selfCheck, setSelfCheck] = useState<
+    {program: Program; rule: RuleReport} | undefined
+  >(undefined);
   const [picking, setPicking] = useState<
     {course: CourseCode; credits: number} | undefined
   >(undefined);
@@ -258,6 +299,7 @@ function PlanBoardPage({
           dispatch={dispatch}
           dropOn={drag.dropOn}
           onPark={park}
+          onChooseRule={() => setChoosingRule(entry)}
         />
       );
     },
@@ -271,6 +313,7 @@ function PlanBoardPage({
         where={where}
         plan={bundle.plan}
         dispatch={dispatch}
+        onChooseRule={() => setChoosingRule(card.id)}
       />
     ),
     [bundle.plan, dispatch],
@@ -366,6 +409,7 @@ function PlanBoardPage({
         report={report}
         warningCount={report.warnings.length}
         onToggleWarnings={() => setShowWarnings(v => !v)}
+        onOpenSettings={() => setSettingsOpen(true)}
         extraActions={
           desktop ? undefined : (
             <>
@@ -461,6 +505,10 @@ function PlanBoardPage({
                 raisedRules={drag.state?.raisedRules}
                 renderSuggestions={renderSuggestions}
                 wrapRule={wrapRule}
+                onOpenSelfCheck={(program, rule) =>
+                  setSelfCheck({program, rule})
+                }
+                onChooseRule={setChoosingRule}
               />
             </Stack>
           )}
@@ -502,6 +550,8 @@ function PlanBoardPage({
             report={report}
             dispatch={dispatch}
             renderSuggestions={renderSuggestions}
+            onOpenSelfCheck={(program, rule) => setSelfCheck({program, rule})}
+            onChooseRule={setChoosingRule}
           />
         </BottomSheet>
       )}
@@ -538,6 +588,67 @@ function PlanBoardPage({
           setEditingTerm(undefined);
         }}
       />
+      {(() => {
+        if (choosingRule === undefined) {
+          return null;
+        }
+        const located = locateEntry(bundle.plan, choosingRule);
+        const course =
+          located === undefined
+            ? undefined
+            : located.where === 'rice'
+              ? located.course.course
+              : located.card.riceEquivalent;
+        const fills =
+          located === undefined
+            ? []
+            : located.where === 'rice'
+              ? located.course.fills
+              : located.card.fills;
+        const claims =
+          located === undefined
+            ? []
+            : ((located.where === 'rice'
+                ? located.course.claims
+                : located.card.claims) ?? []);
+        const label =
+          located === undefined
+            ? ''
+            : located.where === 'rice'
+              ? formatCourseCode(located.course.course)
+              : located.card.code;
+        return located === undefined ? null : (
+          <RuleChoiceDialog
+            entry={choosingRule}
+            course={course}
+            label={label}
+            fills={fills}
+            claims={claims}
+            bundle={bundle}
+            dispatch={dispatch}
+            onClose={() => setChoosingRule(undefined)}
+          />
+        );
+      })()}
+      {settingsOpen && (
+        <PlanSettingsDialog
+          bundle={bundle}
+          available={available}
+          dispatch={dispatch}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {selfCheck !== undefined && (
+        <SelfCheckDialog
+          program={selfCheck.program}
+          rule={selfCheck.rule}
+          existing={bundle.plan.selfChecks.find(
+            s => s.rule === selfCheck.rule.rule,
+          )}
+          dispatch={dispatch}
+          onClose={() => setSelfCheck(undefined)}
+        />
+      )}
       <TermPickerDialog
         isOpen={picking !== undefined}
         course={picking?.course}

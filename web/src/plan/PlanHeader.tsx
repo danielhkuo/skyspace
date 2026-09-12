@@ -1,4 +1,6 @@
 import {Badge} from '@astryxdesign/core/Badge';
+import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
+import {useNavigate} from 'react-router';
 import {useSyncExternalStore} from 'react';
 
 import {getSaveStatus, subscribeSaveStatus} from '../datasource/planSaver';
@@ -27,6 +29,7 @@ type PlanHeaderProps = {
   onToggleWarnings: () => void;
   /** Tablet: the Saved and Requirements sheet buttons. */
   extraActions?: ReactNode;
+  onOpenSettings: () => void;
 };
 
 function summaryLine(plan: Plan, programs: Program[]): string {
@@ -53,7 +56,9 @@ export function PlanHeader({
   warningCount,
   onToggleWarnings,
   extraActions,
+  onOpenSettings,
 }: PlanHeaderProps) {
+  const navigate = useNavigate();
   const {progress} = report;
   return (
     <Section
@@ -76,14 +81,36 @@ export function PlanHeader({
             <Text as="p" size="lg" weight="semibold" textWrap="nowrap">
               {plan.name}
             </Text>
+            <DropdownMenu
+              button={{
+                label: 'Switch plan',
+                variant: 'ghost',
+                size: 'sm',
+                isIconOnly: true,
+                icon: <Icon icon="chevronDown" size="sm" />,
+              }}
+              items={[
+                {
+                  id: 'current',
+                  label: plan.name,
+                  description: 'Current plan',
+                  isDisabled: true,
+                },
+                {type: 'divider'},
+                {
+                  id: 'new',
+                  label: 'Start a new plan…',
+                  description: 'Programs, timeline, incoming credit',
+                  onClick: () => void navigate('/plan/new'),
+                },
+              ]}
+            />
             <Button
-              label="Switch plan"
+              label="Settings"
               variant="ghost"
               size="sm"
-              isIconOnly
-              icon={<Icon icon="chevronDown" size="sm" />}
+              onClick={onOpenSettings}
             />
-            <Button label="Settings" variant="ghost" size="sm" />
           </Stack>
           <Text type="supporting" maxLines={1}>
             {summaryLine(plan, programs)} · <SaveStatusText />

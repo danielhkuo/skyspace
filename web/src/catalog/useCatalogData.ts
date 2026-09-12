@@ -14,6 +14,8 @@ export type CatalogData = {
 export type CatalogState = {
   /** `undefined` while the load is in flight. */
   data: CatalogData | undefined;
+  failed: boolean;
+  retry: () => void;
   /** After "Add to plan" saved: keep the page's copy of the plan current. */
   setPlan: (plan: Plan) => void;
 };
@@ -21,6 +23,12 @@ export type CatalogState = {
 /** One load per mount. */
 export function useCatalogData(): CatalogState {
   const [data, setData] = useState<CatalogData | undefined>(undefined);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => {
+    setFailed(false);
+    setAttempt(n => n + 1);
+  }, []);
   const setPlan = useCallback((plan: Plan) => {
     setData(prev =>
       prev === undefined ? prev : {...prev, bundle: {...prev.bundle, plan}},
@@ -38,10 +46,14 @@ export function useCatalogData(): CatalogState {
       if (live) {
         setData({term, subjects, partsOfTerm, bundle});
       }
-    })();
+    })().catch(() => {
+      if (live) {
+        setFailed(true);
+      }
+    });
     return () => {
       live = false;
     };
-  }, []);
-  return {data, setPlan};
+  }, [attempt]);
+  return {data, failed, retry, setPlan};
 }

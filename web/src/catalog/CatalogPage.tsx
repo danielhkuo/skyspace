@@ -31,6 +31,7 @@ import {
 import {engine} from '../engine';
 import {FavoritesFooter} from './FavoritesFooter';
 import {FilterRail, SearchBox} from './FilterRail';
+import {LoadErrorCard} from '../shell/LoadErrorCard';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
 import {
   activeFilterCount,
@@ -68,7 +69,7 @@ type Results = {key: string; rows: CourseSection[]; page: SectionPage};
 
 /** Find sections in a term: rail, results, pane. The whole search is in the URL. */
 export function CatalogPage() {
-  const {data, setPlan} = useCatalogData();
+  const {data, failed, retry, setPlan} = useCatalogData();
   const addToPlan = useAddToPlan(data?.bundle, setPlan);
   const favorites = useFavorites();
   const [params, setParams] = useSearchParams();
@@ -351,6 +352,10 @@ export function CatalogPage() {
         </SectionDetailBody>
       </Stack>
     );
+
+  if (failed) {
+    return <LoadErrorCard what="the catalog" onRetry={retry} />;
+  }
 
   if (!desktop) {
     const filters = activeFilterCount(query);

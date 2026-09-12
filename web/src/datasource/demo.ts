@@ -13,6 +13,7 @@ import {
   type Plan,
   type PlanBundle,
   type PlanId,
+  type Program,
   type Section,
   type SectionPage,
   type TermCode,
@@ -27,10 +28,13 @@ import {
   FALL_2026_LABEL,
   fallSections,
 } from '../fixtures/fallSections';
-import type {DataSource} from './types';
+import type {DataSource, RuleReport, Session} from './types';
 
 const PLAN_KEY = 'skyspace.demo.plan.v1.';
 const FAVORITES_KEY = 'skyspace.demo.favorites.v1';
+const REPORTS_KEY = 'skyspace.demo.rule-reports.v1';
+const CURRENT_PLAN_KEY = 'skyspace.demo.current-plan.v1';
+const SESSION_KEY = 'skyspace.demo.session.v1';
 
 function read<T>(key: string, isValid: (v: unknown) => v is T): T | undefined {
   try {
@@ -98,6 +102,16 @@ const isPlan = (v: unknown): v is Plan =>
   Array.isArray(v['terms']) &&
   v['terms'].every(isTerm);
 
+const isSession = (v: unknown): v is Session =>
+  isRecord(v) &&
+  typeof v['email'] === 'string' &&
+  typeof v['name'] === 'string';
+
+/** "jw12@rice.edu" -> "jw12": the demo has no directory to ask. */
+function nameFromEmail(email: string): string {
+  return email.split('@')[0] ?? email;
+}
+
 const isCourseCodes = (v: unknown): v is CourseCode[] =>
   Array.isArray(v) &&
   v.every(c => typeof c === 'object' && c !== null && 'subject' in c);
@@ -106,16 +120,29 @@ export const demoDataSource: DataSource = {
   kind: 'demo',
 
   async loadBundle(): Promise<PlanBundle> {
-    const saved = read(PLAN_KEY + fixtureBundle.plan.id, isPlan);
+    // One plan at a time: onboarding replaces it and records the new id.
+    const current =
+      read(CURRENT_PLAN_KEY, (v): v is string => typeof v === 'string') ??
+      fixtureBundle.plan.id;
+    const saved = read(PLAN_KEY + current, isPlan);
     return {...fixtureBundle, plan: saved ?? fixtureBundle.plan};
   },
 
   async savePlan(plan: Plan): Promise<void> {
     write(PLAN_KEY + plan.id, plan);
+    write(CURRENT_PLAN_KEY, plan.id);
   },
 
   async resetPlan(id: PlanId): Promise<void> {
+    const current = read(
+      CURRENT_PLAN_KEY,
+      (v): v is string => typeof v === 'string',
+    );
     remove(PLAN_KEY + id);
+    if (current !== undefined) {
+      remove(PLAN_KEY + current);
+    }
+    remove(CURRENT_PLAN_KEY);
     remove(FAVORITES_KEY);
     // The key an earlier build used; harmless to clear.
     remove(`skyspace.plan.v1.${id}`);
@@ -181,5 +208,42 @@ export const demoDataSource: DataSource = {
 
   async listPartsOfTerm(term: TermCode): Promise<string[]> {
     return term === FALL_2026 ? partsOfTermIn(fallSections) : [];
+  },
+
+  async listPrograms(): Promise<Program[]> {
+    return fixtureBundle.programs;
+  },
+
+  async session(): Promise<Session | undefined> {
+    return read(SESSION_KEY, isSession);
+  },
+
+  async signIn(email: string): Promise<Session> {
+    const session = {email, name: nameFromEmail(email)};
+    write(SESSION_KEY, session);
+    return session;
+  },
+
+  async signOut(): Promise<void> {
+    remove(SESSION_KEY);
+  },
+
+  async deleteAccount(): Promise<void> {
+    await demoDataSource.resetPlan(fixtureBundle.plan.id);
+    remove(REPORTS_KEY);
+    remove(SESSION_KEY);
+  },
+
+  async freshness() {
+    return {};
+  },
+
+  async reportRule(report: RuleReport): Promise<void> {
+    const existing =
+      read(REPORTS_KEY, (v): v is RuleReport[] => Array.isArray(v)) ?? [];
+    write(REPORTS_KEY, [
+      ...existing,
+      {...report, at: new Date().toISOString()},
+    ]);
   },
 };
