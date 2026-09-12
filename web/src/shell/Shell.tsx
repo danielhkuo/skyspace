@@ -16,6 +16,14 @@ const NAV = [
   {label: 'Plan', href: '/plan'},
 ] as const;
 
+/** A class page is the catalog's detail page, so Catalog stays lit there. */
+function isSelectedNav(href: string, pathname: string): boolean {
+  return (
+    pathname.startsWith(href) ||
+    (href === '/catalog' && pathname.startsWith('/class'))
+  );
+}
+
 /** The frame every page shares: top bar, then the routed page. */
 export function Shell() {
   const width = useViewportWidth();
@@ -45,7 +53,7 @@ export function Shell() {
                   key={item.href}
                   label={item.label}
                   href={item.href}
-                  isSelected={pathname.startsWith(item.href)}
+                  isSelected={isSelectedNav(item.href, pathname)}
                 />
               ))}
             </Stack>
