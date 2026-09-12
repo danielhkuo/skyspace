@@ -208,10 +208,22 @@ export const universityProgram: Program = {
           'GRP3',
           'Distribution Group III',
         ),
-        courseRule(RULES.ad, 'Analyzing Diversity', {
-          include: [{kind: 'attribute', attribute: 'AD'}],
-          exclude: [],
-        }),
+        // A credits rule with scope `any`, not a slot: the AD course is the
+        // same card that fills a distribution slot, and must count for both.
+        {
+          id: RULES.ad,
+          label: 'Analyzing Diversity',
+          source: universitySource,
+          body: {
+            kind: 'credits',
+            minimum: creditsFromHours(1),
+            scope: 'any',
+            from: {
+              include: [{kind: 'attribute', attribute: 'AD'}],
+              exclude: [],
+            },
+          },
+        },
         courseRule(RULES.lpap, 'LPAP', {
           include: [{kind: 'subject', subject: 'LPAP'}],
           exclude: [],

@@ -186,29 +186,65 @@ function matchCards(
     }
   }
 
-  // Greedy: document-order slots, board-order cards. Interim only.
-  for (const card of free) {
-    if (card.code === undefined) {
-      continue;
+  // Maximum bipartite matching by augmenting paths (`03-requirements.md`
+  // "Matching"): slots in document order, candidates in board order, so the
+  // result is deterministic. Greedy gets the COMP 140 case wrong: a card that
+  // fits a core slot and a distribution slot must leave the distribution slot
+  // for the card that fits nothing else.
+  const candidates: number[][] = slots.map(() => []);
+  const unknownWarned = new Set<EntryId>();
+  free.forEach((card, cardIndex) => {
+    const code = card.code;
+    if (code === undefined) {
+      return;
     }
-    for (let i = 0; i < slots.length; i += 1) {
-      const slot = slots[i];
-      if (slot === undefined || slotTaken[i]) {
-        continue;
+    slots.forEach((slot, slotIndex) => {
+      if (slotTaken[slotIndex]) {
+        return;
       }
-      const m = filterMatches(slot.filter, card.code, facts);
+      const m = filterMatches(slot.filter, code, facts);
       if (m === 'yes') {
-        give(i, card);
-        break;
-      }
-      if (m === 'unknown' && card.term !== undefined) {
+        candidates[slotIndex]?.push(cardIndex);
+      } else if (
+        m === 'unknown' &&
+        card.term !== undefined &&
+        !unknownWarned.has(card.entry)
+      ) {
+        unknownWarned.add(card.entry);
         warnings.push({
           kind: 'attributeUnknown',
-          value: {term: card.term, entry: card.entry, course: card.code},
+          value: {term: card.term, entry: card.entry, course: code},
         });
       }
+    });
+  });
+  const slotOfCard = new Array<number | undefined>(free.length).fill(undefined);
+  const augment = (slotIndex: number, seen: Set<number>): boolean => {
+    for (const cardIndex of candidates[slotIndex] ?? []) {
+      if (seen.has(cardIndex)) {
+        continue;
+      }
+      seen.add(cardIndex);
+      const holder = slotOfCard[cardIndex];
+      if (holder === undefined || augment(holder, seen)) {
+        slotOfCard[cardIndex] = slotIndex;
+        return true;
+      }
+    }
+    return false;
+  };
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+    if (!slotTaken[slotIndex]) {
+      augment(slotIndex, new Set());
     }
   }
+  // Hand out in board order so `filledBy` and credit sums stay board-ordered.
+  free.forEach((card, cardIndex) => {
+    const slotIndex = slotOfCard[cardIndex];
+    if (slotIndex !== undefined) {
+      give(slotIndex, card);
+    }
+  });
   return assigned;
 }
 
@@ -338,6 +374,9 @@ function evaluateRule(
   let progress = emptyProgress();
   let metChildren = 0;
   let checkableChildren = 0;
+  // A self-check the student has not confirmed holds its parent at "partial":
+  // a group is never Met on the strength of something nobody verified.
+  let openSelfChecks = 0;
   for (const child of children) {
     progress = addProgress(progress, child.progress);
     if (child.progress.rulesCheckable > 0) {
@@ -345,6 +384,11 @@ function evaluateRule(
       if (child.outcome.outcome === 'met') {
         metChildren += 1;
       }
+    } else if (
+      child.outcome.outcome === 'needsStudentCheck' &&
+      child.outcome.confirmed === undefined
+    ) {
+      openSelfChecks += 1;
     }
   }
   if (body.kind === 'select') {
@@ -357,8 +401,15 @@ function evaluateRule(
   const met =
     body.kind === 'select'
       ? metChildren >= body.count
-      : checkableChildren === 0 || metChildren === checkableChildren;
-  const anyProgress = children.some(c => c.outcome.outcome !== 'unmet');
+      : openSelfChecks === 0 &&
+        (checkableChildren === 0 || metChildren === checkableChildren);
+  const anyProgress = children.some(
+    c =>
+      c.outcome.outcome === 'met' ||
+      c.outcome.outcome === 'partial' ||
+      (c.outcome.outcome === 'needsStudentCheck' &&
+        c.outcome.confirmed !== undefined),
+  );
   const outcome: Outcome = met
     ? {outcome: 'met'}
     : anyProgress
@@ -457,18 +508,21 @@ function warningsFor(
     string,
     {code: CourseCode; terms: TermId[]; entries: EntryId[]}
   >();
+  // Incoming credit counts as a copy too; it just has no term to name.
   for (const card of cards) {
-    if (card.code === undefined || card.term === undefined) {
+    if (card.code === undefined) {
       continue;
     }
     const key = courseKey(card.code);
     const entry = seen.get(key) ?? {code: card.code, terms: [], entries: []};
-    entry.terms.push(card.term);
+    if (card.term !== undefined) {
+      entry.terms.push(card.term);
+    }
     entry.entries.push(card.entry);
     seen.set(key, entry);
   }
   for (const dup of seen.values()) {
-    if (dup.terms.length < 2) {
+    if (dup.entries.length < 2) {
       continue;
     }
     if (courseInfo(facts, dup.code)?.repeatable) {
@@ -538,6 +592,18 @@ function warningsFor(
             },
           });
         }
+        for (const late of result.later) {
+          out.push({
+            kind: 'prerequisite',
+            value: {
+              term: term.id,
+              course: c.course,
+              prerequisite: late.course,
+              problem: {kind: 'later', value: {prerequisiteTerm: late.term}},
+              publishedFor: row.fact.value.publishedFor,
+            },
+          });
+        }
       }
     }
   }
@@ -591,7 +657,10 @@ function warningsFor(
   for (const report of reports) {
     const program: ProgramId = report.program;
     const visit = (r: RuleReport): void => {
-      if (r.outcome.outcome === 'needsStudentCheck') {
+      if (
+        r.outcome.outcome === 'needsStudentCheck' &&
+        r.outcome.confirmed === undefined
+      ) {
         out.push({
           kind: 'selfCheck',
           value: {program, rule: r.rule, label: r.label, text: r.label},

@@ -7,6 +7,7 @@ import {useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
 
 import {
+  courseInfo,
   courseKey,
   creditRangeMin,
   formatCourseCode,
@@ -19,7 +20,6 @@ import {
   type RuleReport,
 } from '../domain';
 import {engine} from '../engine';
-import {courseInfo} from '../engine/interim/filter';
 import {GripMark} from './marks';
 import {chipStyle, subjectHue} from './paint';
 

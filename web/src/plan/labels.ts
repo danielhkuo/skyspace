@@ -22,7 +22,7 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'fillsNoRequirement':
       return 'Fills no requirement.';
     case 'duplicateCourse':
-      return `Also in ${warning.value.terms.map(t => termName(plan, t)).join(' and ')}.`;
+      return `Also in ${[...new Set(warning.value.terms.map(t => termName(plan, t)))].join(' and ')}.`;
     case 'overSemesterLoad':
       return 'Above the 18 hours Rice allows without written approval. Not a cap.';
     case 'programUnavailable':

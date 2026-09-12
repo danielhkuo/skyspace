@@ -7,6 +7,7 @@ import {
   type CourseCode,
   type CourseFacts,
   type PrereqExpr,
+  type TermId,
   type TermPosition,
 } from '../../domain';
 import {earliest, type TakenIndex} from './taken';
@@ -15,9 +16,19 @@ export type Truth = 'satisfied' | 'missing' | 'unknown';
 
 export type PrereqResult = {
   truth: Truth;
-  /** Named courses that are absent, in the same term, or later. Empty when satisfied. */
+  /** Named courses absent from the plan. Empty when satisfied. */
   missing: CourseCode[];
   sameTerm: CourseCode[];
+  /** Named courses placed in a later term than the course that needs them. */
+  later: {course: CourseCode; term: TermId}[];
+};
+
+type CourseVerdict = {truth: Truth; sameTerm: boolean; later?: TermId};
+
+const NONE: Omit<PrereqResult, 'truth'> = {
+  missing: [],
+  sameTerm: [],
+  later: [],
 };
 
 function courseTruth(
@@ -25,7 +36,7 @@ function courseTruth(
   target: TermPosition,
   index: TakenIndex,
   facts: CourseFacts,
-): {truth: Truth; sameTerm: boolean} {
+): CourseVerdict {
   const placed = earliest(index, facts, code);
   if (placed === undefined) {
     return {truth: 'missing', sameTerm: false};
@@ -37,7 +48,10 @@ function courseTruth(
   if (order < 0) {
     return {truth: 'satisfied', sameTerm: false};
   }
-  return {truth: 'missing', sameTerm: order === 0};
+  if (order === 0) {
+    return {truth: 'missing', sameTerm: true};
+  }
+  return {truth: 'missing', sameTerm: false, later: placed.term};
 }
 
 function allOf(a: Truth, b: Truth): Truth {
@@ -69,26 +83,34 @@ export function evaluatePrereq(
 ): PrereqResult {
   switch (expr.kind) {
     case 'unparsed':
-      return {truth: 'unknown', missing: [], sameTerm: []};
+      return {truth: 'unknown', ...NONE};
     case 'course': {
-      const {truth, sameTerm} = courseTruth(expr.value, target, index, facts);
-      return {
-        truth,
-        missing: truth === 'missing' && !sameTerm ? [expr.value] : [],
-        sameTerm: sameTerm ? [expr.value] : [],
-      };
+      const v = courseTruth(expr.value, target, index, facts);
+      if (v.truth !== 'missing') {
+        return {truth: v.truth, ...NONE};
+      }
+      if (v.sameTerm) {
+        return {truth: 'missing', ...NONE, sameTerm: [expr.value]};
+      }
+      if (v.later !== undefined) {
+        return {
+          truth: 'missing',
+          ...NONE,
+          later: [{course: expr.value, term: v.later}],
+        };
+      }
+      return {truth: 'missing', ...NONE, missing: [expr.value]};
     }
     case 'all': {
-      let truth: Truth = 'satisfied';
-      const missing: CourseCode[] = [];
-      const sameTerm: CourseCode[] = [];
+      const out: PrereqResult = {truth: 'satisfied', ...NONE};
       for (const child of expr.value) {
         const r = evaluatePrereq(child, target, index, facts);
-        truth = allOf(truth, r.truth);
-        missing.push(...r.missing);
-        sameTerm.push(...r.sameTerm);
+        out.truth = allOf(out.truth, r.truth);
+        out.missing = [...out.missing, ...r.missing];
+        out.sameTerm = [...out.sameTerm, ...r.sameTerm];
+        out.later = [...out.later, ...r.later];
       }
-      return {truth, missing, sameTerm};
+      return out;
     }
     case 'any': {
       let truth: Truth = 'missing';
@@ -99,14 +121,16 @@ export function evaluatePrereq(
         truth = anyOf(truth, r.truth);
       }
       if (truth === 'satisfied') {
-        return {truth, missing: [], sameTerm: []};
+        return {truth, ...NONE};
       }
-      // Nothing in the branch is met: name every option so the student can pick one.
-      return {
-        truth,
-        missing: results.flatMap(r => r.missing),
-        sameTerm: results.flatMap(r => r.sameTerm),
-      };
+      // Nothing in the branch is met. One warning, not one per option: the
+      // nearest miss speaks for the group (same term, then later, then absent),
+      // because the wire `Prerequisite` names a single course.
+      const first =
+        results.find(r => r.sameTerm.length > 0) ??
+        results.find(r => r.later.length > 0) ??
+        results.find(r => r.missing.length > 0);
+      return first === undefined ? {truth, ...NONE} : {...first, truth};
     }
   }
 }

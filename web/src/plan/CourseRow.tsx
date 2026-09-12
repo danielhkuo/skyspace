@@ -10,6 +10,7 @@ import type {
 } from 'react';
 
 import {
+  courseInfo,
   formatCourseCode,
   formatCredits,
   type CourseFacts,
@@ -18,7 +19,6 @@ import {
   type PlannedCourse,
   type Warning,
 } from '../domain';
-import {courseInfo} from '../engine/interim/filter';
 import {warningChip} from './labels';
 import {GripMark, HollowMark} from './marks';
 import {
@@ -106,6 +106,11 @@ export function CourseRow({
       style={{
         ...paint,
         ...(minHeight === undefined ? {} : {minHeight}),
+        // The long press must reach us on the whole row, or a touch on the
+        // title scrolls the board and the lift never happens.
+        ...(planned && onPointerDown !== undefined
+          ? {touchAction: 'none'}
+          : {}),
         ...style,
       }}
       data-entry={entry}

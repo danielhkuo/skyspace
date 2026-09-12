@@ -7,6 +7,7 @@ import {
   formatCredits,
   type CourseFacts,
   type EntryId,
+  type ManualCourseCard,
   type Plan,
   type PlanTerm,
   type TermId,
@@ -36,6 +37,10 @@ type BoardProps = {
   onRowPointerDown?: (entry: EntryId, event: PointerEvent<HTMLElement>) => void;
   onRowKeyDown?: (entry: EntryId, event: KeyboardEvent<HTMLElement>) => void;
   renderMenu?: (entry: EntryId, term: TermId) => ReactNode;
+  renderManualMenu?: (
+    card: ManualCourseCard,
+    where: TermId | 'incoming',
+  ) => ReactNode;
   onAddCourse?: (term: TermId) => void;
   renderTermMenu?: (term: PlanTerm) => ReactNode;
   registerTarget?: (key: string, element: HTMLElement | null) => void;
@@ -103,6 +108,7 @@ export function Board({
   onRowPointerDown,
   onRowKeyDown,
   renderMenu,
+  renderManualMenu,
   onAddCourse,
   renderTermMenu,
   registerTarget,
@@ -176,6 +182,7 @@ export function Board({
                   facts={facts}
                   fillsIndex={fillsIndex}
                   warnings={warningsByEntry.get(card.id) ?? []}
+                  menu={renderManualMenu?.(card, 'incoming')}
                 />
               ))}
             </Stack>
@@ -204,6 +211,7 @@ export function Board({
                 onRowPointerDown={onRowPointerDown}
                 onRowKeyDown={onRowKeyDown}
                 renderMenu={renderMenu}
+                renderManualMenu={renderManualMenu}
                 rowMinHeight={rowMinHeight}
                 onAddCourse={() => onAddCourse?.(term.id)}
                 termMenu={renderTermMenu?.(term)}

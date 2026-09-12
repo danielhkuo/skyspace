@@ -1,4 +1,7 @@
 import {Badge} from '@astryxdesign/core/Badge';
+import {useSyncExternalStore} from 'react';
+
+import {getSaveStatus, subscribeSaveStatus} from '../datasource/planSaver';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {Section} from '@astryxdesign/core/Section';
@@ -83,7 +86,7 @@ export function PlanHeader({
             <Button label="Settings" variant="ghost" size="sm" />
           </Stack>
           <Text type="supporting" maxLines={1}>
-            {summaryLine(plan, programs)}
+            {summaryLine(plan, programs)} · <SaveStatusText />
           </Text>
         </Stack>
         <Stack direction="horizontal" gap={2} vAlign="center">
@@ -117,4 +120,19 @@ export function PlanHeader({
       </Stack>
     </Section>
   );
+}
+
+const STATUS_TEXT = {
+  saved: 'Saved',
+  pending: 'Unsaved changes',
+  saving: 'Saving…',
+};
+
+function SaveStatusText() {
+  const status = useSyncExternalStore(
+    subscribeSaveStatus,
+    getSaveStatus,
+    getSaveStatus,
+  );
+  return <>{STATUS_TEXT[status]}</>;
 }

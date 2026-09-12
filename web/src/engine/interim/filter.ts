@@ -5,7 +5,8 @@
  * Kept small and literal so the two cannot drift far.
  */
 import {
-  courseKey,
+  canonical,
+  courseInfo,
   courseLevel,
   sameCourse,
   type CourseCode,
@@ -15,26 +16,11 @@ import {
   type CourseSelector,
 } from '../../domain';
 
+export {canonical, courseInfo};
+
 export type FilterMatch = 'yes' | 'no' | 'unknown';
 
 /** Unknown code comes back unchanged. Every code comparison calls this first. */
-export function canonical(facts: CourseFacts, code: CourseCode): CourseCode {
-  for (const [alias, target] of facts.aliases) {
-    if (sameCourse(alias, code)) {
-      return target;
-    }
-  }
-  return code;
-}
-
-export function courseInfo(
-  facts: CourseFacts,
-  code: CourseCode,
-): CourseInfo | undefined {
-  const key = courseKey(canonical(facts, code));
-  return facts.courses.find(c => courseKey(c.code) === key);
-}
-
 function selectorMatches(
   selector: CourseSelector,
   code: CourseCode,

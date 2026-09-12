@@ -6,6 +6,7 @@ import {Text} from '@astryxdesign/core/Text';
 import type {PointerEvent as ReactPointerEvent} from 'react';
 
 import {
+  courseInfo,
   courseKey,
   creditRangeMin,
   formatCourseCode,
@@ -17,7 +18,6 @@ import {
   type PlanBundle,
   type RuleId,
 } from '../domain';
-import {courseInfo} from '../engine/interim/filter';
 import {GripMark} from './marks';
 import {
   grabbable,

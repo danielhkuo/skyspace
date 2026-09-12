@@ -2,7 +2,13 @@
  * What the engine is given beside the plan: course facts, prerequisite and
  * exclusion rows, and the whole `PlanBundle`. Mirrors `skyspace-core`.
  */
-import type {CourseCode, CreditRange, Credits} from './course';
+import {
+  courseKey,
+  sameCourse,
+  type CourseCode,
+  type CreditRange,
+  type Credits,
+} from './course';
 import type {EntryId, TermId} from './ids';
 import type {Plan} from './plan';
 import type {Attribute, Program} from './program';
@@ -82,3 +88,22 @@ export type Placed = {
   term?: TermId;
   entry?: EntryId;
 };
+
+/** The first code the General Announcements print; aliases (cross-lists) resolve to it. */
+export function canonical(facts: CourseFacts, code: CourseCode): CourseCode {
+  for (const [alias, target] of facts.aliases) {
+    if (sameCourse(alias, code)) {
+      return target;
+    }
+  }
+  return code;
+}
+
+/** What we hold about a course, by canonical code; `undefined` when never scraped. */
+export function courseInfo(
+  facts: CourseFacts,
+  code: CourseCode,
+): CourseInfo | undefined {
+  const key = courseKey(canonical(facts, code));
+  return facts.courses.find(c => courseKey(c.code) === key);
+}

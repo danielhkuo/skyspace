@@ -16,6 +16,7 @@ import {
   termLabel,
   type CourseFacts,
   type EntryId,
+  type ManualCourseCard,
   type PlanTerm,
   type TermId,
   type TermPosition,
@@ -62,6 +63,10 @@ type TermIslandProps = {
     event: React.KeyboardEvent<HTMLElement>,
   ) => void;
   renderMenu?: (entry: EntryId, term: TermId) => ReactNode;
+  renderManualMenu?: (
+    card: ManualCourseCard,
+    where: TermId | 'incoming',
+  ) => ReactNode;
   rowMinHeight?: number;
   onAddCourse?: () => void;
   /** Edit term, Add term after, Remove term. */
@@ -90,6 +95,7 @@ export function TermIsland({
   onRowPointerDown,
   onRowKeyDown,
   renderMenu,
+  renderManualMenu,
   rowMinHeight,
   onAddCourse,
   termMenu,
@@ -121,9 +127,16 @@ export function TermIsland({
 
   if (isRiceTerm(term.kind)) {
     const courses = term.kind.rice.courses;
-    courses.forEach((course, i) => {
-      if (slotIndex === i) {
+    // The slot index counts rows without the lifted card (it is still drawn,
+    // dimmed, in its old place), so walk a separate index that skips it.
+    let visible = 0;
+    courses.forEach(course => {
+      const lifted = course.id === liftedEntry;
+      if (!lifted && slotIndex === visible) {
         rows.push(slot);
+      }
+      if (!lifted) {
+        visible += 1;
       }
       rows.push(
         <CourseRow
@@ -141,7 +154,7 @@ export function TermIsland({
         />,
       );
     });
-    if (slotIndex !== undefined && slotIndex >= courses.length) {
+    if (slotIndex !== undefined && slotIndex >= visible) {
       rows.push(slot);
     }
   } else if (isAwayTerm(term.kind)) {
@@ -154,6 +167,8 @@ export function TermIsland({
           facts={facts}
           fillsIndex={fillsIndex}
           warnings={warningsByEntry.get(card.id) ?? []}
+          menu={renderManualMenu?.(card, term.id)}
+          minHeight={rowMinHeight}
         />,
       );
     }

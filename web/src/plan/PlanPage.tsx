@@ -15,6 +15,7 @@ import {
   shortTermLabel,
   type CourseCode,
   type EntryId,
+  type ManualCourseCard,
   type CourseInfo,
   type PlanBundle,
   type PlanTerm,
@@ -28,6 +29,7 @@ import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
 import {AddCourseDialog} from './AddCourseDialog';
 import {Board} from './Board';
 import {CardMenu} from './CardMenu';
+import {ManualCardMenu} from './ManualCardMenu';
 import {DragGhost} from './DragGhost';
 import {EditTermDialog} from './EditTermDialog';
 import {ruleHit} from './paint';
@@ -37,7 +39,7 @@ import {RuleSuggestions} from './RuleSuggestions';
 import {FavoritesTray} from './FavoritesTray';
 import {TermPickerDialog} from './TermPickerDialog';
 import {ruleTargetKey, useBoardDrag} from './useBoardDrag';
-import {locateEntry, termKindChangeBlocker, usePlan} from './usePlan';
+import {locateEntry, usePlan, termRemoveBlocker} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
 
 const SIDEBAR_WIDTH = 400;
@@ -165,11 +167,22 @@ function PlanBoardPage({
         warning.kind === 'mutuallyExclusive' ||
         warning.kind === 'duplicateCourse'
       ) {
+        // Attach to the card in the term the warning names, not every card
+        // with that code; a duplicate names no single term and marks each copy.
         const code =
           warning.kind === 'mutuallyExclusive'
             ? warning.value.blocked
             : warning.value.course;
+        const inTerm =
+          warning.kind === 'mutuallyExclusive'
+            ? warning.value.blockedTerm
+            : warning.kind === 'duplicateCourse'
+              ? undefined
+              : warning.value.term;
         for (const term of bundle.plan.terms) {
+          if (inTerm !== undefined && term.id !== inTerm) {
+            continue;
+          }
           if (isRiceTerm(term.kind)) {
             for (const c of term.kind.rice.courses) {
               if (courseKey(c.course) === courseKey(code)) {
@@ -251,6 +264,18 @@ function PlanBoardPage({
     [bundle, report, dispatch, drag.dropOn, park],
   );
 
+  const renderManualMenu = useCallback(
+    (card: ManualCourseCard, where: TermId | 'incoming'): ReactNode => (
+      <ManualCardMenu
+        card={card}
+        where={where}
+        plan={bundle.plan}
+        dispatch={dispatch}
+      />
+    ),
+    [bundle.plan, dispatch],
+  );
+
   const onRowKeyDown = useCallback(
     (entry: EntryId, event: React.KeyboardEvent<HTMLElement>) => {
       if (event.key === ' ' && drag.state === undefined) {
@@ -296,7 +321,7 @@ function PlanBoardPage({
 
   const renderTermMenu = useCallback(
     (term: PlanTerm): ReactNode => {
-      const holdsCards = termKindChangeBlocker(term, 'off') !== undefined;
+      const removeBlocker = termRemoveBlocker(term);
       return (
         <MoreMenu
           label={`Options for ${shortTermLabel(term.position)}`}
@@ -319,10 +344,8 @@ function PlanBoardPage({
               id: 'remove',
               label: 'Remove term',
               variant: 'destructive',
-              isDisabled: holdsCards,
-              description: holdsCards
-                ? 'Move or remove its courses first'
-                : undefined,
+              isDisabled: removeBlocker !== undefined,
+              description: removeBlocker ?? undefined,
               onClick: () => dispatch({type: 'removeTerm', term: term.id}),
             },
           ]}
@@ -420,6 +443,7 @@ function PlanBoardPage({
                   onRowPointerDown={drag.onRowPointerDown}
                   onRowKeyDown={onRowKeyDown}
                   renderMenu={renderMenu}
+                  renderManualMenu={renderManualMenu}
                   onAddCourse={setAddingTo}
                   renderTermMenu={renderTermMenu}
                   registerTarget={drag.registerTarget}

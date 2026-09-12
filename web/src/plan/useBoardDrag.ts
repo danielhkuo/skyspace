@@ -9,6 +9,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
 
 import {
+  courseInfo,
   isAwayTerm,
   isOffTerm,
   isRiceTerm,
@@ -25,7 +26,6 @@ import {
   type TermId,
 } from '../domain';
 import {engine} from '../engine';
-import {courseInfo} from '../engine/interim/filter';
 import {previewLine} from './labels';
 import type {IslandPreview} from './TermIsland';
 import {locateEntry, type PlanAction} from './usePlan';
@@ -204,21 +204,22 @@ export function useBoardDrag(
 
   const hitTest = useCallback(
     (x: number, y: number, skip?: EntryId): DropTarget | undefined => {
-      // Rule rows sit inside the sidebar and are smaller than islands; test them first.
-      const entries = [...targets.current.entries()].sort(([a], [b]) => {
-        const ra = a.startsWith('rule:');
-        const rb = b.startsWith('rule:');
-        return ra === rb ? 0 : ra ? -1 : 1;
-      });
-      for (const [key, element] of entries) {
-        const rect = element.getBoundingClientRect();
+      // Walk the real stacking order at the point, top first, so a target
+      // scrolled out of its island, or under a sheet or dialog, cannot win.
+      // The ghost has pointer-events: none, so it is not in the stack.
+      const stack = document.elementsFromPoint(x, y);
+      for (const hit of stack) {
+        for (const [key, element] of targets.current) {
+          if (element === hit || element.contains(hit)) {
+            return parseTargetKey(key, slotIndexIn(element, y, skip));
+          }
+        }
+        // Anything opaque above the board (a dialog, a sheet) ends the search.
         if (
-          x >= rect.left &&
-          x <= rect.right &&
-          y >= rect.top &&
-          y <= rect.bottom
+          hit instanceof HTMLDialogElement ||
+          hit.getAttribute('role') === 'dialog'
         ) {
-          return parseTargetKey(key, slotIndexIn(element, y, skip));
+          return undefined;
         }
       }
       return undefined;
@@ -352,9 +353,31 @@ export function useBoardDrag(
         setState(undefined);
       }
     };
+    // The browser took the pointer (a scroll, a system gesture): nothing lands anywhere.
+    const onCancel = (): void => {
+      pending.current = undefined;
+      if (stateRef.current !== undefined && !stateRef.current.keyboard) {
+        setState(undefined);
+      }
+    };
     const onKey = (event: KeyboardEvent): void => {
       const current = stateRef.current;
       if (current === undefined) {
+        return;
+      }
+      // The row's own handler lifted on this very keypress; the same event
+      // must not also drop. Likewise a Space that opened the ⋯ menu.
+      if (event.defaultPrevented) {
+        return;
+      }
+      // Keys inside a dialog, menu or field belong to it, not to the lifted card.
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'dialog, [role="dialog"], [role="menu"], [role="listbox"], input, textarea, select',
+        ) !== null
+      ) {
         return;
       }
       if (event.key === 'Escape') {
@@ -409,12 +432,12 @@ export function useBoardDrag(
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointercancel', onCancel);
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('keydown', onKey);
     };
   }, [lift, hitTest, dropOn, cancel, bundle.plan.terms]);

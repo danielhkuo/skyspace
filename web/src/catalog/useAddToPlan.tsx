@@ -1,7 +1,9 @@
 import {useCallback, useMemo, useState, type ReactNode} from 'react';
 
 import {dataSource} from '../datasource';
+import {flushPlanSave, queuePlanSave} from '../datasource/planSaver';
 import {
+  courseInfo,
   isRiceTerm,
   newEntryId,
   originForLabel,
@@ -12,7 +14,6 @@ import {
   type TermId,
 } from '../domain';
 import {engine} from '../engine';
-import {courseInfo} from '../engine/interim/filter';
 import {TermPickerDialog} from '../plan/TermPickerDialog';
 import {reducePlan} from '../plan/usePlan';
 
@@ -47,38 +48,52 @@ export function useAddToPlan(
     if (bundle === undefined || picking === undefined) {
       return;
     }
-    const term = bundle.plan.terms.find(t => t.id === termId);
-    if (term === undefined) {
-      return;
-    }
-    const next = isRiceTerm(term.kind)
-      ? reducePlan(bundle.plan, {
+    const chosen = picking;
+    // Never write from the snapshot this page loaded: the board may have
+    // saved since. Flush its queue, reload, then reduce on that plan.
+    void (async () => {
+      await flushPlanSave();
+      const fresh = await dataSource.loadBundle();
+      const term = fresh.plan.terms.find(t => t.id === termId);
+      if (term === undefined) {
+        return;
+      }
+      const next = applyPick(fresh, term, chosen);
+      queuePlanSave(next, 0);
+      onSaved(next);
+    })();
+  };
+
+  const applyPick = (
+    fresh: PlanBundle,
+    term: PlanBundle['plan']['terms'][number],
+    chosen: {course: CourseCode; credits: Credits},
+  ): Plan =>
+    isRiceTerm(term.kind)
+      ? reducePlan(fresh.plan, {
           type: 'addCourse',
-          to: termId,
+          to: term.id,
           index: term.kind.rice.courses.length,
           course: {
             id: newEntryId(),
-            course: picking.course,
-            credits: picking.credits,
+            course: chosen.course,
+            credits: chosen.credits,
             fills: [],
           },
         })
-      : reducePlan(bundle.plan, {
+      : reducePlan(fresh.plan, {
           type: 'addManualCard',
-          to: termId,
+          to: term.id,
           card: {
             id: newEntryId(),
             origin: originForLabel(term.label),
-            code: `${picking.course.subject} ${picking.course.number}`,
-            title: courseInfo(bundle.facts, picking.course)?.title ?? '',
-            credits: picking.credits,
-            riceEquivalent: picking.course,
+            code: `${chosen.course.subject} ${chosen.course.number}`,
+            title: courseInfo(fresh.facts, chosen.course)?.title ?? '',
+            credits: chosen.credits,
+            riceEquivalent: chosen.course,
             fills: [],
           },
         });
-    void dataSource.savePlan(next);
-    onSaved(next);
-  };
 
   const dialog =
     bundle === undefined || report === undefined ? null : (

@@ -6,6 +6,7 @@
 import {useEffect, useMemo, useReducer} from 'react';
 
 import {
+  courseInfo,
   compareTermPosition,
   findRule,
   isAwayTerm,
@@ -30,17 +31,18 @@ import {
   type TermId,
   type Warning,
 } from '../domain';
-import {courseInfo} from '../engine/interim/filter';
 import type {CourseFacts} from '../domain';
 import {engine} from '../engine';
 import {warningTerm} from './labels';
-import {dataSource} from '../datasource';
+import {flushPlanSave, queuePlanSave} from '../datasource/planSaver';
 
 export type PlanAction =
   | {type: 'replace'; plan: Plan}
   | {type: 'moveCourse'; entry: EntryId; to: TermId; index: number}
   | {type: 'addCourse'; to: TermId; index: number; course: PlannedCourse}
   | {type: 'addManualCard'; to: TermId | 'incoming'; card: ManualCourseCard}
+  /** An away or incoming card to another away term or to incoming credit. */
+  | {type: 'moveManualCard'; entry: EntryId; to: TermId | 'incoming'}
   | {type: 'removeEntry'; entry: EntryId}
   | {type: 'setFills'; entry: EntryId; program: Program; rule: RuleId}
   | {type: 'setCredits'; entry: EntryId; credits: number}
@@ -204,23 +206,44 @@ export function termKindChangeBlocker(
   if (kind === termKindName(term.kind)) {
     return undefined;
   }
+  const held = termCardLabels(term);
+  const list = held.length === 0 ? '' : ` (${held.join(', ')})`;
   if (kind === 'off') {
-    const count = isRiceTerm(term.kind)
-      ? term.kind.rice.courses.length
-      : isAwayTerm(term.kind)
-        ? term.kind.away.cards.length
-        : 0;
-    return count === 0
+    return held.length === 0
       ? undefined
-      : `Move or remove its ${count} course${count === 1 ? '' : 's'} first; an off term holds none.`;
+      : `Move or remove its ${held.length} course${held.length === 1 ? '' : 's'} first${list}; an off term holds none.`;
   }
   if (kind === 'rice' && isAwayTerm(term.kind)) {
-    const unmapped = term.kind.away.cards.filter(
-      c => c.riceEquivalent === undefined,
-    );
-    return unmapped.length === 0
+    // Not converted: a transfer card's own code and title have no home on a
+    // Rice card, and a round trip would lose them. Rice -> Away is lossless.
+    return held.length === 0
       ? undefined
-      : `${unmapped.length} card${unmapped.length === 1 ? ' has' : 's have'} no Rice course code and cannot live in a Rice term.`;
+      : `Move or remove its ${held.length} card${held.length === 1 ? '' : 's'} first${list}; a Rice term takes courses from the catalog.`;
+  }
+  return undefined;
+}
+
+/** The codes a term holds, for the refusal messages. */
+export function termCardLabels(term: PlanTerm): string[] {
+  if (isRiceTerm(term.kind)) {
+    return term.kind.rice.courses.map(
+      c => `${c.course.subject} ${c.course.number}`,
+    );
+  }
+  if (isAwayTerm(term.kind)) {
+    return term.kind.away.cards.map(c => c.code);
+  }
+  return [];
+}
+
+/** Why a term cannot be removed, or `undefined`. Cards and claims both count. */
+export function termRemoveBlocker(term: PlanTerm): string | undefined {
+  const cards = termKindChangeBlocker(term, 'off');
+  if (cards !== undefined && !isOffTerm(term.kind)) {
+    return cards;
+  }
+  if (term.nonCourse.length > 0) {
+    return `Clear its ${term.nonCourse.length} claimed requirement${term.nonCourse.length === 1 ? '' : 's'} first (${term.nonCourse.map(c => c.label).join(', ')}).`;
   }
   return undefined;
 }
@@ -288,6 +311,17 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
       return insertCourse(plan, action.to, action.index, action.course);
     case 'addManualCard':
       return insertManualCard(plan, action.to, action.card);
+    case 'moveManualCard': {
+      const located = locateEntry(plan, action.entry);
+      if (located === undefined || located.where === 'rice') {
+        return plan;
+      }
+      return insertManualCard(
+        withoutEntry(plan, action.entry),
+        action.to,
+        located.card,
+      );
+    }
     case 'removeEntry':
       return withoutEntry(plan, action.entry);
     case 'setFills': {
@@ -303,14 +337,23 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
         ...card,
         credits: action.credits,
       }));
-    case 'confirmSelfCheck':
+    case 'confirmSelfCheck': {
+      // The checkbox path sends a bare reason; never let it erase a note or
+      // a reason the student wrote in the dialog.
+      const previous = plan.selfChecks.find(s => s.rule === action.rule);
+      const next = {
+        rule: action.rule,
+        reason: previous?.reason ?? action.reason,
+        note: action.note ?? previous?.note,
+      };
       return {
         ...plan,
         selfChecks: [
           ...plan.selfChecks.filter(s => s.rule !== action.rule),
-          {rule: action.rule, reason: action.reason, note: action.note},
+          next,
         ],
       };
+    }
     case 'clearSelfCheck':
       return {
         ...plan,
@@ -361,11 +404,7 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
     }
     case 'removeTerm': {
       const term = plan.terms.find(t => t.id === action.term);
-      if (
-        term === undefined ||
-        (termKindChangeBlocker(term, 'off') !== undefined &&
-          !isOffTerm(term.kind))
-      ) {
+      if (term === undefined || termRemoveBlocker(term) !== undefined) {
         return plan;
       }
       return {...plan, terms: plan.terms.filter(t => t.id !== action.term)};
@@ -417,21 +456,16 @@ export type PlanState = {
   dispatch: (action: PlanAction) => void;
 };
 
-/** Debounced save: a burst of drops is one write (`08-board-interaction.md`). */
-const SAVE_DEBOUNCE_MS = 500;
-
 export function usePlan(initial: PlanBundle): PlanState {
   const [plan, dispatch] = useReducer(reducePlan, initial.plan);
+  // Every edit goes to the one save coordinator: a burst of drops is one
+  // write (`08-board-interaction.md`), and leaving the page flushes it.
   useEffect(() => {
-    if (plan === initial.plan) {
-      return undefined;
+    if (plan !== initial.plan) {
+      queuePlanSave(plan);
     }
-    const timer = setTimeout(
-      () => void dataSource.savePlan(plan),
-      SAVE_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
   }, [plan, initial.plan]);
+  useEffect(() => () => void flushPlanSave(), []);
   const bundle = useMemo(() => ({...initial, plan}), [initial, plan]);
   const report = useMemo(() => engine.evaluate(bundle), [bundle]);
   const fillsIndex = useMemo(
