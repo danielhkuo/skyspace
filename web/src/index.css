@@ -5,7 +5,16 @@
  * overrides, which are CSS custom properties, not from rules written here.
  */
 
+/* One theme, light only (spec.md §3). Pin the scheme so an OS dark preference
+ * cannot flip the body background the Astryx reset paints with light-dark(). */
+:root {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
   min-height: 100dvh;
+  /* Astryx paints no body ground; without this the host's own background
+   * shows through, which is dark in some embeds. */
+  background: var(--color-background-surface);
 }
