@@ -26,3 +26,6 @@ data/
 *.log
 .idea/
 .vscode/
+
+# wasm-pack output; a committed binary goes stale unnoticed (07-wasm-testing.md)
+web/src/engine/generated/
