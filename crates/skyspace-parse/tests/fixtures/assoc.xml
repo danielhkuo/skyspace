@@ -1,0 +1,71 @@
+<ASSOCIATED-SECTIONS term="202710" crn="12312">
+  <ADDITIONAL-SECTIONS>
+    <COURSES type="term" format="short">
+      <COURSE crn="12313" subj-code="CHEM" crse-numb="121" seq-numb="S02">
+        <SESSION code="1">Full Term</SESSION>
+        <TERM code="202710">Fall Semester 2026</TERM>
+        <SUBJECT code="CHEM">Chemistry</SUBJECT>
+        <DEPARTMENT code="CHEM">Chemistry</DEPARTMENT>
+        <SCHOOL code="NS">School of Natural Sciences</SCHOOL>
+        <EXAM code="S">Scheduled Final Exam-OTR Room</EXAM>
+        <SCHED code="LL">Lecture/Laboratory</SCHED>
+        <CREDITS low="3">3</CREDITS>
+        <CRN>12313</CRN>
+        <CRSE_NUMB>121</CRSE_NUMB>
+        <SEQ_NUMB>S02</SEQ_NUMB>
+        <INSTRUCTORS>
+          <NAME NETID="lesa">Tran, Lesa</NAME>
+          <NAME>Nobody, Staff</NAME>
+        </INSTRUCTORS>
+        <DISTS>
+          <DIST code="GRP3">Distribution Group III</DIST>
+          <DIST code="GRP4">Distribution Group IV</DIST>
+        </DISTS>
+        <CRSE_TITLE>GENERAL CHEMISTRY I</CRSE_TITLE>
+        <TIMES>
+          <MEETING begin-time="1000" end-time="1050" begin-date="24-AUG-2026" end-date="04-DEC-2026">
+            <TYPE code="CLAS">Class</TYPE>
+            <SCHED code="LL">Lecture/Laboratory</SCHED>
+            <MON_DAY>M</MON_DAY>
+            <WED_DAY>W</WED_DAY>
+            <FRI_DAY>F</FRI_DAY>
+          </MEETING>
+          <MEETING begin-time="1400" end-time="1650" begin-date="24-AUG-2026" end-date="04-DEC-2026">
+            <TYPE code="CLAS">Class</TYPE>
+            <SCHED code="LL">Lecture/Laboratory</SCHED>
+            <SAT_DAY>S</SAT_DAY>
+          </MEETING>
+          <MEETING begin-time="0900" end-time="1200" begin-date="09-DEC-2026" end-date="09-DEC-2026">
+            <TYPE code="FINL">Final Exam</TYPE>
+            <WED_DAY>W</WED_DAY>
+          </MEETING>
+        </TIMES>
+      </COURSE>
+    </COURSES>
+  </ADDITIONAL-SECTIONS>
+  <CROSSLIST-SECTIONS>
+    <COURSES type="term" format="short">
+      <COURSE crn="12399" subj-code="MUSI" crse-numb="649" seq-numb="003">
+        <SESSION code="SA1">Summer Block A1 (3 Wk)</SESSION>
+        <TERM code="202710">Fall Semester 2026</TERM>
+        <SCHOOL code="MU">Shepherd School of Music</SCHOOL>
+        <EXAM code="X">Something New</EXAM>
+        <SCHED code="IND">Independent Study</SCHED>
+        <CREDITS low="1" high="4">1 TO 4</CREDITS>
+        <INSTRUCTORS/>
+        <DISTS/>
+        <TIMES>
+          <MEETING begin-date="24-AUG-2026" end-date="04-DEC-2026">
+            <TYPE code="CLAS">Class</TYPE>
+          </MEETING>
+        </TIMES>
+      </COURSE>
+      <COURSE crn="oops" subj-code="MUSI" crse-numb="650" seq-numb="001">
+        <CREDITS low="1">1</CREDITS>
+      </COURSE>
+    </COURSES>
+  </CROSSLIST-SECTIONS>
+  <COREQ-SECTIONS>
+    <COURSES type="term" format="short"/>
+  </COREQ-SECTIONS>
+</ASSOCIATED-SECTIONS>

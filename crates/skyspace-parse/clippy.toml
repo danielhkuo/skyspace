@@ -1,0 +1,16 @@
+# Clippy reads the nearest clippy.toml and stops; files do not merge, so the
+# workspace entries are repeated here on purpose.
+doc-valid-idents = ["CourseLeaf", "NetID", "WebAssembly", "PostgreSQL", ".."]
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+disallowed-methods = [
+  { path = "std::time::SystemTime::now", reason = "parse has no clock; pass a Timestamp in" },
+  { path = "std::time::Instant::now", reason = "parse has no clock" },
+]
+disallowed-types = [
+  { path = "std::fs::File", reason = "parse does no I/O" },
+  { path = "std::path::PathBuf", reason = "parse does no I/O" },
+  { path = "std::collections::HashMap", reason = "iteration order must be stable across targets" },
+  { path = "std::collections::HashSet", reason = "iteration order must be stable across targets" },
+]

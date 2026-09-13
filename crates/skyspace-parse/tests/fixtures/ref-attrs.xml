@@ -1,0 +1,14 @@
+<ATTRS term="202710" year="2027">
+  <ATTR code="AD">
+    <VAL>AD</VAL>
+    <OPT>Analyzing Diversity Course</OPT>Analyzing Diversity Course</ATTR>
+  <ATTR code="GRP1">
+    <VAL>GRP1</VAL>
+    <OPT>Distribution Group I</OPT>Distribution Group I</ATTR>
+  <ATTR code="GRP2">
+    <VAL>GRP2</VAL>
+    <OPT>Distribution Group II</OPT>Distribution Group II</ATTR>
+  <ATTR code="GRP3">
+    <VAL>GRP3</VAL>
+    <OPT>Distribution Group III</OPT>Distribution Group III</ATTR>
+</ATTRS>

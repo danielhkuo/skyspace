@@ -1,0 +1,131 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: all
+---
+[
+    (
+        Terms,
+        [
+            ReferenceEntry {
+                code: "202630",
+                label: "Summer Semester 2026",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "202705",
+                label: "Summer Quadmester 2026",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "202710",
+                label: "Fall Semester 2026",
+                current: true,
+            },
+        ],
+    ),
+    (
+        Subjects,
+        [
+            ReferenceEntry {
+                code: "AAAS",
+                label: "African & African Amer Studies (AAAS)",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "COMP",
+                label: "Computer Science (COMP)",
+                current: false,
+            },
+        ],
+    ),
+    (
+        Departments,
+        [
+            ReferenceEntry {
+                code: "ARTD",
+                label: "Art (ARTD)",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "COMP",
+                label: "Computer Science (COMP)",
+                current: false,
+            },
+        ],
+    ),
+    (
+        Schools,
+        [
+            ReferenceEntry {
+                code: "EN",
+                label: "School of Engineering and Computing",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "MU",
+                label: "Shepherd School of Music",
+                current: false,
+            },
+        ],
+    ),
+    (
+        Sessions,
+        [
+            ReferenceEntry {
+                code: "1",
+                label: "Full Term",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "1ST",
+                label: "1st Half of Full Term",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "SA1",
+                label: "Summer Block A1 (3 Wk)",
+                current: false,
+            },
+        ],
+    ),
+    (
+        Years,
+        [
+            ReferenceEntry {
+                code: "2026",
+                label: "2025-2026",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "2027",
+                label: "2026-2027",
+                current: true,
+            },
+        ],
+    ),
+    (
+        Attrs,
+        [
+            ReferenceEntry {
+                code: "AD",
+                label: "Analyzing Diversity Course",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "GRP1",
+                label: "Distribution Group I",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "GRP2",
+                label: "Distribution Group II",
+                current: false,
+            },
+            ReferenceEntry {
+                code: "GRP3",
+                label: "Distribution Group III",
+                current: false,
+            },
+        ],
+    ),
+]

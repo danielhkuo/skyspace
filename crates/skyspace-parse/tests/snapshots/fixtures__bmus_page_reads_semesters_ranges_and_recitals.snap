@@ -1,0 +1,313 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: parsed
+---
+Parsed {
+    value: ProgramDraft {
+        title: "Bachelor of Music (BMus) Degree with a Major in Bassoon Performance",
+        credential: "BMus",
+        source_url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+        total_credits: Some(
+            Credits(
+                12000,
+            ),
+        ),
+        areas: [
+            AreaDraft {
+                title: "Music History",
+                rules: [
+                    Requirement {
+                        id: RequirementId(
+                            ce539b09-f4f2-5087-a75a-0108d0f93ec7,
+                        ),
+                        label: "MEDIEVAL AND RENAISSANCE ERAS",
+                        hours: Some(
+                            Fixed(
+                                Credits(
+                                    300,
+                                ),
+                            ),
+                        ),
+                        source: SourceRef {
+                            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+                            anchor: None,
+                        },
+                        body: Course {
+                            filter: CourseFilter {
+                                include: [
+                                    Code {
+                                        code: CourseCode {
+                                            subject: Subject(
+                                                "MUSI",
+                                            ),
+                                            number: CourseNumber(
+                                                "222",
+                                            ),
+                                        },
+                                    },
+                                ],
+                                exclude: [],
+                            },
+                            semesters: 1,
+                        },
+                    },
+                ],
+                unparsed: [],
+            },
+            AreaDraft {
+                title: "Individual and Ensemble Study",
+                rules: [
+                    Requirement {
+                        id: RequirementId(
+                            6271ea7a-348b-5e0a-80d8-6cf793fe4bd1,
+                        ),
+                        label: "BASSOON FOR MAJORS (minimum of 8 semesters)",
+                        hours: Some(
+                            Fixed(
+                                Credits(
+                                    300,
+                                ),
+                            ),
+                        ),
+                        source: SourceRef {
+                            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+                            anchor: None,
+                        },
+                        body: Course {
+                            filter: CourseFilter {
+                                include: [
+                                    Code {
+                                        code: CourseCode {
+                                            subject: Subject(
+                                                "MUSI",
+                                            ),
+                                            number: CourseNumber(
+                                                "457",
+                                            ),
+                                        },
+                                    },
+                                ],
+                                exclude: [],
+                            },
+                            semesters: 8,
+                        },
+                    },
+                    Requirement {
+                        id: RequirementId(
+                            aeb0b437-50bd-54f2-bd40-bd824734f62d,
+                        ),
+                        label: "UNDERGRADUATE CHAMBER MUSIC (minimum of 4 semesters)",
+                        hours: Some(
+                            Fixed(
+                                Credits(
+                                    100,
+                                ),
+                            ),
+                        ),
+                        source: SourceRef {
+                            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+                            anchor: None,
+                        },
+                        body: Course {
+                            filter: CourseFilter {
+                                include: [
+                                    Code {
+                                        code: CourseCode {
+                                            subject: Subject(
+                                                "MUSI",
+                                            ),
+                                            number: CourseNumber(
+                                                "338",
+                                            ),
+                                        },
+                                    },
+                                ],
+                                exclude: [],
+                            },
+                            semesters: 4,
+                        },
+                    },
+                    Requirement {
+                        id: RequirementId(
+                            7e14ff08-6cfd-51d3-93bc-bd6ccf346c7c,
+                        ),
+                        label: "Secondary Lessons (any course between MUSI 251 and MUSI 297 with the exception of MUSI 281)",
+                        hours: Some(
+                            Either(
+                                Credits(
+                                    100,
+                                ),
+                                Credits(
+                                    300,
+                                ),
+                            ),
+                        ),
+                        source: SourceRef {
+                            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+                            anchor: None,
+                        },
+                        body: Course {
+                            filter: CourseFilter {
+                                include: [
+                                    NumberRange {
+                                        subject: Some(
+                                            Subject(
+                                                "MUSI",
+                                            ),
+                                        ),
+                                        low: 251,
+                                        high: 297,
+                                    },
+                                ],
+                                exclude: [
+                                    Code {
+                                        code: CourseCode {
+                                            subject: Subject(
+                                                "MUSI",
+                                            ),
+                                            number: CourseNumber(
+                                                "281",
+                                            ),
+                                        },
+                                    },
+                                ],
+                            },
+                            semesters: 1,
+                        },
+                    },
+                ],
+                unparsed: [],
+            },
+            AreaDraft {
+                title: "Recitals",
+                rules: [
+                    Requirement {
+                        id: RequirementId(
+                            66614324-1ca9-5c4e-ba73-b7636a3e3891,
+                        ),
+                        label: "JUNIOR RECITAL",
+                        hours: Some(
+                            Fixed(
+                                Credits(
+                                    0,
+                                ),
+                            ),
+                        ),
+                        source: SourceRef {
+                            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+                            anchor: None,
+                        },
+                        body: Course {
+                            filter: CourseFilter {
+                                include: [
+                                    Code {
+                                        code: CourseCode {
+                                            subject: Subject(
+                                                "MUSI",
+                                            ),
+                                            number: CourseNumber(
+                                                "341",
+                                            ),
+                                        },
+                                    },
+                                ],
+                                exclude: [],
+                            },
+                            semesters: 1,
+                        },
+                    },
+                    Requirement {
+                        id: RequirementId(
+                            d7a09848-7baa-5c32-a7f2-d723dd98847c,
+                        ),
+                        label: "SENIOR RECITAL",
+                        hours: Some(
+                            Fixed(
+                                Credits(
+                                    0,
+                                ),
+                            ),
+                        ),
+                        source: SourceRef {
+                            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+                            anchor: None,
+                        },
+                        body: Course {
+                            filter: CourseFilter {
+                                include: [
+                                    Code {
+                                        code: CourseCode {
+                                            subject: Subject(
+                                                "MUSI",
+                                            ),
+                                            number: CourseNumber(
+                                                "441",
+                                            ),
+                                        },
+                                    },
+                                ],
+                                exclude: [],
+                            },
+                            semesters: 1,
+                        },
+                    },
+                ],
+                unparsed: [],
+            },
+            AreaDraft {
+                title: "Piano Proficiency Exam",
+                rules: [],
+                unparsed: [
+                    "Students must complete and pass the Piano Proficiency Exam",
+                ],
+            },
+        ],
+        aliases: [
+            (
+                CourseCode {
+                    subject: Subject(
+                        "MUSI",
+                    ),
+                    number: CourseNumber(
+                        "222",
+                    ),
+                },
+                CourseCode {
+                    subject: Subject(
+                        "MDEM",
+                    ),
+                    number: CourseNumber(
+                        "222",
+                    ),
+                },
+            ),
+        ],
+        footnotes: [
+            "Note: University Graduation Requirements include 31 credit hours.",
+        ],
+    },
+    report: ParseReport {
+        rows_seen: 17,
+        rows_kept: 12,
+        field_filled: [
+            (
+                "title",
+                1,
+            ),
+            (
+                "credential",
+                1,
+            ),
+            (
+                "total_credits",
+                1,
+            ),
+        ],
+        issues: [
+            ParseIssue {
+                code: UnclassifiedRequirementRow,
+                detail: "bassoon-performance-bmus row 13: \"Students must complete and pass the Piano Proficiency Exam\"",
+            },
+        ],
+    },
+}

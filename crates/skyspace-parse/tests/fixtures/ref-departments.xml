@@ -1,0 +1,8 @@
+<DEPARTMENTS term="202710" year="2027">
+  <DEPARTMENT code="ARTD">
+    <VAL>ARTD</VAL>
+    <OPT>Art (ARTD)</OPT>Art</DEPARTMENT>
+  <DEPARTMENT code="COMP">
+    <VAL>COMP</VAL>
+    <OPT>Computer Science (COMP)</OPT>Computer Science</DEPARTMENT>
+</DEPARTMENTS>

@@ -1,0 +1,13 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: seats
+---
+Seats {
+    enrolled: 67,
+    capacity: 72,
+    waitlist_count: 3,
+    waitlist_capacity: 10,
+    as_of: Timestamp(
+        1789264071,
+    ),
+}

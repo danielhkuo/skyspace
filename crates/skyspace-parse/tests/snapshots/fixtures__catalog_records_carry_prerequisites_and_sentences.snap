@@ -1,0 +1,437 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: parsed
+---
+Parsed {
+    value: [
+        Course {
+            catalog_year: CatalogYear(
+                2026,
+            ),
+            code: CourseCode {
+                subject: Subject(
+                    "COMP",
+                ),
+                number: CourseNumber(
+                    "182",
+                ),
+            },
+            title: "ALGORITHMIC THINKING",
+            credits: Fixed(
+                Credits(
+                    400,
+                ),
+            ),
+            department: "Computer Science",
+            attributes: {
+                AnalyzingDiversity,
+                DistributionThree,
+            },
+            grade_mode: Some(
+                GradeMode(
+                    "Standard Letter",
+                ),
+            ),
+            course_type: Some(
+                CourseType(
+                    "Lecture/Laboratory",
+                ),
+            ),
+            restrictions: Some(
+                Restrictions {
+                    raw: "Must be enrolled in one of the following Level(s):\nUndergraduate Professional\nVisiting Undergraduate\nUndergraduate",
+                    clauses: [
+                        RestrictionClause {
+                            effect: MustBe,
+                            dimension: Level,
+                            values: [
+                                "Undergraduate Professional",
+                                "Visiting Undergraduate",
+                                "Undergraduate",
+                            ],
+                        },
+                    ],
+                },
+            ),
+            prerequisites: Some(
+                PrereqObservation {
+                    course: CourseCode {
+                        subject: Subject(
+                            "COMP",
+                        ),
+                        number: CourseNumber(
+                            "182",
+                        ),
+                    },
+                    raw: "(MATH 102 OR MATH 106) AND COMP 140 AND (MATH 355 OR CMOR 302)",
+                    parsed: All(
+                        [
+                            Any(
+                                [
+                                    Course(
+                                        CourseCode {
+                                            subject: Subject(
+                                                "MATH",
+                                            ),
+                                            number: CourseNumber(
+                                                "102",
+                                            ),
+                                        },
+                                    ),
+                                    Course(
+                                        CourseCode {
+                                            subject: Subject(
+                                                "MATH",
+                                            ),
+                                            number: CourseNumber(
+                                                "106",
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            ),
+                            Course(
+                                CourseCode {
+                                    subject: Subject(
+                                        "COMP",
+                                    ),
+                                    number: CourseNumber(
+                                        "140",
+                                    ),
+                                },
+                            ),
+                            Any(
+                                [
+                                    Course(
+                                        CourseCode {
+                                            subject: Subject(
+                                                "MATH",
+                                            ),
+                                            number: CourseNumber(
+                                                "355",
+                                            ),
+                                        },
+                                    ),
+                                    Course(
+                                        CourseCode {
+                                            subject: Subject(
+                                                "CMOR",
+                                            ),
+                                            number: CourseNumber(
+                                                "302",
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                    corequisite: None,
+                    catalog_year: CatalogYear(
+                        2026,
+                    ),
+                },
+            ),
+            description: "Introduction to algorithms. Mutually Exclusive: Cannot register for COMP 182 if student has credit for COMP 404/COMP 504. Cross-list: ELEC 182, Graduate/Undergraduate Equivalency: COMP 582. Repeatable for Credit.",
+            flags: CourseFlags {
+                repeatable: true,
+                instructor_permission: false,
+                second_half: false,
+            },
+            mutual_exclusions: [
+                MutualExclusion {
+                    with: [
+                        CourseCode {
+                            subject: Subject(
+                                "COMP",
+                            ),
+                            number: CourseNumber(
+                                "404",
+                            ),
+                        },
+                        CourseCode {
+                            subject: Subject(
+                                "COMP",
+                            ),
+                            number: CourseNumber(
+                                "504",
+                            ),
+                        },
+                    ],
+                    raw: "Mutually Exclusive: Cannot register for COMP 182 if student has credit for COMP 404/COMP 504.",
+                },
+            ],
+            cross_list: [
+                CourseCode {
+                    subject: Subject(
+                        "ELEC",
+                    ),
+                    number: CourseNumber(
+                        "182",
+                    ),
+                },
+            ],
+            equivalents: [
+                CourseCode {
+                    subject: Subject(
+                        "COMP",
+                    ),
+                    number: CourseNumber(
+                        "582",
+                    ),
+                },
+            ],
+        },
+        Course {
+            catalog_year: CatalogYear(
+                2026,
+            ),
+            code: CourseCode {
+                subject: Subject(
+                    "CHEM",
+                ),
+                number: CourseNumber(
+                    "420",
+                ),
+            },
+            title: "PHYSICAL CHEMISTRY I",
+            credits: Fixed(
+                Credits(
+                    300,
+                ),
+            ),
+            department: "Chemistry",
+            attributes: {},
+            grade_mode: Some(
+                GradeMode(
+                    "Standard Letter",
+                ),
+            ),
+            course_type: Some(
+                CourseType(
+                    "Lecture",
+                ),
+            ),
+            restrictions: None,
+            prerequisites: Some(
+                PrereqObservation {
+                    course: CourseCode {
+                        subject: Subject(
+                            "CHEM",
+                        ),
+                        number: CourseNumber(
+                            "420",
+                        ),
+                    },
+                    raw: "MATH 212 AND (PHYS 102 OR PHYS 112) AND CHEM 310 OR (CHEM 311 AND CHEM 312)",
+                    parsed: Unparsed(
+                        "MATH 212 AND (PHYS 102 OR PHYS 112) AND CHEM 310 OR (CHEM 311 AND CHEM 312)",
+                    ),
+                    corequisite: None,
+                    catalog_year: CatalogYear(
+                        2026,
+                    ),
+                },
+            ),
+            description: "Thermodynamics and kinetics. Instructor Permission Required. Expected to be taught 2nd half of the term. Mutually Exclusive: Cannot register for CHEM 420 if student has credit for an equivalent course.",
+            flags: CourseFlags {
+                repeatable: false,
+                instructor_permission: true,
+                second_half: true,
+            },
+            mutual_exclusions: [
+                MutualExclusion {
+                    with: [],
+                    raw: "Mutually Exclusive: Cannot register for CHEM 420 if student has credit for an equivalent course.",
+                },
+            ],
+            cross_list: [],
+            equivalents: [],
+        },
+        Course {
+            catalog_year: CatalogYear(
+                2026,
+            ),
+            code: CourseCode {
+                subject: Subject(
+                    "COMP",
+                ),
+                number: CourseNumber(
+                    "533",
+                ),
+            },
+            title: "INTRODUCTION TO DATABASE SYSTEMS",
+            credits: Range {
+                min: Credits(
+                    100,
+                ),
+                max: Credits(
+                    300,
+                ),
+            },
+            department: "Computer Science",
+            attributes: {},
+            grade_mode: Some(
+                GradeMode(
+                    "Satisfactory/Unsatisfactory",
+                ),
+            ),
+            course_type: Some(
+                CourseType(
+                    "Lecture/Laboratory",
+                ),
+            ),
+            restrictions: Some(
+                Restrictions {
+                    raw: "Must be enrolled in one of the following Level(s):\nGraduate",
+                    clauses: [
+                        RestrictionClause {
+                            effect: MustBe,
+                            dimension: Level,
+                            values: [
+                                "Graduate",
+                            ],
+                        },
+                    ],
+                },
+            ),
+            prerequisites: Some(
+                PrereqObservation {
+                    course: CourseCode {
+                        subject: Subject(
+                            "COMP",
+                        ),
+                        number: CourseNumber(
+                            "533",
+                        ),
+                    },
+                    raw: "",
+                    parsed: Unparsed(
+                        "",
+                    ),
+                    corequisite: Some(
+                        CourseCode {
+                            subject: Subject(
+                                "COMP",
+                            ),
+                            number: CourseNumber(
+                                "504",
+                            ),
+                        },
+                    ),
+                    catalog_year: CatalogYear(
+                        2026,
+                    ),
+                },
+            ),
+            description: "Introduction to relational and other database systems. Graduate/Undergraduate Equivalency: COMP 430. Mutually Exclusive: Cannot register for COMP 533 if student has credit for COMP 430.",
+            flags: CourseFlags {
+                repeatable: false,
+                instructor_permission: false,
+                second_half: false,
+            },
+            mutual_exclusions: [
+                MutualExclusion {
+                    with: [
+                        CourseCode {
+                            subject: Subject(
+                                "COMP",
+                            ),
+                            number: CourseNumber(
+                                "430",
+                            ),
+                        },
+                    ],
+                    raw: "Mutually Exclusive: Cannot register for COMP 533 if student has credit for COMP 430.",
+                },
+            ],
+            cross_list: [],
+            equivalents: [
+                CourseCode {
+                    subject: Subject(
+                        "COMP",
+                    ),
+                    number: CourseNumber(
+                        "430",
+                    ),
+                },
+            ],
+        },
+    ],
+    report: ParseReport {
+        rows_seen: 4,
+        rows_kept: 3,
+        field_filled: [
+            (
+                "long_title",
+                3,
+            ),
+            (
+                "department",
+                3,
+            ),
+            (
+                "grade_mode",
+                3,
+            ),
+            (
+                "language",
+                3,
+            ),
+            (
+                "course_type",
+                3,
+            ),
+            (
+                "distribution_group",
+                2,
+            ),
+            (
+                "analyzing_diversity",
+                1,
+            ),
+            (
+                "credit_hours",
+                3,
+            ),
+            (
+                "restrictions",
+                2,
+            ),
+            (
+                "prerequisites",
+                2,
+            ),
+            (
+                "description",
+                3,
+            ),
+            (
+                "course_url",
+                1,
+            ),
+            (
+                "corequisite",
+                1,
+            ),
+        ],
+        issues: [
+            ParseIssue {
+                code: UnknownAttribute,
+                detail: "CHEM 420: \"Distribution Group IV\"",
+            },
+            ParseIssue {
+                code: UnreadableExclusion,
+                detail: "CHEM 420: \"Mutually Exclusive: Cannot register for CHEM 420 if student has credit for an equivalent course.\"",
+            },
+            ParseIssue {
+                code: UnparsedPrerequisite,
+                detail: "CHEM 420: \"MATH 212 AND (PHYS 102 OR PHYS 112) AND CHEM 310 OR (CHEM 311 AND CHEM 312)\"",
+            },
+            ParseIssue {
+                code: RowMissingKey,
+                detail: "heading \"NOT A CODE\"",
+            },
+        ],
+    },
+}

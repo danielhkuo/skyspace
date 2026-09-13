@@ -1,0 +1,82 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: parsed
+---
+Parsed {
+    value: [
+        ProgramLink {
+            slug: "accounting-macc",
+            url: "https://ga.rice.edu/programs-study/departments-programs/business/accounting/accounting-macc/",
+            title: "MAcc",
+            school: Some(
+                "JS",
+            ),
+            department: Some(
+                "Accounting",
+            ),
+        },
+        ProgramLink {
+            slug: "computer-science-ba",
+            url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-ba/",
+            title: "BA",
+            school: Some(
+                "EN",
+            ),
+            department: Some(
+                "Computer Science",
+            ),
+        },
+        ProgramLink {
+            slug: "computer-science-bscs",
+            url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
+            title: "Bachelor of Science in Computer Science (BSCS) Degree",
+            school: Some(
+                "EN",
+            ),
+            department: Some(
+                "Computer Science",
+            ),
+        },
+        ProgramLink {
+            slug: "computer-science-ms",
+            url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-ms/",
+            title: "MS",
+            school: Some(
+                "EN",
+            ),
+            department: Some(
+                "Computer Science",
+            ),
+        },
+        ProgramLink {
+            slug: "bassoon-performance-bmus",
+            url: "https://ga.rice.edu/programs-study/departments-programs/music/music/bassoon-performance-bmus/",
+            title: "Bachelor of Music (BMus) Degree with a Major in Bassoon Performance",
+            school: Some(
+                "MU",
+            ),
+            department: Some(
+                "Music",
+            ),
+        },
+    ],
+    report: ParseReport {
+        rows_seen: 6,
+        rows_kept: 4,
+        field_filled: [
+            (
+                "title",
+                5,
+            ),
+            (
+                "school",
+                5,
+            ),
+            (
+                "department",
+                5,
+            ),
+        ],
+        issues: [],
+    },
+}

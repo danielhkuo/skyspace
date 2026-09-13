@@ -1,0 +1,225 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: parsed
+---
+Parsed {
+    value: [
+        SectionXml {
+            crn: Crn(
+                12313,
+            ),
+            code: CourseCode {
+                subject: Subject(
+                    "CHEM",
+                ),
+                number: CourseNumber(
+                    "121",
+                ),
+            },
+            section: SectionNumber(
+                "S02",
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "1",
+                ),
+            ),
+            school: Some(
+                "School of Natural Sciences",
+            ),
+            final_exam: Scheduled,
+            schedule_type: Some(
+                "Lecture/Laboratory",
+            ),
+            credits: Fixed(
+                Credits(
+                    300,
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Tran, Lesa",
+                    net_id: Some(
+                        NetId(
+                            "lesa",
+                        ),
+                    ),
+                },
+                Instructor {
+                    name: "Nobody, Staff",
+                    net_id: None,
+                },
+            ],
+            attributes: {
+                DistributionThree,
+            },
+            meetings: [
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                21,
+                            ),
+                            start: MinuteOfDay(
+                                600,
+                            ),
+                            end: MinuteOfDay(
+                                650,
+                            ),
+                        },
+                    ),
+                    dates: Some(
+                        DateSpan {
+                            start: CalendarDate {
+                                year: 2026,
+                                month: 8,
+                                day: 24,
+                            },
+                            end: CalendarDate {
+                                year: 2026,
+                                month: 12,
+                                day: 4,
+                            },
+                        },
+                    ),
+                },
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                32,
+                            ),
+                            start: MinuteOfDay(
+                                840,
+                            ),
+                            end: MinuteOfDay(
+                                1010,
+                            ),
+                        },
+                    ),
+                    dates: Some(
+                        DateSpan {
+                            start: CalendarDate {
+                                year: 2026,
+                                month: 8,
+                                day: 24,
+                            },
+                            end: CalendarDate {
+                                year: 2026,
+                                month: 12,
+                                day: 4,
+                            },
+                        },
+                    ),
+                },
+            ],
+        },
+        SectionXml {
+            crn: Crn(
+                12399,
+            ),
+            code: CourseCode {
+                subject: Subject(
+                    "MUSI",
+                ),
+                number: CourseNumber(
+                    "649",
+                ),
+            },
+            section: SectionNumber(
+                "003",
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "SA1",
+                ),
+            ),
+            school: Some(
+                "Shepherd School of Music",
+            ),
+            final_exam: Unknown,
+            schedule_type: Some(
+                "Independent Study",
+            ),
+            credits: Range {
+                min: Credits(
+                    100,
+                ),
+                max: Credits(
+                    400,
+                ),
+            },
+            instructors: [],
+            attributes: {},
+            meetings: [
+                Meeting {
+                    pattern: Unparsed(
+                        "-",
+                    ),
+                    dates: Some(
+                        DateSpan {
+                            start: CalendarDate {
+                                year: 2026,
+                                month: 8,
+                                day: 24,
+                            },
+                            end: CalendarDate {
+                                year: 2026,
+                                month: 12,
+                                day: 4,
+                            },
+                        },
+                    ),
+                },
+            ],
+        },
+    ],
+    report: ParseReport {
+        rows_seen: 3,
+        rows_kept: 2,
+        field_filled: [
+            (
+                "credits",
+                2,
+            ),
+            (
+                "part_of_term",
+                2,
+            ),
+            (
+                "final_exam",
+                2,
+            ),
+            (
+                "attributes",
+                1,
+            ),
+            (
+                "instructors",
+                1,
+            ),
+            (
+                "meetings",
+                2,
+            ),
+        ],
+        issues: [
+            ParseIssue {
+                code: UnknownAttribute,
+                detail: "202710 crn 12313: \"GRP4\"",
+            },
+            ParseIssue {
+                code: UnknownFinalExam,
+                detail: "202710 crn 12399: \"X\"",
+            },
+            ParseIssue {
+                code: UnreadableMeeting,
+                detail: "202710 crn 12399: \"-\"",
+            },
+            ParseIssue {
+                code: RowMissingKey,
+                detail: "202710: crn \"oops\"",
+            },
+        ],
+    },
+}

@@ -1,0 +1,24 @@
+[package]
+name = "skyspace-parse"
+description = "Turns one saved Rice page into Skyspace core types: no network, no clock, no database."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+skyspace-core = { workspace = true }
+scraper = { workspace = true }
+quick-xml = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+# v5 is SHA-1 over a fingerprint: pure, no randomness, so drafts get the
+# same placeholder ids on every run. The store replaces them at approval.
+uuid = { workspace = true, features = ["v5"] }
+
+[dev-dependencies]
+insta = { workspace = true }
+serde_json = { workspace = true }

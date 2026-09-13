@@ -1,0 +1,495 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: parsed
+---
+Parsed {
+    value: [
+        SectionListing {
+            crn: Crn(
+                12422,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "COMP",
+                ),
+                number: CourseNumber(
+                    "140",
+                ),
+            },
+            section: SectionNumber(
+                "001",
+            ),
+            title: "COMPUTATIONAL THINKING",
+            credits: Fixed(
+                Credits(
+                    400,
+                ),
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "Full Term",
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Fu, Xiaoyun",
+                    net_id: Some(
+                        NetId(
+                            "xf20",
+                        ),
+                    ),
+                },
+            ],
+            meetings: [
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                10,
+                            ),
+                            start: MinuteOfDay(
+                                870,
+                            ),
+                            end: MinuteOfDay(
+                                945,
+                            ),
+                        },
+                    ),
+                    dates: None,
+                },
+            ],
+            final_exam: Scheduled,
+        },
+        SectionListing {
+            crn: Crn(
+                12437,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "COMP",
+                ),
+                number: CourseNumber(
+                    "222",
+                ),
+            },
+            section: SectionNumber(
+                "001",
+            ),
+            title: "INTRODUCTION TO COMPUTER ORGANIZATION",
+            credits: Fixed(
+                Credits(
+                    300,
+                ),
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "Full Term",
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Cox, Alan",
+                    net_id: Some(
+                        NetId(
+                            "alc",
+                        ),
+                    ),
+                },
+                Instructor {
+                    name: "Rixner, Scott",
+                    net_id: Some(
+                        NetId(
+                            "sr2",
+                        ),
+                    ),
+                },
+            ],
+            meetings: [
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                21,
+                            ),
+                            start: MinuteOfDay(
+                                900,
+                            ),
+                            end: MinuteOfDay(
+                                950,
+                            ),
+                        },
+                    ),
+                    dates: None,
+                },
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                8,
+                            ),
+                            start: MinuteOfDay(
+                                960,
+                            ),
+                            end: MinuteOfDay(
+                                1035,
+                            ),
+                        },
+                    ),
+                    dates: None,
+                },
+            ],
+            final_exam: ScheduledDeptRoom,
+        },
+        SectionListing {
+            crn: Crn(
+                11387,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "COMP",
+                ),
+                number: CourseNumber(
+                    "105",
+                ),
+            },
+            section: SectionNumber(
+                "001",
+            ),
+            title: "AP/OTH CREDIT COMPUTER SCIENCE",
+            credits: Fixed(
+                Credits(
+                    300,
+                ),
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "Full Term",
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Cox, Alan",
+                    net_id: Some(
+                        NetId(
+                            "alc",
+                        ),
+                    ),
+                },
+            ],
+            meetings: [],
+            final_exam: NoExam,
+        },
+        SectionListing {
+            crn: Crn(
+                10119,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "MUSI",
+                ),
+                number: CourseNumber(
+                    "457",
+                ),
+            },
+            section: SectionNumber(
+                "001",
+            ),
+            title: "BASSOON FOR MAJORS",
+            credits: Fixed(
+                Credits(
+                    300,
+                ),
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "Full Term",
+                ),
+            ),
+            instructors: [],
+            meetings: [],
+            final_exam: DeptSchedules,
+        },
+        SectionListing {
+            crn: Crn(
+                16743,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "COMP",
+                ),
+                number: CourseNumber(
+                    "623",
+                ),
+            },
+            section: SectionNumber(
+                "001",
+            ),
+            title: "GRAD SEMINAR IN COMP SYSTEMS",
+            credits: Either(
+                Credits(
+                    100,
+                ),
+                Credits(
+                    300,
+                ),
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "2nd Half of Full Term",
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Lee, Kyungmi",
+                    net_id: Some(
+                        NetId(
+                            "kl232",
+                        ),
+                    ),
+                },
+            ],
+            meetings: [
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                16,
+                            ),
+                            start: MinuteOfDay(
+                                660,
+                            ),
+                            end: MinuteOfDay(
+                                735,
+                            ),
+                        },
+                    ),
+                    dates: None,
+                },
+            ],
+            final_exam: TakeHome,
+        },
+        SectionListing {
+            crn: Crn(
+                14001,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "MUSI",
+                ),
+                number: CourseNumber(
+                    "334",
+                ),
+            },
+            section: SectionNumber(
+                "002",
+            ),
+            title: "CAMPANILE ORCHESTRA",
+            credits: Fixed(
+                Credits(
+                    75,
+                ),
+            ),
+            part_of_term: Some(
+                PartOfTermCode(
+                    "1st Half of Full Term",
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Jones, Thomas",
+                    net_id: Some(
+                        NetId(
+                            "tj1",
+                        ),
+                    ),
+                },
+            ],
+            meetings: [
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                32,
+                            ),
+                            start: MinuteOfDay(
+                                600,
+                            ),
+                            end: MinuteOfDay(
+                                710,
+                            ),
+                        },
+                    ),
+                    dates: None,
+                },
+            ],
+            final_exam: ScheduledOnline,
+        },
+        SectionListing {
+            crn: Crn(
+                14002,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "MUSI",
+                ),
+                number: CourseNumber(
+                    "342",
+                ),
+            },
+            section: SectionNumber(
+                "002",
+            ),
+            title: "CHAMBER MUSIC",
+            credits: Range {
+                min: Credits(
+                    100,
+                ),
+                max: Credits(
+                    400,
+                ),
+            },
+            part_of_term: Some(
+                PartOfTermCode(
+                    "Full Term",
+                ),
+            ),
+            instructors: [
+                Instructor {
+                    name: "Staff, Nobody",
+                    net_id: None,
+                },
+            ],
+            meetings: [
+                Meeting {
+                    pattern: Timed(
+                        MeetingTime {
+                            days: DaySet(
+                                64,
+                            ),
+                            start: MinuteOfDay(
+                                1140,
+                            ),
+                            end: MinuteOfDay(
+                                1260,
+                            ),
+                        },
+                    ),
+                    dates: None,
+                },
+                Meeting {
+                    pattern: Unparsed(
+                        "TBA",
+                    ),
+                    dates: None,
+                },
+            ],
+            final_exam: Unknown,
+        },
+        SectionListing {
+            crn: Crn(
+                14003,
+            ),
+            term: TermCode {
+                year: 2027,
+                season: 10,
+            },
+            code: CourseCode {
+                subject: Subject(
+                    "MUSI",
+                ),
+                number: CourseNumber(
+                    "649",
+                ),
+            },
+            section: SectionNumber(
+                "003",
+            ),
+            title: "SPECIAL TOPICS",
+            credits: Fixed(
+                Credits(
+                    123,
+                ),
+            ),
+            part_of_term: None,
+            instructors: [],
+            meetings: [],
+            final_exam: Unknown,
+        },
+    ],
+    report: ParseReport {
+        rows_seen: 9,
+        rows_kept: 8,
+        field_filled: [
+            (
+                "credits",
+                8,
+            ),
+            (
+                "title",
+                8,
+            ),
+            (
+                "part_of_term",
+                7,
+            ),
+            (
+                "instructors",
+                6,
+            ),
+            (
+                "meetings",
+                5,
+            ),
+            (
+                "final_exam",
+                7,
+            ),
+        ],
+        issues: [
+            ParseIssue {
+                code: UnreadableMeeting,
+                detail: "202710 crn 14002: \"TBA\"",
+            },
+            ParseIssue {
+                code: UnknownFinalExam,
+                detail: "202710 crn 14002: \"Some New Exam Kind\"",
+            },
+            ParseIssue {
+                code: SubCentCredits,
+                detail: "202710 crn 14003: \"1.234\"",
+            },
+            ParseIssue {
+                code: RowMissingKey,
+                detail: "crn \"n/a\"",
+            },
+        ],
+    },
+}

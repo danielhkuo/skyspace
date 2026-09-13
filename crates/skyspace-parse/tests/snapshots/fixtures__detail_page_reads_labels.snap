@@ -1,0 +1,206 @@
+---
+source: crates/skyspace-parse/tests/fixtures.rs
+expression: parsed
+---
+Parsed {
+    value: SectionDetail {
+        long_title: "COMPUTATIONAL THINKING",
+        description: "An introduction to computational problem solving. No programming knowledge is required or expected.",
+        department: "Computer Science",
+        attributes: {
+            AnalyzingDiversity,
+            DistributionThree,
+        },
+        prerequisites_text: Some(
+            "COMP 140",
+        ),
+        restrictions: Some(
+            Restrictions {
+                raw: "Must be enrolled in one of the following Level(s):\nUndergraduate Professional\nVisiting Undergraduate\nUndergraduate\nMay not be enrolled in one of the following Class(es):\nFreshman\nMust be enrolled in one of the following College(s):\nLovett",
+                clauses: [
+                    RestrictionClause {
+                        effect: MustBe,
+                        dimension: Level,
+                        values: [
+                            "Undergraduate Professional",
+                            "Visiting Undergraduate",
+                            "Undergraduate",
+                        ],
+                    },
+                    RestrictionClause {
+                        effect: MustNotBe,
+                        dimension: Classification,
+                        values: [
+                            "Freshman",
+                        ],
+                    },
+                    RestrictionClause {
+                        effect: MustBe,
+                        dimension: College,
+                        values: [
+                            "Lovett",
+                        ],
+                    },
+                ],
+            },
+        ),
+        grade_mode: Some(
+            GradeMode(
+                "Standard Letter",
+            ),
+        ),
+        method_of_instruction: Some(
+            MethodOfInstruction(
+                "Face to Face",
+            ),
+        ),
+        course_type: Some(
+            CourseType(
+                "Lecture/Laboratory",
+            ),
+        ),
+        language: Some(
+            "Taught in English",
+        ),
+        reserved: [
+            SeatReservation {
+                label: "Fall Semester 2026 Matriculants",
+                capacity: 60,
+                available: 2,
+            },
+            SeatReservation {
+                label: "Lovett College",
+                capacity: 5,
+                available: 0,
+            },
+        ],
+        fees: [
+            Fee {
+                label: "Lab Fee",
+                amount_cents: Some(
+                    7500,
+                ),
+                raw: "Lab Fee - $75.00",
+            },
+            Fee {
+                label: "Materials",
+                amount_cents: Some(
+                    1200,
+                ),
+                raw: "Materials $12",
+            },
+        ],
+        has_syllabus: false,
+        fetched_at: Timestamp(
+            1700000000,
+        ),
+    },
+    report: ParseReport {
+        rows_seen: 1,
+        rows_kept: 1,
+        field_filled: [
+            (
+                "long_title",
+                1,
+            ),
+            (
+                "department",
+                1,
+            ),
+            (
+                "instructor",
+                1,
+            ),
+            (
+                "meeting",
+                1,
+            ),
+            (
+                "part_of_term",
+                1,
+            ),
+            (
+                "grade_mode",
+                1,
+            ),
+            (
+                "course_type",
+                1,
+            ),
+            (
+                "language",
+                1,
+            ),
+            (
+                "distribution_group",
+                1,
+            ),
+            (
+                "analyzing_diversity",
+                1,
+            ),
+            (
+                "method_of_instruction",
+                1,
+            ),
+            (
+                "credit_hours",
+                1,
+            ),
+            (
+                "materials",
+                1,
+            ),
+            (
+                "restrictions",
+                1,
+            ),
+            (
+                "prerequisites",
+                1,
+            ),
+            (
+                "max_enrollment",
+                1,
+            ),
+            (
+                "enrolled",
+                1,
+            ),
+            (
+                "reserved_seats",
+                3,
+            ),
+            (
+                "enrollment_as_of",
+                1,
+            ),
+            (
+                "fees",
+                1,
+            ),
+            (
+                "final_exam",
+                1,
+            ),
+            (
+                "description",
+                1,
+            ),
+            (
+                "course_url",
+                1,
+            ),
+        ],
+        issues: [
+            ParseIssue {
+                code: UnknownDetailLabel,
+                detail: "202710 crn 12422: \"Zoom Link:\"",
+            },
+            ParseIssue {
+                code: RowMissingKey,
+                detail: "202710 crn 12422: reserved seats \"Reserved Seats for Nobody:\" \"lots\"",
+            },
+        ],
+    },
+}
