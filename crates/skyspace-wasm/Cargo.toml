@@ -1,0 +1,40 @@
+[package]
+name = "skyspace-wasm"
+description = "WebAssembly bindings for the Skyspace engine. Bindings only, no rules."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+# `cdylib` is what wasm-pack ships; `rlib` lets `tests/parity.rs` call the
+# exports directly.
+crate-type = ["cdylib", "rlib"]
+
+# Not `workspace = true`: the workspace forbids `unsafe_code`, and a forbid
+# cannot be lifted by an allow, while `wasm_bindgen` expands to `unsafe
+# extern "C"` shims. Everything else matches the workspace set.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+
+[dependencies]
+skyspace-core = { workspace = true }
+serde = { workspace = true }
+wasm-bindgen = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+console_error_panic_hook = { workspace = true }
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
+js-sys = { workspace = true }
+serde_json = { workspace = true }
+
+# A wasm-pack setting, not a cargo profile, so the server binary is not
+# built for size as a side effect.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz"]
