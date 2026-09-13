@@ -87,9 +87,6 @@ export function ProgramPicker({
           351.
         </Text>
       )}
-      {atMinimum && minimumReason !== undefined && chosen.length > 0 && (
-        <Text type="supporting">{minimumReason}</Text>
-      )}
       <Stack direction="horizontal" gap={1} wrap="wrap">
         {chosen
           .map(id => pool.find(p => p.id === id))

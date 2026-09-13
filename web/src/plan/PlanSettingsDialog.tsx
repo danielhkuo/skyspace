@@ -9,7 +9,7 @@ import {
   SegmentedControlItem,
 } from '@astryxdesign/core/SegmentedControl';
 import {Selector} from '@astryxdesign/core/Selector';
-import {Stack} from '@astryxdesign/core/Stack';
+import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
 import {useMemo, useState} from 'react';
@@ -51,6 +51,17 @@ const LABEL_PLACEHOLDER: Record<TermKindName, string> = {
   away: 'Study abroad — Madrid',
   off: 'Gap semester, co-op, leave',
 };
+
+/** "5 courses" or "empty", for a Rice term with no label. */
+function termCount(term: PlanTerm): string {
+  const n =
+    typeof term.kind === 'object' && 'rice' in term.kind
+      ? term.kind.rice.courses.length
+      : typeof term.kind === 'object' && 'away' in term.kind
+        ? term.kind.away.cards.length
+        : 0;
+  return n === 0 ? 'empty' : `${n} course${n === 1 ? '' : 's'}`;
+}
 
 const encode = (p: TermPosition): string => `${p.academicYear}-${p.season}`;
 const decode = (v: string): TermPosition => {
@@ -204,11 +215,9 @@ export function PlanSettingsDialog({
         }}
         purpose="form"
         width={480}
-        padding={0}
         maxHeight="85dvh"
       >
         <Layout
-          height="fill"
           header={
             <DialogHeader
               title="Plan settings"
@@ -218,11 +227,10 @@ export function PlanSettingsDialog({
                   close();
                 }
               }}
-              hasDivider
             />
           }
           content={
-            <LayoutContent padding={2}>
+            <LayoutContent>
               <Stack width="100%" gap={3} align="start">
                 <Stack width="100%" gap={2} align="start">
                   <TextInput
@@ -263,7 +271,7 @@ export function PlanSettingsDialog({
                   />
                   <Selector
                     label="Catalog year"
-                    description="Requirements are checked against this year's General Announcements. Rice lets you follow any year from matriculation to graduation."
+                    description="Requirements follow this year's General Announcements. Any year from matriculation to graduation is allowed."
                     size="sm"
                     value={String(plan.catalogYear)}
                     options={years.map(y => ({
@@ -285,16 +293,17 @@ export function PlanSettingsDialog({
                     const removeReason = termRemoveBlocker(term);
                     const kind = termKindName(term.kind);
                     const termLabel = shortTermLabel(term.position);
+                    const wantsLabel =
+                      kind !== 'rice' || (term.label ?? '') !== '';
                     return (
-                      <Stack key={term.id} width="100%" gap={1} align="start">
+                      <Stack key={term.id} width="100%" gap={0.5} align="start">
                         <Stack
                           direction="horizontal"
                           width="100%"
-                          gap={1}
+                          gap={1.5}
                           vAlign="center"
-                          wrap="wrap"
                         >
-                          <Stack width={96}>
+                          <Stack width={88}>
                             <Text size="sm" textWrap="nowrap">
                               {termLabel}
                             </Text>
@@ -312,27 +321,45 @@ export function PlanSettingsDialog({
                             <SegmentedControlItem value="away" label="Away" />
                             <SegmentedControlItem value="off" label="Off" />
                           </SegmentedControl>
+                          <StackItem size="fill">
+                            {wantsLabel ? (
+                              <TextInput
+                                label={`Label for ${termLabel}`}
+                                isLabelHidden
+                                size="sm"
+                                value={term.label ?? ''}
+                                onChange={label =>
+                                  dispatch({
+                                    type: 'setTerm',
+                                    term: term.id,
+                                    kind,
+                                    label,
+                                    facts: bundle.facts,
+                                  })
+                                }
+                                placeholder={LABEL_PLACEHOLDER[kind]}
+                                width="100%"
+                              />
+                            ) : (
+                              <Text type="supporting" textWrap="nowrap">
+                                {termCount(term)}
+                              </Text>
+                            )}
+                          </StackItem>
                           <IconButton
                             label={`Remove ${termLabel}`}
                             tooltip={
                               removeReason === undefined
-                                ? undefined
-                                : 'Holds courses or claims'
+                                ? 'Remove this term'
+                                : 'Holds courses; move them first'
                             }
                             variant="ghost"
                             size="sm"
                             icon={<Icon icon="close" size="sm" />}
                             isDisabled={removeReason !== undefined}
-                            onClick={() => {
-                              if (removeReason !== undefined) {
-                                setRefusal(prev => ({
-                                  ...prev,
-                                  [term.id]: removeReason,
-                                }));
-                              } else {
-                                dispatch({type: 'removeTerm', term: term.id});
-                              }
-                            }}
+                            onClick={() =>
+                              dispatch({type: 'removeTerm', term: term.id})
+                            }
                           />
                         </Stack>
                         {(refusal[term.id] ?? '') !== '' && (
@@ -345,27 +372,6 @@ export function PlanSettingsDialog({
                             {refusal[term.id]}
                           </Text>
                         )}
-                        {removeReason !== undefined && (
-                          <Text type="supporting">{removeReason}</Text>
-                        )}
-                        <TextInput
-                          label={`Label for ${termLabel}`}
-                          isLabelHidden
-                          isOptional
-                          size="sm"
-                          value={term.label ?? ''}
-                          onChange={label =>
-                            dispatch({
-                              type: 'setTerm',
-                              term: term.id,
-                              kind,
-                              label,
-                              facts: bundle.facts,
-                            })
-                          }
-                          placeholder={LABEL_PLACEHOLDER[kind]}
-                          width="100%"
-                        />
                       </Stack>
                     );
                   })}
@@ -409,7 +415,7 @@ export function PlanSettingsDialog({
             </LayoutContent>
           }
           footer={
-            <LayoutFooter hasDivider padding={2}>
+            <LayoutFooter>
               <Stack direction="horizontal" width="100%" hAlign="end">
                 <Button
                   label="Done"

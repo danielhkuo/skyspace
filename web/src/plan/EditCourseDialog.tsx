@@ -69,7 +69,7 @@ function isPlanned(
 function parseHours(raw: string): {credits?: number; error?: string} {
   const t = raw.trim();
   if (t === '' || !/^\d+(\.\d{1,2})?$/.test(t)) {
-    return {error: 'Enter a number of hours, like 3 or 1.5'};
+    return {error: 'A number of hours, like 3 or 1.5'};
   }
   const n = Number(t);
   if (n > MAX_HOURS) {
@@ -289,9 +289,7 @@ export function EditCourseDialog({
     const toOption = (o: Option) => ({
       value: o.requirement,
       label: o.label,
-      description: o.matches
-        ? undefined
-        : 'Not as published; counts on your say-so',
+      description: o.matches ? undefined : 'Not as published; on your say-so',
       icon: o.matches ? ('check' as const) : ('warning' as const),
     });
     return [
@@ -325,49 +323,38 @@ export function EditCourseDialog({
     ];
   };
 
+  const close = (open: boolean): void => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
     <Dialog
       isOpen
-      onOpenChange={open => {
-        if (!open) {
-          onClose();
-        }
-      }}
+      onOpenChange={close}
       purpose="form"
-      width={520}
-      padding={0}
+      width={480}
       maxHeight="85dvh"
     >
       <Layout
-        height="fill"
         header={
           <DialogHeader
             title={label}
-            subtitle={
-              planned ? 'Hours and requirements' : 'A course from outside Rice'
-            }
-            onOpenChange={open => {
-              if (!open) {
-                onClose();
-              }
-            }}
-            hasDivider
+            subtitle={planned ? undefined : 'A course from outside Rice'}
+            onOpenChange={close}
           />
         }
         content={
-          <LayoutContent padding={2}>
+          <LayoutContent>
             <Stack width="100%" gap={3} align="start">
-              <Stack width="100%" gap={1.5} align="start">
-                <Text type="label" weight="semibold">
-                  Details
-                </Text>
-                {!planned && (
+              {!planned && (
+                <Stack width="100%" gap={2} align="start">
                   <Stack
                     direction="horizontal"
                     width="100%"
-                    gap={1.5}
+                    gap={2}
                     align="start"
-                    wrap="wrap"
                   >
                     <Selector
                       label="Origin"
@@ -375,7 +362,7 @@ export function EditCourseDialog({
                       value={origin}
                       options={ORIGINS}
                       onChange={v => setOrigin(v as CreditOrigin)}
-                      width={140}
+                      width={132}
                     />
                     <TextInput
                       label="Their code"
@@ -383,7 +370,7 @@ export function EditCourseDialog({
                       value={code}
                       onChange={setCode}
                       placeholder="INF 3221"
-                      width={140}
+                      width={132}
                       status={
                         code.trim() === ''
                           ? {type: 'error', message: 'Required'}
@@ -395,79 +382,74 @@ export function EditCourseDialog({
                       size="sm"
                       value={title}
                       onChange={setTitle}
-                      width={172}
-                    />
-                    <TextInput
-                      label="Institution"
-                      isOptional
-                      size="sm"
-                      value={institution}
-                      onChange={setInstitution}
-                      placeholder="Universidad Politécnica de Madrid"
                       width="100%"
                     />
                   </Stack>
-                )}
-                <Stack
-                  direction="horizontal"
-                  width="100%"
-                  gap={1.5}
-                  align="start"
-                  wrap="wrap"
-                >
                   <TextInput
-                    label="Credit hours"
-                    description={
-                      hoursLocked
-                        ? `From ${equivalent.trim()}; credit posts as that course.`
-                        : planned
-                          ? 'Rice publishes a range for some courses.'
-                          : 'Typed by hand: counts as hours, not as a course.'
-                    }
+                    label="Institution"
+                    isOptional
                     size="sm"
-                    value={
-                      hoursLocked
-                        ? formatCredits(hoursFromEquivalent ?? 0)
-                        : hours
-                    }
-                    onChange={setHours}
-                    isReadOnly={hoursLocked}
-                    width={200}
+                    value={institution}
+                    onChange={setInstitution}
+                    placeholder="Universidad Politécnica de Madrid"
+                    width="100%"
+                  />
+                </Stack>
+              )}
+
+              <Stack direction="horizontal" width="100%" gap={2} align="start">
+                <TextInput
+                  label="Credit hours"
+                  description={
+                    hoursLocked
+                      ? `From ${equivalent.trim()}`
+                      : planned
+                        ? undefined
+                        : 'By hand: hours only, flagged'
+                  }
+                  size="sm"
+                  value={
+                    hoursLocked
+                      ? formatCredits(hoursFromEquivalent ?? 0)
+                      : hours
+                  }
+                  onChange={setHours}
+                  isReadOnly={hoursLocked}
+                  width={132}
+                  status={
+                    !hoursLocked && hoursParsed.error !== undefined
+                      ? {type: 'error', message: hoursParsed.error}
+                      : undefined
+                  }
+                />
+                {!planned && (
+                  <TextInput
+                    label="Rice equivalent"
+                    isOptional
+                    description="What the registrar posts it as"
+                    size="sm"
+                    value={equivalent}
+                    onChange={setEquivalent}
+                    placeholder="COMP 321"
+                    width="100%"
                     status={
-                      !hoursLocked && hoursParsed.error !== undefined
-                        ? {type: 'error', message: hoursParsed.error}
+                      equivalentBad
+                        ? {type: 'error', message: 'Not a Rice code'}
                         : undefined
                     }
                   />
-                  {!planned && (
-                    <TextInput
-                      label="Rice equivalent"
-                      isOptional
-                      description="The Rice course the registrar posts it as."
-                      size="sm"
-                      value={equivalent}
-                      onChange={setEquivalent}
-                      placeholder="COMP 321"
-                      width={200}
-                      status={
-                        equivalentBad
-                          ? {type: 'error', message: 'Not a Rice code'}
-                          : undefined
-                      }
-                    />
-                  )}
-                </Stack>
-                {!planned && hoursFromEquivalent !== undefined && (
-                  <CheckboxInput
-                    label="Set the hours by hand"
-                    description="Only if the registrar posted different hours. Flagged as unverified."
-                    size="sm"
-                    value={byHand}
-                    onChange={setByHand}
-                    width="100%"
-                  />
                 )}
               </Stack>
+              {!planned && hoursFromEquivalent !== undefined && (
+                <CheckboxInput
+                  label="Set the hours by hand"
+                  description="Only if the registrar posted different hours; flagged as unverified"
+                  size="sm"
+                  value={byHand}
+                  onChange={setByHand}
+                  width="100%"
+                />
+              )}
 
               {choices.map(choice => (
                 <Stack
@@ -476,16 +458,12 @@ export function EditCourseDialog({
                   gap={1.5}
                   align="start"
                 >
-                  <Text type="label" weight="semibold">
-                    {choice.program.name}
-                  </Text>
                   <Selector
-                    label={`Requirement in ${choice.program.name}`}
-                    isLabelHidden
+                    label={choice.program.name}
                     description={
                       canAuto
                         ? undefined
-                        : 'Nothing matches a course without a Rice code; pick where it should count.'
+                        : 'No Rice code, so nothing matches; pick where it should count'
                     }
                     size="sm"
                     width="100%"
@@ -517,14 +495,13 @@ export function EditCourseDialog({
                     <Stack
                       direction="horizontal"
                       width="100%"
-                      gap={1.5}
+                      gap={2}
                       align="start"
-                      wrap="wrap"
                     >
                       <Selector
                         label="Why it counts"
                         size="sm"
-                        width={236}
+                        width="50%"
                         value={bases[choice.program.id] ?? 'unsure'}
                         options={(
                           Object.keys(FILL_BASIS_LABEL) as FillBasis['kind'][]
@@ -547,8 +524,8 @@ export function EditCourseDialog({
                         onChange={v =>
                           setNotes(prev => ({...prev, [choice.program.id]: v}))
                         }
-                        placeholder="Who approved it, when, or where it is posted"
-                        width={236}
+                        placeholder="Who approved it, or where it is posted"
+                        width="50%"
                       />
                     </Stack>
                   )}
@@ -563,19 +540,20 @@ export function EditCourseDialog({
           </LayoutContent>
         }
         footer={
-          <LayoutFooter hasDivider padding={2}>
+          <LayoutFooter>
             <Stack
               direction="horizontal"
               width="100%"
               gap={2}
-              hAlign="between"
+              hAlign={anyRejected ? 'between' : 'end'}
               vAlign="center"
             >
-              <Text type="supporting">
-                {anyRejected
-                  ? "Skyspace can't verify a pick that doesn't match; it stays out of your met count and is noted on the PDF."
-                  : 'One requirement per program. Your choice never edits a requirement.'}
-              </Text>
+              {anyRejected && (
+                <Text type="supporting">
+                  Skyspace can&apos;t verify a pick that doesn&apos;t match; it
+                  stays out of your met count and is noted on the PDF.
+                </Text>
+              )}
               <Stack direction="horizontal" gap={1.5}>
                 <Button
                   label="Cancel"
