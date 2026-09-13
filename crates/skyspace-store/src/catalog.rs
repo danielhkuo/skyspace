@@ -197,9 +197,25 @@ struct CountRow {
     course_count: i64,
 }
 
+/// The `ingest_runs.job` name of the catalog job, whose runs are keyed by
+/// academic year rather than term.
+pub const CATALOG_JOB: &str = "catalog";
+
+/// The jobs whose successful run moves `data_version`, the catalog
+/// `ETag`: every job that writes what `/api/v1/sections`, the class page
+/// or the course page serve. Seats are polled and served with their own
+/// `as_of`, so they are not in the list. `skyspace-ingest` asserts its
+/// job names against this list.
+pub const DATA_VERSION_JOBS: [&str; 5] =
+    ["listings", "detail", "reference", "sections", CATALOG_JOB];
+
 /// Leading digits of a course number, as an integer.
 const NUMBER_EXPR: &str = "nullif(regexp_replace(c.number, '[^0-9].*$', ''), '')::int";
 const COURSE_ORDER: &str = "c.subject, nullif(regexp_replace(c.number, '[^0-9].*$', ''), '')::int, c.number, s.section_code";
+
+/// Keywords longer than this are cut: nothing in the catalog is longer,
+/// and a long keyword is only a longer scan.
+pub const MAX_KEYWORD_CHARS: usize = 200;
 
 /// Lowercase alphanumerics only: `COMP 140`, `comp-140` and `comp140` are one key.
 fn normalise_code(q: &str) -> String {
@@ -207,6 +223,29 @@ fn normalise_code(q: &str) -> String {
         .filter(char::is_ascii_alphanumeric)
         .map(|c| c.to_ascii_lowercase())
         .collect()
+}
+
+/// The keyword a query carries once trimmed and capped, or `None` when
+/// there is none.
+fn keyword_of(q: &SectionQuery) -> Option<String> {
+    let keyword = q.q.as_deref()?.trim();
+    if keyword.is_empty() {
+        return None;
+    }
+    Some(keyword.chars().take(MAX_KEYWORD_CHARS).collect())
+}
+
+/// A literal for `like`/`ilike`: `%`, `_` and the escape character itself
+/// are escaped, so a keyword of `%` matches a percent sign, not everything.
+fn like_literal(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if matches!(c, '%' | '_' | '\\') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
 }
 
 fn count_from_db(value: i64) -> u32 {
@@ -223,22 +262,30 @@ fn push_search(qb: &mut QueryBuilder<'_, Postgres>, q: &SectionQuery, with_sched
     qb.push(" left join section_seat_state st on st.section_id = s.id where s.term_code = ");
     qb.push_bind(q.term.to_string());
     qb.push(" and s.withdrawn_at is null");
-    if let Some(keyword) = q.q.as_deref().map(str::trim).filter(|k| !k.is_empty()) {
-        let norm = normalise_code(keyword);
-        qb.push(" and (c.code_norm = ");
-        qb.push_bind(norm.clone());
-        qb.push(" or c.code_norm like ");
-        qb.push_bind(format!("{norm}%"));
-        qb.push(" or c.code_norm % ");
-        qb.push_bind(norm);
+    if let Some(keyword) = keyword_of(q) {
+        // A keyword with no letter or digit has no code form: only the
+        // title and instructor branches apply, so `%` matches nothing
+        // rather than every course.
+        let norm = normalise_code(&keyword);
+        qb.push(" and (");
+        if norm.is_empty() {
+            qb.push("false");
+        } else {
+            qb.push("c.code_norm = ");
+            qb.push_bind(norm.clone());
+            qb.push(" or c.code_norm like ");
+            qb.push_bind(format!("{norm}%"));
+            qb.push(" or c.code_norm % ");
+            qb.push_bind(norm);
+        }
         qb.push(" or to_tsvector('english', c.title) @@ plainto_tsquery('english', ");
-        qb.push_bind(keyword.to_owned());
+        qb.push_bind(keyword.clone());
         qb.push(
             ") or exists (select 1 from section_instructors si join instructors i on i.id = si.instructor_id \
                where si.section_id = s.id and i.name ilike ",
         );
-        qb.push_bind(format!("%{keyword}%"));
-        qb.push("))");
+        qb.push_bind(format!("%{}%", like_literal(&keyword)));
+        qb.push(" escape '\\'))");
     }
     if !q.subject.is_empty() {
         qb.push(" and c.subject = any(");
@@ -331,14 +378,17 @@ fn push_order(qb: &mut QueryBuilder<'_, Postgres>, q: &SectionQuery) {
     qb.push(" order by ");
     match q.sort {
         SectionSort::Relevance => {
-            if let Some(keyword) = q.q.as_deref().map(str::trim).filter(|k| !k.is_empty()) {
-                let norm = normalise_code(keyword);
-                qb.push("case when c.code_norm = ");
-                qb.push_bind(norm.clone());
-                qb.push(" then 0 when c.code_norm like ");
-                qb.push_bind(format!("{norm}%"));
-                qb.push(" then 1 else 2 end, ts_rank(to_tsvector('english', c.title), plainto_tsquery('english', ");
-                qb.push_bind(keyword.to_owned());
+            if let Some(keyword) = keyword_of(q) {
+                let norm = normalise_code(&keyword);
+                if !norm.is_empty() {
+                    qb.push("case when c.code_norm = ");
+                    qb.push_bind(norm.clone());
+                    qb.push(" then 0 when c.code_norm like ");
+                    qb.push_bind(format!("{norm}%"));
+                    qb.push(" then 1 else 2 end, ");
+                }
+                qb.push("ts_rank(to_tsvector('english', c.title), plainto_tsquery('english', ");
+                qb.push_bind(keyword);
                 qb.push(")) desc, ");
             }
         }
@@ -430,17 +480,22 @@ impl Store {
         })
     }
 
-    /// Epoch seconds of the last successful listing, detail or reference run
-    /// for the term, or 0 before any: the catalog `ETag` input.
+    /// Epoch seconds of the last successful run of any job in
+    /// [`DATA_VERSION_JOBS`] for the term (the catalog job is keyed by the
+    /// term's academic year), or 0 before any: the catalog `ETag` input.
     ///
     /// # Errors
     /// `StoreError::Database`.
     pub async fn data_version(&self, term: TermCode) -> Result<i64, StoreError> {
         let at: Option<OffsetDateTime> = sqlx::query_scalar(
             "select max(finished_at) from ingest_runs \
-             where term_code = $1 and outcome = 'ok' and job in ('listings', 'detail', 'reference')",
+             where outcome = 'ok' and job = any($3) \
+               and term_code = case when job = $4 then $2 else $1 end",
         )
         .bind(term.to_string())
+        .bind(term.academic_year().to_string())
+        .bind(DATA_VERSION_JOBS.map(str::to_owned).to_vec())
+        .bind(CATALOG_JOB)
         .fetch_one(&self.pool)
         .await?;
         Ok(at.map_or(0, OffsetDateTime::unix_timestamp))
@@ -765,8 +820,37 @@ mod tests {
         };
         store.finish_run(run, &summary).await.unwrap();
         assert!(store.data_version(fall()).await.unwrap() > 1_700_000_000);
+        let after_listings = store.data_version(fall()).await.unwrap();
+        // The weekly XML and the catalog (keyed by the term's year) move it too.
+        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+        let xml_run = store.start_run("sections", Some(fall())).await.unwrap();
+        store.finish_run(xml_run, &summary).await.unwrap();
+        let after_xml = store.data_version(fall()).await.unwrap();
+        assert!(after_xml > after_listings);
+        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+        let catalog_run = store
+            .start_run_keyed(
+                "catalog",
+                Some(crate::ingest::RunKey::Year(CatalogYear(2027))),
+            )
+            .await
+            .unwrap();
+        store.finish_run(catalog_run, &summary).await.unwrap();
+        assert!(store.data_version(fall()).await.unwrap() > after_xml);
+        // Another year's catalog and the seats poll do not.
+        let frozen = store.data_version(fall()).await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+        let other_year = store
+            .start_run_keyed(
+                "catalog",
+                Some(crate::ingest::RunKey::Year(CatalogYear(2024))),
+            )
+            .await
+            .unwrap();
+        store.finish_run(other_year, &summary).await.unwrap();
         let seats_run = store.start_run("seats", Some(fall())).await.unwrap();
         store.finish_run(seats_run, &summary).await.unwrap();
+        assert_eq!(store.data_version(fall()).await.unwrap(), frozen);
         assert_eq!(
             store
                 .last_ok_run("seats", Some(fall()))
@@ -961,6 +1045,44 @@ mod tests {
             ..SectionQuery::for_term(fall())
         };
         assert_eq!(store.search_sections(&q).await.unwrap().total, 2);
+    }
+
+    /// `%`, `_` and `\\` are characters, not wildcards; a keyword with no
+    /// letter or digit matches nothing rather than everything.
+    #[sqlx::test]
+    async fn keyword_wildcards_are_literal(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        seed_catalog(&store).await;
+        let mut taught = listing(40004, "COMP 140", "CT", vec![timed("MWF", 600, 650)]);
+        taught.section = skyspace_core::code::SectionNumber("002".to_owned());
+        taught.instructors = vec![skyspace_core::catalog::Instructor {
+            name: "Ada Lovelace".to_owned(),
+            net_id: None,
+        }];
+        store.upsert_sections(fall(), &[taught]).await.unwrap();
+        let search = |q: &str| {
+            let query = SectionQuery {
+                q: Some(q.to_owned()),
+                scheduled_only: false,
+                ..SectionQuery::for_term(fall())
+            };
+            let store = store.clone();
+            async move { store.search_sections(&query).await.unwrap().total }
+        };
+        assert_eq!(search("Ada").await, 1);
+        assert_eq!(search("%").await, 0);
+        assert_eq!(search("???").await, 0);
+        assert_eq!(search("_").await, 0);
+        assert_eq!(search("A%a").await, 0, "% is not a wildcard");
+        assert_eq!(search("Ada_Lovelace").await, 0, "_ is not a wildcard");
+        assert_eq!(search("Ada Lovelace").await, 1);
+        assert_eq!(search("a\\").await, 0);
+        assert_eq!(search("COMP_1").await, 3, "the code branch reads comp1");
+        assert_eq!(search(&"x".repeat(5000)).await, 0);
+        let mut q = SectionQuery::for_term(fall());
+        q.q = Some("%".to_owned());
+        q.sort = SectionSort::Relevance;
+        assert_eq!(store.search_sections(&q).await.unwrap().total, 0);
     }
 
     #[sqlx::test]

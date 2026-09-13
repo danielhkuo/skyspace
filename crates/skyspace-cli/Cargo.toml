@@ -31,4 +31,3 @@ url = { workspace = true }
 uuid = { workspace = true, features = ["v4", "v5"] }
 toml = { workspace = true }
 similar = { workspace = true }
-sqlx = { workspace = true }

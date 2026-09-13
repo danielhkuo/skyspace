@@ -1,15 +1,20 @@
 //! `replay`: read archived bodies and call the same parse-and-store path
-//! the live job called, with no network. Rows are replayed oldest first,
-//! so the tables end on the newest body of each URL. Guards and
-//! withdrawal are not re-run: a replay repairs what a parser bug dropped,
-//! it does not re-decide what Rice published.
+//! the live job called, with no network. Only the newest body of each URL
+//! from a run that ended `ok` is replayed (a quarantined search form or a
+//! superseded page is not), oldest first, so the tables end on what Rice
+//! last published. Guards and withdrawal are not re-run: a replay repairs
+//! what a parser bug dropped, it does not re-decide what Rice published,
+//! and it cannot undo a withdrawal because a listing clears
+//! `withdrawn_at` only when its body is newer than the withdrawal. A page
+//! that does not parse is an issue and the run continues; only the store
+//! stops it.
 
 use skyspace_core::Timestamp;
 use skyspace_core::code::Crn;
 use skyspace_core::program::CatalogYear;
 use skyspace_core::term::TermCode;
 use skyspace_parse::{
-    RefKind, parse_associated_sections, parse_catalog_subject, parse_program_index,
+    ParseError, RefKind, parse_associated_sections, parse_catalog_subject, parse_program_index,
     parse_program_page, parse_reference_list, parse_section_detail, parse_subject_listing,
 };
 use skyspace_store::{DraftInput, IssueSeverity, TermInput};
@@ -45,12 +50,47 @@ async fn body(
 ) -> Result<(RunOutcome, Option<String>), JobError> {
     let rows = run.ctx().raw_responses_since(source, since).await?;
     run.set_targets(rows.len());
+    let mut skipped = 0u32;
     for row in rows {
         let span = tracing::info_span!("page", url = %row.url);
-        one_row(run, source, &row).instrument(span).await?;
+        match one_row(run, source, &row).instrument(span).await {
+            Ok(()) => {}
+            Err(JobError::Store(e)) => return Err(JobError::Store(e)),
+            Err(e) => {
+                // One page a parser (or the archive) cannot read is an
+                // issue on that page; the rest of the replay goes on.
+                skipped += 1;
+                tracing::warn!(url = %row.url, error = %e, "page skipped");
+                run.issue(
+                    &row.url,
+                    IssueSeverity::Error,
+                    "replay_skipped",
+                    serde_json::json!({ "raw_response": row.id, "error": e.to_string() }),
+                )
+                .await?;
+            }
+        }
     }
     run.write_stats(source.as_str()).await?;
-    Ok((RunOutcome::Ok, None))
+    let note = (skipped > 0).then(|| format!("{skipped} pages could not be replayed"));
+    Ok((RunOutcome::Ok, note))
+}
+
+/// Record a subject page with no records the way the live jobs do: a
+/// `no_rows` warning, not a failure.
+async fn no_rows(
+    run: &mut Run<'_>,
+    row: &RawRow,
+    selector: &str,
+    document: &str,
+) -> Result<(), JobError> {
+    run.issue(
+        &row.url,
+        IssueSeverity::Warn,
+        "no_rows",
+        serde_json::json!({ "selector": selector, "document": document }),
+    )
+    .await
 }
 
 fn term_of(row: &RawRow) -> Result<TermCode, JobError> {
@@ -90,9 +130,20 @@ async fn one_row(run: &mut Run<'_>, source: Source, row: &RawRow) -> Result<(), 
 
 async fn replay_listing(run: &mut Run<'_>, row: &RawRow, text: &str) -> Result<(), JobError> {
     let term = term_of(row)?;
-    let parsed = parse_subject_listing(text, term)?;
+    let parsed = match parse_subject_listing(text, term) {
+        Ok(parsed) => parsed,
+        Err(ParseError::SelectorMissing { selector, document }) => {
+            // A subject with no sections this term, as the live job reads it.
+            return no_rows(run, row, selector, document).await;
+        }
+        Err(e) => return Err(e.into()),
+    };
     run.report(&row.url, &parsed.report).await?;
-    let written = run.ctx().store.upsert_sections(term, &parsed.value).await?;
+    let written = run
+        .ctx()
+        .store
+        .upsert_sections_fetched_at(term, &parsed.value, row.fetched_at)
+        .await?;
     run.add_rows(written);
     Ok(())
 }
@@ -102,7 +153,13 @@ async fn replay_catalog(run: &mut Run<'_>, row: &RawRow, text: &str) -> Result<(
         .and_then(|y| y.parse::<u16>().ok())
         .map(CatalogYear)
         .ok_or_else(|| JobError::Corrupt(format!("raw_responses {} has no year", row.id)))?;
-    let parsed = parse_catalog_subject(text, year)?;
+    let parsed = match parse_catalog_subject(text, year) {
+        Ok(parsed) => parsed,
+        Err(ParseError::SelectorMissing { selector, document }) => {
+            return no_rows(run, row, selector, document).await;
+        }
+        Err(e) => return Err(e.into()),
+    };
     run.report(&row.url, &parsed.report).await?;
     let written = run.ctx().store.upsert_courses(year, &parsed.value).await?;
     run.add_rows(written);
@@ -174,7 +231,8 @@ async fn replay_program(run: &mut Run<'_>, row: &RawRow, text: &str) -> Result<(
             .await?;
         return Ok(());
     }
-    run.ctx()
+    let put = run
+        .ctx()
         .store
         .put_draft(&DraftInput {
             run_id: run.id(),
@@ -185,6 +243,8 @@ async fn replay_program(run: &mut Run<'_>, row: &RawRow, text: &str) -> Result<(
             body: serde_json::to_value(&parsed.value)?,
         })
         .await?;
-    run.add_rows(1);
+    if put.created() {
+        run.add_rows(1);
+    }
     Ok(())
 }

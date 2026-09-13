@@ -2376,7 +2376,6 @@ dependencies = [
  "skyspace-ingest",
  "skyspace-parse",
  "skyspace-store",
- "sqlx",
  "thiserror",
  "time",
  "tokio",

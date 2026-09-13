@@ -71,6 +71,10 @@ create table requirements (
     source_url        text     not null,
     source_anchor     text,
     fingerprint       text     not null,
+    -- A published rule is never deleted: a re-publish that no longer
+    -- carries its fingerprint marks it retired, so a plan's
+    -- `requirement_id` and a `requirement_reports` row keep resolving.
+    retired           boolean  not null default false,
     check ((kind = 'select') = (select_count is not null)),
     check ((kind = 'credits') = (min_credits_cents is not null)),
     check ((kind = 'credits') = (credit_scope is not null)),

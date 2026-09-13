@@ -1,13 +1,14 @@
 //! `skyspace doctor`: config, database, archive, the age of every job's
-//! last good run against 1.5x its interval, and the one guard on the
-//! jsonb plan document. Exit 2 when anything is overdue, so the hourly
-//! timer's `OnFailure=` unit alerts; a run that never started is the
-//! case an exit code from the job itself cannot catch.
+//! last good run against 1.5x its interval, a run that opened and never
+//! closed (a crash or a kill), and the one guard on the jsonb plan
+//! document. Exit 2 when anything is overdue or crashed, so the hourly
+//! timer's `OnFailure=` unit alerts; a run that never started or never
+//! finished is the case an exit code from the job itself cannot catch.
 
 use std::time::Duration;
 
 use skyspace_ingest::job_names as j;
-use skyspace_store::Store;
+use skyspace_store::{RunKey, RunRow, Store};
 use time::OffsetDateTime;
 
 use crate::config::Config;
@@ -37,6 +38,21 @@ pub const GRACE: f64 = 1.5;
 #[must_use]
 pub fn overdue(last_ok: Option<OffsetDateTime>, interval: Duration, now: OffsetDateTime) -> bool {
     last_ok.is_none_or(|at| (now - at).as_seconds_f64() > interval.as_secs_f64() * GRACE)
+}
+
+/// A run still open this long after starting did not finish: it crashed
+/// or was killed, and nothing will ever close its row.
+pub const CRASH_FACTOR: f64 = 2.0;
+
+/// Whether the most recent run opened and never closed: no `finished_at`
+/// and started more than `CRASH_FACTOR` intervals ago. A run younger than
+/// that is simply running.
+#[must_use]
+pub fn crashed(last: Option<&RunRow>, interval: Duration, now: OffsetDateTime) -> bool {
+    last.is_some_and(|run| {
+        run.finished_at.is_none()
+            && (now - run.started_at).as_seconds_f64() > interval.as_secs_f64() * CRASH_FACTOR
+    })
 }
 
 fn age_text(last_ok: Option<OffsetDateTime>, now: OffsetDateTime) -> String {
@@ -93,17 +109,34 @@ async fn check_jobs(store: &Store, now: OffsetDateTime) -> anyhow::Result<bool> 
         let interval = seats_window.map_or(interval, |w| {
             Duration::from_mins(u64::try_from(w.interval_minutes).unwrap_or(15))
         });
+        let key = if job == j::SEATS {
+            current.map(RunKey::Term)
+        } else {
+            None
+        };
         let last = store
-            .last_ok_run(job, if job == j::SEATS { current } else { None })
+            .last_ok_run_keyed(job, key)
             .await?
             .and_then(|r| r.finished_at);
+        let latest = store.last_run(job, key).await?;
         let late = overdue(last, interval, now);
-        any_overdue |= late;
+        let dead = crashed(latest.as_ref(), interval, now);
+        any_overdue |= late || dead;
+        let state = match (dead, late) {
+            (true, _) => format!(
+                "CRASHED (run {} started {} and never finished)",
+                latest.as_ref().map_or(0, |r| r.id),
+                latest
+                    .as_ref()
+                    .map_or_else(String::new, |r| r.started_at.to_string())
+            ),
+            (false, true) => "OVERDUE".to_owned(),
+            (false, false) => "ok".to_owned(),
+        };
         println!(
-            "  {job:<13} {:<20} interval {:.1} h  {}",
+            "  {job:<13} {:<20} interval {:.1} h  {state}",
             age_text(last, now),
             interval.as_secs_f64() / HOUR.as_secs_f64(),
-            if late { "OVERDUE" } else { "ok" }
         );
     }
     Ok(any_overdue)
@@ -149,11 +182,8 @@ pub async fn run(config: &Config) -> anyhow::Result<i32> {
             return Ok(2);
         }
     };
-    match sqlx::query_scalar::<_, i32>("select 1")
-        .fetch_one(store.pool())
-        .await
-    {
-        Ok(_) => println!("database  reachable"),
+    match store.ping().await {
+        Ok(()) => println!("database  reachable"),
         Err(e) => {
             println!("database  query failed: {e}");
             println!("doctor: database query failed");
@@ -161,9 +191,9 @@ pub async fn run(config: &Config) -> anyhow::Result<i32> {
         }
     }
 
-    println!("jobs (last good run against 1.5x interval)");
+    println!("jobs (last good run against 1.5x interval; an open run past 2x is a crash)");
     match check_jobs(&store, now).await {
-        Ok(true) => problems.push("a job is overdue or never ran".to_owned()),
+        Ok(true) => problems.push("a job is overdue, crashed or never ran".to_owned()),
         Ok(false) => {}
         Err(e) => {
             // Migrations not applied yet: the tables are missing.
@@ -202,7 +232,55 @@ mod tests {
 
     use time::OffsetDateTime;
 
-    use super::{mask, overdue};
+    use skyspace_store::RunRow;
+
+    use super::{crashed, mask, overdue};
+
+    fn run(started_ago: Duration, finished: bool, now: OffsetDateTime) -> RunRow {
+        RunRow {
+            id: 7,
+            job: "listings".to_owned(),
+            term_code: None,
+            started_at: now - started_ago,
+            finished_at: finished.then_some(now),
+            outcome: finished.then(|| "ok".to_owned()),
+            requests: 0,
+            targets: 0,
+            failures: 0,
+            bytes: 0,
+            rows_written: 0,
+            error: None,
+        }
+    }
+
+    /// An open run older than two intervals is a crash; a younger one is
+    /// running; a closed one is neither.
+    #[test]
+    fn open_runs_past_two_intervals_are_crashes() {
+        let now = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(1_000_000);
+        let day = Duration::from_hours(24);
+        assert!(!crashed(None, day, now));
+        assert!(!crashed(
+            Some(&run(Duration::from_hours(1), false, now)),
+            day,
+            now
+        ));
+        assert!(!crashed(
+            Some(&run(Duration::from_hours(47), false, now)),
+            day,
+            now
+        ));
+        assert!(crashed(
+            Some(&run(Duration::from_hours(49), false, now)),
+            day,
+            now
+        ));
+        assert!(!crashed(
+            Some(&run(Duration::from_hours(49), true, now)),
+            day,
+            now
+        ));
+    }
 
     #[test]
     fn overdue_is_one_and_a_half_intervals_or_never() {

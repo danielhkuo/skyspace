@@ -55,6 +55,32 @@ impl DraftState {
     }
 }
 
+/// What `put_draft` did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DraftPut {
+    /// A new row was queued.
+    Created(DraftId),
+    /// An identical draft (same slug, year and page hash) was already
+    /// queued; this is its id.
+    Existing(DraftId),
+}
+
+impl DraftPut {
+    /// The draft's id either way.
+    #[must_use]
+    pub fn id(self) -> DraftId {
+        match self {
+            Self::Created(id) | Self::Existing(id) => id,
+        }
+    }
+
+    /// Whether a row was written.
+    #[must_use]
+    pub fn created(self) -> bool {
+        matches!(self, Self::Created(_))
+    }
+}
+
 /// What the requirements job writes for review.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DraftInput {
@@ -346,7 +372,10 @@ impl<'a> BodyColumns<'a> {
     }
 }
 
-async fn insert_requirement(
+/// Write one rule: a new row, or the row whose fingerprint matched updated
+/// in place so its id (and every `requirement_reports` and plan document
+/// naming it) survives the publish.
+async fn upsert_requirement(
     conn: &mut PgConnection,
     program_id: Uuid,
     year: i16,
@@ -359,7 +388,16 @@ async fn insert_requirement(
         "insert into requirements (id, program_id, catalog_year, parent_id, ordinal, kind, label, hours_kind, \
             hours_min_cents, hours_max_cents, select_count, semesters, min_credits_cents, credit_scope, \
             non_course_kind, min_departments, description, filter, source_text, source_url, source_anchor, fingerprint) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)",
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) \
+         on conflict (program_id, catalog_year, fingerprint) do update set \
+            parent_id = excluded.parent_id, ordinal = excluded.ordinal, kind = excluded.kind, label = excluded.label, \
+            hours_kind = excluded.hours_kind, hours_min_cents = excluded.hours_min_cents, \
+            hours_max_cents = excluded.hours_max_cents, select_count = excluded.select_count, \
+            semesters = excluded.semesters, min_credits_cents = excluded.min_credits_cents, \
+            credit_scope = excluded.credit_scope, non_course_kind = excluded.non_course_kind, \
+            min_departments = excluded.min_departments, description = excluded.description, \
+            filter = excluded.filter, source_text = excluded.source_text, source_url = excluded.source_url, \
+            source_anchor = excluded.source_anchor, retired = false",
     )
     .bind(row.id)
     .bind(program_id)
@@ -385,6 +423,10 @@ async fn insert_requirement(
     .bind(&row.fingerprint)
     .execute(&mut *conn)
     .await?;
+    sqlx::query("delete from requirement_courses where requirement_id = $1")
+        .bind(row.id)
+        .execute(&mut *conn)
+        .await?;
     if let Some(filter) = cols.filter {
         for code in code_selectors(filter) {
             sqlx::query(
@@ -407,10 +449,13 @@ struct ExistingRow {
     fingerprint: String,
 }
 
-/// Publish one version: the `programs` row by slug, the version row, and
-/// the tree with fresh ids except where a fingerprint matches a rule of the
-/// previous publish of the same year. Ids that were not carried over are
-/// retired, never reused.
+/// Publish one version: the `programs` row by slug, the version row
+/// (updated in place when the year was published before), and the tree
+/// with fresh ids except where a fingerprint matches a rule of the
+/// previous publish of the same year, whose row is updated in place. Rows
+/// no publish carries any more are marked `retired`, never deleted, so a
+/// plan document or a `requirement_reports` row naming them still
+/// resolves; their ids are listed in `retired_requirements`.
 async fn publish(
     conn: &mut PgConnection,
     program: &Program,
@@ -437,34 +482,20 @@ async fn publish(
     .bind(year)
     .fetch_all(&mut *conn)
     .await?;
-    let previously_retired: Option<Vec<Uuid>> = sqlx::query_scalar(
-        "select retired_requirements from program_versions where program_id = $1 and catalog_year = $2",
-    )
-    .bind(program_id)
-    .bind(year)
-    .fetch_optional(&mut *conn)
-    .await?;
-    sqlx::query("delete from program_versions where program_id = $1 and catalog_year = $2")
-        .bind(program_id)
-        .bind(year)
-        .execute(&mut *conn)
-        .await?;
-
     let mut existing: BTreeMap<String, Uuid> = previous
         .iter()
         .map(|r| (r.fingerprint.clone(), r.id))
         .collect();
     let mut rows = Vec::new();
     flatten(&program.root, None, 0, "0", &mut existing, &mut rows);
-    let mut retired: Vec<Uuid> = previously_retired.unwrap_or_default();
-    retired.extend(program.retired_requirements.iter().map(|r| r.0));
-    retired.extend(existing.into_values());
-    retired.sort();
-    retired.dedup();
 
+    // The version row first: `requirements` references it.
     sqlx::query(
         "insert into program_versions (program_id, catalog_year, source, ga_url, total_credits_cents, from_draft, \
-            published_at, reviewed_by, retired_requirements) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            published_at, reviewed_by) values ($1, $2, $3, $4, $5, $6, $7, $8) \
+         on conflict (program_id, catalog_year) do update set \
+            source = excluded.source, ga_url = excluded.ga_url, total_credits_cents = excluded.total_credits_cents, \
+            from_draft = excluded.from_draft, published_at = excluded.published_at, reviewed_by = excluded.reviewed_by",
     )
     .bind(program_id)
     .bind(year)
@@ -477,12 +508,48 @@ async fn publish(
     .bind(from_draft.map(|d| d.0))
     .bind(timestamp_to_db(program.review.published_at)?)
     .bind(reviewer)
-    .bind(&retired)
     .execute(&mut *conn)
     .await?;
     for row in &rows {
-        insert_requirement(&mut *conn, program_id, year, row).await?;
+        upsert_requirement(&mut *conn, program_id, year, row).await?;
     }
+    // Everything this publish did not carry is retired in place.
+    let carried: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+    sqlx::query(
+        "update requirements set retired = true \
+         where program_id = $1 and catalog_year = $2 and not retired and id <> all($3)",
+    )
+    .bind(program_id)
+    .bind(year)
+    .bind(&carried)
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "delete from requirement_courses rc using requirements r \
+         where r.id = rc.requirement_id and r.program_id = $1 and r.catalog_year = $2 and r.retired",
+    )
+    .bind(program_id)
+    .bind(year)
+    .execute(&mut *conn)
+    .await?;
+    let mut retired: Vec<Uuid> = sqlx::query_scalar(
+        "select id from requirements where program_id = $1 and catalog_year = $2 and retired",
+    )
+    .bind(program_id)
+    .bind(year)
+    .fetch_all(&mut *conn)
+    .await?;
+    retired.extend(program.retired_requirements.iter().map(|r| r.0));
+    retired.sort();
+    retired.dedup();
+    sqlx::query(
+        "update program_versions set retired_requirements = $3 where program_id = $1 and catalog_year = $2",
+    )
+    .bind(program_id)
+    .bind(year)
+    .bind(&retired)
+    .execute(&mut *conn)
+    .await?;
     Ok(ProgramId(program_id))
 }
 
@@ -637,7 +704,8 @@ async fn load_program(
         "select id, parent_id, kind, label, hours_kind, hours_min_cents, hours_max_cents, select_count, \
                 semesters, min_credits_cents, credit_scope, non_course_kind, min_departments, description, \
                 filter, source_text, source_url, source_anchor \
-         from requirements where program_id = $1 and catalog_year = $2 order by parent_id nulls first, ordinal",
+         from requirements where program_id = $1 and catalog_year = $2 and not retired \
+         order by parent_id nulls first, ordinal",
     )
     .bind(id.0)
     .bind(db_year)
@@ -697,24 +765,42 @@ fn pick_year(held: &[CatalogYear], wanted: CatalogYear) -> Option<CatalogYear> {
 }
 
 impl Store {
-    /// Queue a draft for review. Returns its id.
+    /// Queue a draft for review. A draft for the same `(slug,
+    /// catalog_year, source_sha256)` already in the queue is returned
+    /// instead of written again, so a re-run pull or a replay does not
+    /// double the review list.
     ///
     /// # Errors
     /// `StoreError::Database` or `Input`.
-    pub async fn put_draft(&self, draft: &DraftInput) -> Result<DraftId, StoreError> {
+    pub async fn put_draft(&self, draft: &DraftInput) -> Result<DraftPut, StoreError> {
+        let mut tx = self.pool.begin().await?;
+        let year = year_to_db(draft.catalog_year)?;
+        let existing: Option<i64> = sqlx::query_scalar(
+            "select id from program_drafts where slug = $1 and catalog_year = $2 and source_sha256 = $3 \
+             order by id limit 1",
+        )
+        .bind(&draft.slug)
+        .bind(year)
+        .bind(draft.source_sha256.to_vec())
+        .fetch_optional(&mut *tx)
+        .await?;
+        if let Some(id) = existing {
+            return Ok(DraftPut::Existing(DraftId(id)));
+        }
         let id: i64 = sqlx::query_scalar(
             "insert into program_drafts (run_id, slug, catalog_year, source_url, source_sha256, body) \
              values ($1, $2, $3, $4, $5, $6) returning id",
         )
         .bind(draft.run_id)
         .bind(&draft.slug)
-        .bind(year_to_db(draft.catalog_year)?)
+        .bind(year)
         .bind(&draft.source_url)
         .bind(draft.source_sha256.to_vec())
         .bind(&draft.body)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await?;
-        Ok(DraftId(id))
+        tx.commit().await?;
+        Ok(DraftPut::Created(DraftId(id)))
     }
 
     /// Drafts in one state, newest first.
@@ -745,31 +831,62 @@ impl Store {
         row.map(DraftRow::try_from).transpose()
     }
 
-    /// Publish the program a reviewer built from a draft, and mark the draft
-    /// approved. `None` when the draft id is unknown. The draft's own
-    /// state is not checked: a reviewer may re-approve after a fix, and a
-    /// rule whose fingerprint is unchanged keeps its id.
+    /// Publish the program a reviewer built from a draft as a GA version,
+    /// and mark the draft approved. `None` when the draft id is unknown.
     ///
     /// # Errors
-    /// `StoreError::Database`, `Input` or `Json`.
+    /// `StoreError::Input` when the draft was rejected; `Database`,
+    /// `Input` or `Json` otherwise.
     pub async fn approve_draft(
         &self,
         id: DraftId,
         reviewer: &str,
         program: &Program,
     ) -> Result<Option<ProgramId>, StoreError> {
+        self.approve_draft_as(id, reviewer, program, VersionSource::Ga)
+            .await
+    }
+
+    /// `approve_draft` with the version's source spelled out: the
+    /// hand-encoded university requirements go through the same queue and
+    /// are published as `manual`. A pending draft is approved; an approved
+    /// one may be approved again (a rule whose fingerprint is unchanged
+    /// keeps its id); a rejected one is refused.
+    ///
+    /// # Errors
+    /// `StoreError::Input` when the draft was rejected; `Database`,
+    /// `Input` or `Json` otherwise.
+    pub async fn approve_draft_as(
+        &self,
+        id: DraftId,
+        reviewer: &str,
+        program: &Program,
+        source: VersionSource,
+    ) -> Result<Option<ProgramId>, StoreError> {
         let mut tx = self.pool.begin().await?;
-        let found = sqlx::query(
+        let state: Option<String> =
+            sqlx::query_scalar("select state from program_drafts where id = $1 for update")
+                .bind(id.0)
+                .fetch_optional(&mut *tx)
+                .await?;
+        match state.as_deref().map(DraftState::parse).transpose()? {
+            None => return Ok(None),
+            Some(DraftState::Rejected) => {
+                return Err(StoreError::Input(format!(
+                    "draft {} was rejected; it cannot be approved",
+                    id.0
+                )));
+            }
+            Some(DraftState::Pending | DraftState::Approved) => {}
+        }
+        sqlx::query(
             "update program_drafts set state = 'approved', reviewer = $2, reviewed_at = now() where id = $1",
         )
         .bind(id.0)
         .bind(reviewer)
         .execute(&mut *tx)
         .await?;
-        if found.rows_affected() == 0 {
-            return Ok(None);
-        }
-        let program_id = publish(&mut tx, program, reviewer, VersionSource::Ga, Some(id)).await?;
+        let program_id = publish(&mut tx, program, reviewer, source, Some(id)).await?;
         tx.commit().await?;
         Ok(Some(program_id))
     }
@@ -985,6 +1102,7 @@ mod sql_tests {
             })
             .await
             .unwrap()
+            .id()
     }
 
     fn full_program(year: u16) -> skyspace_core::program::Program {
@@ -1208,6 +1326,185 @@ mod sql_tests {
         assert_eq!(summaries[0].slug, "example-bs");
         assert_eq!(summaries[0].total_credits, Some(Credits::from_cents(12000)));
         assert!(store.programs(CatalogYear(2027)).await.unwrap().is_empty());
+    }
+
+    /// Rules are never deleted: a re-approval updates matched rows in
+    /// place, retires the rest, and a report on a kept rule still points
+    /// at it. The university path publishes twice and keeps every id too.
+    #[sqlx::test]
+    async fn republish_keeps_ids_and_retires_in_place(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        let id = draft(&store, "example-bs", 2026).await;
+        let built = full_program(2026);
+        let program_id = store
+            .approve_draft(id, "alice", &built)
+            .await
+            .unwrap()
+            .unwrap();
+        let stored = store
+            .program(program_id, CatalogYear(2026))
+            .await
+            .unwrap()
+            .unwrap();
+        let comp140 = stored
+            .root
+            .flatten()
+            .into_iter()
+            .find(|r| r.label == "COMP 140")
+            .unwrap()
+            .id;
+        let footnote = stored
+            .root
+            .flatten()
+            .into_iter()
+            .find(|r| r.label == "Footnote")
+            .unwrap()
+            .id;
+        for rule in [comp140, footnote] {
+            sqlx::query(
+                "insert into requirement_reports (requirement_id, program_id, catalog_year, message) \
+                 values ($1, $2, 2026, 'wrong')",
+            )
+            .bind(rule.0)
+            .bind(program_id.0)
+            .execute(store.pool())
+            .await
+            .unwrap();
+        }
+        let mut changed = built.clone();
+        if let RequirementBody::All { of } = &mut changed.root.body {
+            of[3].label = "Footnote (renamed)".to_owned();
+            of[3].body = RequirementBody::Unverifiable {
+                text: "Consult your advisor, please.".to_owned(),
+            };
+            of[0].label = "Core (renamed)".to_owned();
+        }
+        store
+            .approve_draft(id, "bob", &changed)
+            .await
+            .unwrap()
+            .unwrap();
+        let reports: Vec<Option<Uuid>> =
+            sqlx::query_scalar("select requirement_id from requirement_reports order by id")
+                .fetch_all(store.pool())
+                .await
+                .unwrap();
+        assert_eq!(reports, vec![Some(comp140.0), Some(footnote.0)]);
+        let (versions, rows, retired): (i64, i64, i64) = sqlx::query_as(
+            "select (select count(*) from program_versions), (select count(*) from requirements), \
+                    (select count(*) from requirements where retired)",
+        )
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+        assert_eq!(
+            (versions, rows, retired),
+            (1, 13, 2),
+            "Core and Footnote retired, renamed rows added"
+        );
+        let again = store
+            .program(program_id, CatalogYear(2026))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(again.retired_requirements.contains(&footnote));
+        assert_eq!(again.retired_requirements.len(), 2);
+        assert_eq!(again.requirement_count(), 11);
+        assert!(
+            again
+                .root
+                .flatten()
+                .iter()
+                .any(|r| r.label == "Core (renamed)" && r.id != comp140)
+        );
+        assert!(again.root.flatten().iter().any(|r| r.id == comp140));
+        // The retired rule comes back under its old id when its text returns.
+        store
+            .approve_draft(id, "carol", &built)
+            .await
+            .unwrap()
+            .unwrap();
+        let back = store
+            .program(program_id, CatalogYear(2026))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(back.root.flatten().iter().any(|r| r.id == footnote));
+        let retired_now: i64 =
+            sqlx::query_scalar("select count(*) from requirements where retired")
+                .fetch_one(store.pool())
+                .await
+                .unwrap();
+        assert_eq!(retired_now, 2, "the renamed rows are retired instead");
+
+        // A rejected draft cannot be approved.
+        let rejected = draft(&store, "other-bs", 2026).await;
+        store.reject_draft(rejected, "alice").await.unwrap();
+        assert!(matches!(
+            store.approve_draft(rejected, "alice", &built).await,
+            Err(crate::error::StoreError::Input(_))
+        ));
+
+        // The university path: GA then manual, same ids either way.
+        let manual_id = store
+            .approve_draft_as(id, "dan", &built, VersionSource::Manual)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(manual_id, program_id);
+        store
+            .publish_program(&built, "dan", VersionSource::Manual)
+            .await
+            .unwrap();
+        let twice = store
+            .program(program_id, CatalogYear(2026))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(twice.root.flatten().iter().any(|r| r.id == comp140));
+        let source: String =
+            sqlx::query_scalar("select source from program_versions where program_id = $1")
+                .bind(program_id.0)
+                .fetch_one(store.pool())
+                .await
+                .unwrap();
+        assert_eq!(source, "manual");
+    }
+
+    /// The same page under the same slug and year is queued once.
+    #[sqlx::test]
+    async fn identical_drafts_are_queued_once(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        let run = store.start_run("requirements", None).await.unwrap();
+        let input = DraftInput {
+            run_id: run,
+            slug: "computer-science-bscs".to_owned(),
+            catalog_year: CatalogYear(2026),
+            source_url: "https://ga.rice.edu/x/".to_owned(),
+            source_sha256: [9; 32],
+            body: serde_json::json!({}),
+        };
+        let first = store.put_draft(&input).await.unwrap();
+        assert!(first.created());
+        let second = store.put_draft(&input).await.unwrap();
+        assert_eq!(second, super::DraftPut::Existing(first.id()));
+        let other_page = store
+            .put_draft(&DraftInput {
+                source_sha256: [10; 32],
+                ..input.clone()
+            })
+            .await
+            .unwrap();
+        assert!(other_page.created());
+        let other_year = store
+            .put_draft(&DraftInput {
+                catalog_year: CatalogYear(2027),
+                ..input
+            })
+            .await
+            .unwrap();
+        assert!(other_year.created());
+        assert_eq!(store.drafts(DraftState::Pending).await.unwrap().len(), 3);
     }
 
     #[sqlx::test]

@@ -24,7 +24,9 @@ pub mod urls;
 pub use archive::Archive;
 pub use ctx::{DueColumn, JobCtx, RawRow};
 pub use error::{FetchError, JobError};
-pub use fetch::{COURSES_BASE, Fetch, FetchOutcome, Fetcher, GA_BASE, HostLimiter, Source};
+pub use fetch::{
+    COURSES_BASE, Fetch, FetchOutcome, Fetcher, GA_BASE, HostLimiter, MAX_BODY_BYTES, Source,
+};
 pub use jobs::{
     RunOutcome, Summary, exit_code, job_names, poll_seats, pull_catalog, pull_course_detail,
     pull_reference_lists, pull_requirements, pull_section_listings, pull_section_xml,

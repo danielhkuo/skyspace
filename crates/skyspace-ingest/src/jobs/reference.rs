@@ -49,7 +49,8 @@ async fn body<F: Fetch>(
     f: &F,
     term: TermCode,
 ) -> Result<(RunOutcome, Option<String>), JobError> {
-    let mut seen_term = false;
+    // `None` until TERMS parsed: a failed TERMS fetch is not "not listed".
+    let mut seen_term: Option<bool> = None;
     for kind in KINDS {
         let url = urls::reference(kind, term)?;
         let Some(entries) = fetch_reference(run, f, kind, term).await? else {
@@ -58,10 +59,11 @@ async fn body<F: Fetch>(
         tracing::info!(kind = ?kind, rows_kept = entries.len(), "parsed reference list");
         if kind == RefKind::Terms {
             let mut terms = Vec::with_capacity(entries.len());
+            let mut listed = false;
             for entry in &entries {
                 match TermCode::parse(&entry.code) {
                     Ok(code) => {
-                        seen_term |= code == term;
+                        listed |= code == term;
                         terms.push(TermInput {
                             code,
                             label: entry.label.clone(),
@@ -80,8 +82,13 @@ async fn body<F: Fetch>(
             }
             let written = run.ctx().store.upsert_terms(&terms).await?;
             run.add_rows(written);
+            seen_term = Some(listed);
         }
     }
-    let note = (!seen_term).then(|| format!("term {term} is not in Rice's TERMS list"));
+    let note = match seen_term {
+        Some(true) => None,
+        Some(false) => Some(format!("term {term} is not in Rice's TERMS list")),
+        None => Some("the TERMS list could not be fetched".to_owned()),
+    };
     Ok((RunOutcome::Ok, note))
 }

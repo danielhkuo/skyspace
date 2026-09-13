@@ -17,6 +17,26 @@ pub enum FetchError {
     /// The bytes could not be written to the archive.
     #[error("archive: {0}")]
     Archive(#[from] std::io::Error),
+    /// The body is larger than `fetch::MAX_BODY_BYTES`; nothing was
+    /// archived. Not retried.
+    #[error("body of {0} bytes is over the cap")]
+    TooLarge(u64),
+}
+
+impl FetchError {
+    /// Whether this failure counts toward the consecutive-failure stop.
+    /// Transport errors and statuses we retried are "Rice is down";
+    /// a page that is gone (404, 410) or too large is that page's problem
+    /// and the run moves on, with the failure still counted.
+    #[must_use]
+    pub const fn is_outage(&self) -> bool {
+        match self {
+            // A disk that cannot take the bytes stops the run the same way.
+            Self::Transport(_) | Self::Archive(_) => true,
+            Self::Status(status) => !matches!(*status, 404 | 410),
+            Self::TooLarge(_) => false,
+        }
+    }
 }
 
 /// Why a job could not run to a recorded end. A run that the guards

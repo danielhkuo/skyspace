@@ -32,20 +32,21 @@ mod testing;
 
 pub use accounts::AccountRow;
 pub use catalog::{
-    JobRow, MetaRows, PartOfTermRow, SectionPageRows, SectionQuery, SectionSort, SubjectRow,
-    TermRow,
+    CATALOG_JOB, DATA_VERSION_JOBS, JobRow, MAX_KEYWORD_CHARS, MetaRows, PartOfTermRow,
+    SectionPageRows, SectionQuery, SectionSort, SubjectRow, TermRow,
 };
 pub use collections::{CollectionRow, GuestCollectionInput};
 pub use convert::sha256;
 pub use error::StoreError;
 pub use ingest::{
-    CanaryRow, IssueSeverity, JobLock, RawResponseInput, RawSource, RunOutcome, RunRow,
-    RunSummaryRow, SectionXmlRow, TermInput,
+    CanaryRow, DueColumn, IssueSeverity, JobLock, RawResponseInput, RawResponseRow, RawSource,
+    RunKey, RunOutcome, RunRow, RunSummaryRow, SectionXmlRow, TermInput,
 };
-pub use plans::{DeleteOutcome, PlanSummaryRow, default_limits};
+pub use plans::{DeleteOutcome, PlanSummaryRow, default_limits, position_of_date};
 pub use pool::{MIGRATOR, Page, Store};
 pub use programs::{
-    DraftId, DraftInput, DraftRow, DraftState, ProgramSummaryRow, VersionSource, review_now,
+    DraftId, DraftInput, DraftPut, DraftRow, DraftState, ProgramSummaryRow, VersionSource,
+    review_now,
 };
 pub use schedules::{ClaimedRow, GuestScheduleInput, ScheduleSummaryRow};
 pub use seats::PollWindowRow;

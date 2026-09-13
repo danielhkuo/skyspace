@@ -13,7 +13,7 @@ use skyspace_core::catalog::SectionListing;
 use skyspace_core::code::Subject;
 use skyspace_core::term::TermCode;
 use skyspace_parse::{ParseError, RefKind, parse_subject_listing};
-use skyspace_store::IssueSeverity;
+use skyspace_store::{IssueSeverity, RunKey};
 use tracing::Instrument;
 
 use crate::ctx::JobCtx;
@@ -80,7 +80,11 @@ async fn body<F: Fetch>(
         .unwrap_or(0);
     let history = run
         .ctx()
-        .fill_history(job_names::LISTINGS, Some(term), Source::Listing.as_str())
+        .fill_history(
+            job_names::LISTINGS,
+            Some(RunKey::Term(term)),
+            Source::Listing.as_str(),
+        )
         .await?;
 
     let mut parsed: Vec<SubjectRows> = Vec::with_capacity(subjects.len());

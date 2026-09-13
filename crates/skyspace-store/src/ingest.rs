@@ -117,8 +117,9 @@ pub struct RunRow {
 }
 
 /// What kind of document a `raw_responses` row indexes. Matches the check
-/// constraint; seats are absent because they are never archived.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// constraint; seats are absent because they are never archived. Ingest
+/// re-exports this as its `Source`, so one enum serves the constraint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RawSource {
     /// A subject listing page.
     Listing,
@@ -137,7 +138,20 @@ pub enum RawSource {
 }
 
 impl RawSource {
-    fn as_str(self) -> &'static str {
+    /// Every source, in the order of the check constraint.
+    pub const ALL: [Self; 7] = [
+        Self::Listing,
+        Self::Catalog,
+        Self::SectionXml,
+        Self::Detail,
+        Self::Reference,
+        Self::ProgramIndex,
+        Self::Program,
+    ];
+
+    /// The stored text.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Listing => "listing",
             Self::Catalog => "catalog",
@@ -148,6 +162,99 @@ impl RawSource {
             Self::Program => "program",
         }
     }
+}
+
+impl core::str::FromStr for RawSource {
+    type Err = String;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        Self::ALL
+            .into_iter()
+            .find(|s| s.as_str() == text)
+            .ok_or_else(|| {
+                format!(
+                    "unknown source {text:?}; one of {}",
+                    Self::ALL.map(Self::as_str).join(", ")
+                )
+            })
+    }
+}
+
+impl core::fmt::Display for RawSource {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// What a run is keyed by in `ingest_runs.term_code`: a term for the
+/// per-term jobs, an academic year for the catalog job (so its guards
+/// compare against the last good run of the same year), nothing for the
+/// rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunKey {
+    /// A Rice term code.
+    Term(TermCode),
+    /// A catalog year, stored as its four digits.
+    Year(CatalogYear),
+}
+
+impl RunKey {
+    /// The `ingest_runs.term_code` text.
+    #[must_use]
+    pub fn as_db(self) -> String {
+        match self {
+            Self::Term(term) => term.to_string(),
+            Self::Year(year) => year.0.to_string(),
+        }
+    }
+}
+
+/// One `raw_responses` row joined to its run's outcome, as the replay and
+/// diff commands read it.
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct RawResponseRow {
+    /// Row id.
+    pub id: i64,
+    /// The run that fetched it.
+    pub run_id: i64,
+    /// The URL fetched.
+    pub url: String,
+    /// The term, for per-term documents.
+    pub term_code: Option<String>,
+    /// When.
+    pub fetched_at: OffsetDateTime,
+    /// The `Content-Type` header, for decoding.
+    pub content_type: Option<String>,
+    /// The archive key.
+    pub sha256: Vec<u8>,
+    /// The fetching run's outcome; null while it runs.
+    pub run_outcome: Option<String>,
+}
+
+impl RawResponseRow {
+    /// The archive key as an array.
+    ///
+    /// # Errors
+    /// `StoreError::Corrupt` when the column is not 32 bytes.
+    pub fn key(&self) -> Result<[u8; 32], StoreError> {
+        <[u8; 32]>::try_from(self.sha256.as_slice())
+            .map_err(|_| crate::error::corrupt("raw_responses", "sha256", "not 32 bytes"))
+    }
+}
+
+const RUN_COLUMNS: &str = "id, job, term_code, started_at, finished_at, outcome, requests, targets, failures, \
+                           bytes, rows_written, error";
+
+const RAW_COLUMNS: &str = "rr.id, rr.run_id, rr.url, rr.term_code, rr.fetched_at, rr.content_type, \
+                           rr.sha256, r.outcome as run_outcome";
+
+/// Which weekly work queue a CRN is due on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DueColumn {
+    /// `sections.xml_fetched_at`.
+    Xml,
+    /// `sections.detail_fetched_at`.
+    Detail,
 }
 
 /// One fetched document, after the bytes are on disk.
@@ -432,17 +539,16 @@ async fn write_exclusions(
     Ok(())
 }
 
-/// The cross-list group's canonical code is its smallest member, so every
-/// member's record derives the same alias rows.
-async fn write_aliases(conn: &mut PgConnection, course: &Course) -> Result<(), StoreError> {
-    if course.cross_list.is_empty() {
-        return Ok(());
-    }
-    let mut group: Vec<&CourseCode> = course
-        .cross_list
-        .iter()
-        .chain(core::iter::once(&course.code))
-        .collect();
+/// Write one alias group: its smallest member is canonical and every other
+/// member points at it. The rule is the same whether the group comes from
+/// a catalog `Cross-list:` sentence or a GA `STAT 310 / ECON 307` row, so
+/// the two sources never disagree on direction, and because canonical is
+/// always the smaller code the map has no cycles.
+async fn write_alias_group(
+    conn: &mut PgConnection,
+    members: impl IntoIterator<Item = &CourseCode>,
+) -> Result<(), StoreError> {
+    let mut group: Vec<&CourseCode> = members.into_iter().collect();
     group.sort();
     group.dedup();
     let Some(canonical) = group.first().copied() else {
@@ -462,6 +568,42 @@ async fn write_aliases(conn: &mut PgConnection, course: &Course) -> Result<(), S
         .await?;
     }
     Ok(())
+}
+
+/// Collapse chains after alias writes: an alias whose canonical is itself
+/// an alias is repointed at that alias's canonical, until no row changes.
+/// Canonical is always the smaller code, so every chain descends and the
+/// loop ends; afterwards no canonical is an alias.
+async fn flatten_aliases(conn: &mut PgConnection) -> Result<(), StoreError> {
+    loop {
+        let done = sqlx::query(
+            "update course_aliases a set canonical_subject = b.canonical_subject, canonical_number = b.canonical_number \
+             from course_aliases b \
+             where a.canonical_subject = b.alias_subject and a.canonical_number = b.alias_number \
+               and (a.alias_subject, a.alias_number) <> (b.canonical_subject, b.canonical_number)",
+        )
+        .execute(&mut *conn)
+        .await?;
+        if done.rows_affected() == 0 {
+            return Ok(());
+        }
+    }
+}
+
+/// The cross-list group's canonical code is its smallest member, so every
+/// member's record derives the same alias rows.
+async fn write_aliases(conn: &mut PgConnection, course: &Course) -> Result<(), StoreError> {
+    if course.cross_list.is_empty() {
+        return Ok(());
+    }
+    write_alias_group(
+        conn,
+        course
+            .cross_list
+            .iter()
+            .chain(core::iter::once(&course.code)),
+    )
+    .await
 }
 
 #[derive(sqlx::FromRow)]
@@ -569,24 +711,29 @@ async fn write_instructors(
     Ok(())
 }
 
+/// `fetched_at` is when Rice published the listing. A withdrawal is only
+/// cleared by a body newer than it, so replaying an older archived page
+/// cannot resurrect a section a later good run withdrew.
 async fn upsert_listing(
     conn: &mut PgConnection,
     term: TermCode,
     listing: &SectionListing,
+    fetched_at: OffsetDateTime,
 ) -> Result<(), StoreError> {
     let course_id = ensure_course(&mut *conn, &listing.code, &listing.title, false).await?;
     let credits = credits_to_db(listing.credits)?;
     let section_id: i64 = sqlx::query_scalar(
         "insert into sections (term_code, crn, course_id, section_code, title, part_of_term, credits_kind, \
-            credits_min_cents, credits_max_cents, final_exam) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+            credits_min_cents, credits_max_cents, final_exam, first_seen_at, last_seen_at) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11) \
          on conflict (term_code, crn) do update set \
             course_id = excluded.course_id, section_code = excluded.section_code, title = excluded.title, \
             part_of_term = coalesce(excluded.part_of_term, sections.part_of_term), \
             credits_kind = excluded.credits_kind, credits_min_cents = excluded.credits_min_cents, \
             credits_max_cents = excluded.credits_max_cents, \
             final_exam = coalesce(excluded.final_exam, sections.final_exam), \
-            last_seen_at = now(), withdrawn_at = null \
+            last_seen_at = greatest(sections.last_seen_at, $11), \
+            withdrawn_at = case when sections.withdrawn_at < $11 then null else sections.withdrawn_at end \
          returning id",
     )
     .bind(term.to_string())
@@ -599,6 +746,7 @@ async fn upsert_listing(
     .bind(credits.min)
     .bind(credits.max)
     .bind(final_exam_to_db(listing.final_exam))
+    .bind(fetched_at)
     .fetch_one(&mut *conn)
     .await?;
     write_class_meetings(&mut *conn, section_id, &listing.meetings, true).await?;
@@ -660,13 +808,33 @@ impl Store {
             write_aliases(&mut tx, &record).await?;
             written += 1;
         }
+        flatten_aliases(&mut tx).await?;
         tx.commit().await?;
         Ok(written)
     }
 
-    /// Write a subject listing's sections. A course row is created when
-    /// missing, with the listing's title; a seen section loses its
-    /// `withdrawn_at`. Returns the number of sections written.
+    /// Write alias pairs a GA page printed as `STAT 310 / ECON 307`. Each
+    /// pair is one group under the same rule the catalog uses: the
+    /// smaller code is canonical. Returns the number of pairs written.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn upsert_aliases(
+        &self,
+        pairs: &[(CourseCode, CourseCode)],
+    ) -> Result<u64, StoreError> {
+        let mut tx = self.pool.begin().await?;
+        for (a, b) in pairs {
+            write_alias_group(&mut tx, [a, b]).await?;
+        }
+        flatten_aliases(&mut tx).await?;
+        tx.commit().await?;
+        Ok(pairs.len() as u64)
+    }
+
+    /// Write a subject listing's sections fetched just now. A course row
+    /// is created when missing, with the listing's title; a seen section
+    /// loses its `withdrawn_at`. Returns the number of sections written.
     ///
     /// # Errors
     /// `StoreError::Database` or `Input`.
@@ -675,9 +843,26 @@ impl Store {
         term: TermCode,
         rows: &[SectionListing],
     ) -> Result<u64, StoreError> {
+        self.upsert_sections_fetched_at(term, rows, OffsetDateTime::now_utc())
+            .await
+    }
+
+    /// `upsert_sections` for a body fetched at `fetched_at`: what replay
+    /// passes. A withdrawal later than `fetched_at` is kept, so an older
+    /// archived page cannot bring back a section a later good run
+    /// withdrew.
+    ///
+    /// # Errors
+    /// `StoreError::Database` or `Input`.
+    pub async fn upsert_sections_fetched_at(
+        &self,
+        term: TermCode,
+        rows: &[SectionListing],
+        fetched_at: OffsetDateTime,
+    ) -> Result<u64, StoreError> {
         let mut tx = self.pool.begin().await?;
         for listing in rows {
-            upsert_listing(&mut tx, term, listing).await?;
+            upsert_listing(&mut tx, term, listing, fetched_at).await?;
         }
         tx.commit().await?;
         Ok(rows.len() as u64)
@@ -715,6 +900,11 @@ impl Store {
     /// Merge the weekly XML into a listed section: codes, attributes,
     /// school, dated meetings, instructors. `false` when the CRN is not held.
     ///
+    /// Never blank: a feed that carries no class meeting is treated as
+    /// partial, so the listing's meetings and attributes are kept; the
+    /// exam slot, instructors and the scalar columns are replaced only
+    /// when the feed supplies them.
+    ///
     /// # Errors
     /// `StoreError::Database` or `Input`.
     pub async fn upsert_section_xml(
@@ -724,10 +914,14 @@ impl Store {
     ) -> Result<bool, StoreError> {
         let mut tx = self.pool.begin().await?;
         let credits = row.credits.map(credits_to_db).transpose()?;
+        // A feed with at least one class meeting is a whole record; one
+        // without is partial and must not clear what the listing filled.
+        let authoritative = !row.meetings.is_empty();
         let section_id: Option<i64> = sqlx::query_scalar(
             "update sections set \
                 part_of_term = coalesce($3, part_of_term), part_of_term_label = coalesce($4, part_of_term_label), \
-                final_exam = coalesce($5, final_exam), attributes = $6, school = coalesce($7, school), \
+                final_exam = coalesce($5, final_exam), \
+                attributes = case when $11 then $6 else attributes end, school = coalesce($7, school), \
                 credits_kind = coalesce($8, credits_kind), credits_min_cents = coalesce($9, credits_min_cents), \
                 credits_max_cents = coalesce($10, credits_max_cents), xml_fetched_at = now() \
              where term_code = $1 and crn = $2 returning id",
@@ -742,17 +936,20 @@ impl Store {
         .bind(credits.map(|c| c.kind))
         .bind(credits.map(|c| c.min))
         .bind(credits.map(|c| c.max))
+        .bind(authoritative)
         .fetch_optional(&mut *tx)
         .await?;
         let Some(section_id) = section_id else {
             return Ok(false);
         };
-        write_class_meetings(&mut tx, section_id, &row.meetings, false).await?;
-        sqlx::query("delete from meetings where section_id = $1 and kind = 'final'")
-            .bind(section_id)
-            .execute(&mut *tx)
-            .await?;
+        if authoritative {
+            write_class_meetings(&mut tx, section_id, &row.meetings, false).await?;
+        }
         if let Some(exam) = &row.final_exam_meeting {
+            sqlx::query("delete from meetings where section_id = $1 and kind = 'final'")
+                .bind(section_id)
+                .execute(&mut *tx)
+                .await?;
             insert_meeting(&mut tx, section_id, "final", &meeting_to_db(exam)?).await?;
         }
         if !row.instructors.is_empty() {
@@ -819,19 +1016,40 @@ impl Store {
         Ok(true)
     }
 
-    /// Open an `ingest_runs` row and return its id.
+    /// Open an `ingest_runs` row for a per-term job and return its id.
     ///
     /// # Errors
     /// `StoreError::Database`.
     pub async fn start_run(&self, job: &str, term: Option<TermCode>) -> Result<i64, StoreError> {
+        self.start_run_keyed(job, term.map(RunKey::Term)).await
+    }
+
+    /// Open an `ingest_runs` row keyed by a term, a catalog year, or
+    /// nothing, and return its id.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn start_run_keyed(&self, job: &str, key: Option<RunKey>) -> Result<i64, StoreError> {
         let id: i64 = sqlx::query_scalar(
             "insert into ingest_runs (job, term_code, started_at) values ($1, $2, now()) returning id",
         )
         .bind(job)
-        .bind(term.map(|t| t.to_string()))
+        .bind(key.map(RunKey::as_db))
         .fetch_one(&self.pool)
         .await?;
         Ok(id)
+    }
+
+    /// `select 1`: what `skyspace doctor` runs to tell a reachable
+    /// database from a pool that only connected lazily.
+    ///
+    /// # Errors
+    /// `StoreError::Database` when the round trip fails.
+    pub async fn ping(&self) -> Result<(), StoreError> {
+        sqlx::query_scalar::<_, i32>("select 1")
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(())
     }
 
     /// Close a run with its numbers. `false` when the id is unknown.
@@ -865,17 +1083,217 @@ impl Store {
         job: &str,
         term: Option<TermCode>,
     ) -> Result<Option<RunRow>, StoreError> {
-        let row: Option<RunRow> = sqlx::query_as(
-            "select id, job, term_code, started_at, finished_at, outcome, requests, targets, failures, \
-                    bytes, rows_written, error \
-             from ingest_runs where job = $1 and outcome = 'ok' and ($2::text is null or term_code = $2) \
-             order by finished_at desc limit 1",
-        )
+        self.last_ok_run_keyed(job, term.map(RunKey::Term)).await
+    }
+
+    /// The most recent successful run of `job` under `key` (any key when
+    /// `None`): the catalog job compares against the same year's last
+    /// good run, not another year's.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn last_ok_run_keyed(
+        &self,
+        job: &str,
+        key: Option<RunKey>,
+    ) -> Result<Option<RunRow>, StoreError> {
+        let row: Option<RunRow> = sqlx::query_as(&format!(
+            "select {RUN_COLUMNS} from ingest_runs \
+             where job = $1 and outcome = 'ok' and ($2::text is null or term_code = $2) \
+             order by finished_at desc limit 1"
+        ))
         .bind(job)
-        .bind(term.map(|t| t.to_string()))
+        .bind(key.map(RunKey::as_db))
         .fetch_optional(&self.pool)
         .await?;
         Ok(row)
+    }
+
+    /// The most recently started run of `job` whatever its outcome,
+    /// including one still open: `skyspace doctor` reads it to tell a
+    /// crashed run (never closed) from a running one.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn last_run(
+        &self,
+        job: &str,
+        key: Option<RunKey>,
+    ) -> Result<Option<RunRow>, StoreError> {
+        let row: Option<RunRow> = sqlx::query_as(&format!(
+            "select {RUN_COLUMNS} from ingest_runs \
+             where job = $1 and ($2::text is null or term_code = $2) \
+             order by started_at desc, id desc limit 1"
+        ))
+        .bind(job)
+        .bind(key.map(RunKey::as_db))
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(row)
+    }
+
+    /// Fill counts per field over the last `runs` good runs of `job` under
+    /// `key` for `source`, newest run first: `(field, rows_seen,
+    /// rows_filled)` per stat row. The guard turns them into rates.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn fill_history(
+        &self,
+        job: &str,
+        key: Option<RunKey>,
+        source: &str,
+        runs: u32,
+    ) -> Result<Vec<(String, u32, u32)>, StoreError> {
+        let rows: Vec<(String, i32, i32)> = sqlx::query_as(
+            "select ps.field, ps.rows_seen, ps.rows_filled from parse_stats ps \
+             join ingest_runs r on r.id = ps.run_id \
+             where ps.source = $3 and r.id in ( \
+                select id from ingest_runs where job = $1 and outcome = 'ok' \
+                  and ($2::text is null or term_code = $2) \
+                order by finished_at desc limit $4) \
+             order by r.finished_at desc, ps.field",
+        )
+        .bind(job)
+        .bind(key.map(RunKey::as_db))
+        .bind(source)
+        .bind(i64::from(runs))
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|(field, seen, filled)| {
+                (
+                    field,
+                    u32::try_from(seen).unwrap_or(0),
+                    u32::try_from(filled).unwrap_or(0),
+                )
+            })
+            .collect())
+    }
+
+    /// Live section count per subject for the term: what "rows in the
+    /// last good run" means for the zero-rows guard.
+    ///
+    /// # Errors
+    /// `StoreError::Database` or `Corrupt`.
+    pub async fn live_section_counts(
+        &self,
+        term: TermCode,
+    ) -> Result<std::collections::BTreeMap<String, u64>, StoreError> {
+        Ok(self
+            .subjects(term)
+            .await?
+            .into_iter()
+            .map(|row| {
+                (
+                    row.subject.as_str().to_owned(),
+                    u64::from(row.section_count),
+                )
+            })
+            .collect())
+    }
+
+    /// CRNs whose weekly document is missing or older than `stale_after`,
+    /// never-fetched first.
+    ///
+    /// # Errors
+    /// `StoreError::Database` or `Corrupt` for a negative CRN.
+    pub async fn crns_due(
+        &self,
+        term: TermCode,
+        column: DueColumn,
+        stale_after: std::time::Duration,
+    ) -> Result<Vec<Crn>, StoreError> {
+        let cutoff = OffsetDateTime::now_utc() - stale_after;
+        let sql = match column {
+            DueColumn::Xml => {
+                "select crn from sections where term_code = $1 and withdrawn_at is null \
+                 and (xml_fetched_at is null or xml_fetched_at < $2) \
+                 order by xml_fetched_at nulls first, id"
+            }
+            DueColumn::Detail => {
+                "select crn from sections where term_code = $1 and withdrawn_at is null \
+                 and (detail_fetched_at is null or detail_fetched_at < $2) \
+                 order by detail_fetched_at nulls first, id"
+            }
+        };
+        let rows: Vec<(i32,)> = sqlx::query_as(sql)
+            .bind(term.to_string())
+            .bind(cutoff)
+            .fetch_all(&self.pool)
+            .await?;
+        rows.into_iter()
+            .map(|(crn,)| crate::convert::crn_from_db("sections", crn))
+            .collect()
+    }
+
+    /// Stamp `xml_fetched_at` on the CRN a feed was requested for. The
+    /// `ASSOCIATED-SECTIONS` feed lists the sections associated with a
+    /// CRN and may omit the CRN itself, which would otherwise stay due.
+    /// `false` when the CRN is not held.
+    ///
+    /// # Errors
+    /// `StoreError::Database` or `Input`.
+    pub async fn mark_xml_fetched(&self, term: TermCode, crn: Crn) -> Result<bool, StoreError> {
+        let done = sqlx::query(
+            "update sections set xml_fetched_at = now() where term_code = $1 and crn = $2",
+        )
+        .bind(term.to_string())
+        .bind(crn_to_db(crn)?)
+        .execute(&self.pool)
+        .await?;
+        Ok(done.rows_affected() > 0)
+    }
+
+    /// What a replay reads: for every URL of `source` fetched on or after
+    /// `since` (UTC midnight), the newest body that a run ending `ok`
+    /// fetched, oldest first. Bodies from failed or quarantined runs and
+    /// older bodies of the same URL are left out, so a replay ends on
+    /// what Rice last published and cannot resurrect what a later good
+    /// run withdrew.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn raw_responses_since(
+        &self,
+        source: RawSource,
+        since: time::Date,
+    ) -> Result<Vec<RawResponseRow>, StoreError> {
+        let rows: Vec<RawResponseRow> = sqlx::query_as(&format!(
+            "select * from (\
+                select distinct on (rr.url) {RAW_COLUMNS} \
+                from raw_responses rr join ingest_runs r on r.id = rr.run_id \
+                where rr.source = $1 and rr.fetched_at >= $2 and r.outcome = 'ok' \
+                order by rr.url, rr.fetched_at desc, rr.id desc) newest \
+             order by fetched_at, id"
+        ))
+        .bind(source.as_str())
+        .bind(since.midnight().assume_utc())
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// The archived responses for one URL, newest first, with the outcome
+    /// of the run that fetched each: what `skyspace archive diff` reads.
+    ///
+    /// # Errors
+    /// `StoreError::Database`.
+    pub async fn raw_history(
+        &self,
+        url: &str,
+        limit: u32,
+    ) -> Result<Vec<RawResponseRow>, StoreError> {
+        let rows: Vec<RawResponseRow> = sqlx::query_as(&format!(
+            "select {RAW_COLUMNS} from raw_responses rr join ingest_runs r on r.id = rr.run_id \
+             where rr.url = $1 order by rr.fetched_at desc, rr.id desc limit $2"
+        ))
+        .bind(url)
+        .bind(i64::from(limit))
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
     }
 
     /// Index one archived document. Returns the row id.
@@ -1028,8 +1446,8 @@ mod tests {
     use sqlx::PgPool;
 
     use super::{
-        CanaryRow, IssueSeverity, RawResponseInput, RawSource, RunOutcome, RunSummaryRow,
-        SectionXmlRow,
+        CanaryRow, DueColumn, IssueSeverity, RawResponseInput, RawSource, RunKey, RunOutcome,
+        RunSummaryRow, SectionXmlRow,
     };
     use crate::pool::Store;
     use crate::testing::{
@@ -1406,6 +1824,342 @@ mod tests {
             tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         }
         assert!(reacquired);
+    }
+
+    /// The map is one direction for both sources, has no chains, and
+    /// writing it twice changes nothing.
+    #[sqlx::test]
+    async fn aliases_point_at_the_smallest_code_from_either_source(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        seed_term(&store, "202710").await;
+        // GA prints "STAT 310 / ECON 307": the pair arrives GA-first.
+        store
+            .upsert_aliases(&[(code("STAT 310"), code("ECON 307"))])
+            .await
+            .unwrap();
+        let rows = |store: &Store| {
+            let pool = store.pool().clone();
+            async move {
+                sqlx::query_as::<_, (String, String)>(
+                    "select alias_subject || ' ' || alias_number, canonical_subject || ' ' || canonical_number \
+                     from course_aliases order by 1",
+                )
+                .fetch_all(&pool)
+                .await
+                .unwrap()
+            }
+        };
+        assert_eq!(
+            rows(&store).await,
+            vec![("STAT 310".to_owned(), "ECON 307".to_owned())]
+        );
+        // The catalog's sentence for the same pair agrees.
+        let mut stat = course("STAT 310", "Probability", 2027);
+        stat.cross_list = vec![code("ECON 307")];
+        store
+            .upsert_courses(CatalogYear(2027), &[stat])
+            .await
+            .unwrap();
+        assert_eq!(
+            rows(&store).await,
+            vec![("STAT 310".to_owned(), "ECON 307".to_owned())]
+        );
+        // A chain collapses: MATH 182 -> ELEC 182 from GA, then the
+        // catalog makes ELEC 182 an alias of COMP 182.
+        store
+            .upsert_aliases(&[(code("MATH 182"), code("ELEC 182"))])
+            .await
+            .unwrap();
+        let mut comp = course("COMP 182", "Algorithmic Thinking", 2027);
+        comp.cross_list = vec![code("ELEC 182")];
+        store
+            .upsert_courses(CatalogYear(2027), &[comp])
+            .await
+            .unwrap();
+        let all = rows(&store).await;
+        assert!(all.contains(&("MATH 182".to_owned(), "COMP 182".to_owned())));
+        assert!(all.contains(&("ELEC 182".to_owned(), "COMP 182".to_owned())));
+        let chained: i64 = sqlx::query_scalar(
+            "select count(*) from course_aliases a join course_aliases b \
+             on a.canonical_subject = b.alias_subject and a.canonical_number = b.alias_number",
+        )
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+        assert_eq!(chained, 0, "no alias's canonical is itself an alias");
+        // Idempotent.
+        store
+            .upsert_aliases(&[(code("MATH 182"), code("ELEC 182"))])
+            .await
+            .unwrap();
+        assert_eq!(rows(&store).await, all);
+    }
+
+    /// A replayed body older than a withdrawal does not bring the section
+    /// back; a newer one does.
+    #[sqlx::test]
+    async fn older_body_keeps_a_later_withdrawal(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        seed_term(&store, "202710").await;
+        let a = listing(10001, "COMP 140", "CT", vec![timed("MWF", 540, 590)]);
+        let b = listing(10002, "COMP 140", "CT", vec![timed("TR", 540, 590)]);
+        let yesterday = time::OffsetDateTime::now_utc() - time::Duration::days(1);
+        store
+            .upsert_sections_fetched_at(fall(), &[a.clone(), b.clone()], yesterday)
+            .await
+            .unwrap();
+        let comp = Subject::new("COMP").unwrap();
+        assert_eq!(
+            store
+                .withdraw_missing(fall(), &comp, &[Crn(10001)])
+                .await
+                .unwrap(),
+            1
+        );
+        // Replay of yesterday's body: B stays withdrawn.
+        store
+            .upsert_sections_fetched_at(fall(), &[a.clone(), b.clone()], yesterday)
+            .await
+            .unwrap();
+        assert!(store.section(fall(), Crn(10002)).await.unwrap().is_none());
+        // A body fetched after the withdrawal lists it again.
+        store.upsert_sections(fall(), &[b]).await.unwrap();
+        assert!(store.section(fall(), Crn(10002)).await.unwrap().is_some());
+    }
+
+    /// A feed with no class meeting is partial: the listing's meetings
+    /// and the earlier feed's attributes stay.
+    #[sqlx::test]
+    async fn section_xml_without_meetings_keeps_what_the_listing_filled(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        seed_term(&store, "202710").await;
+        store
+            .upsert_sections(
+                fall(),
+                &[listing(
+                    10001,
+                    "COMP 140",
+                    "CT",
+                    vec![timed("MWF", 540, 590)],
+                )],
+            )
+            .await
+            .unwrap();
+        let full = SectionXmlRow {
+            crn: Crn(10001),
+            part_of_term: None,
+            part_of_term_label: None,
+            final_exam: FinalExam::Scheduled,
+            credits: None,
+            attributes: BTreeSet::from([Attribute::DistributionThree]),
+            school: None,
+            meetings: vec![timed("MWF", 540, 590)],
+            final_exam_meeting: Some(timed("M", 540, 720)),
+            instructors: Vec::new(),
+        };
+        assert!(store.upsert_section_xml(fall(), &full).await.unwrap());
+        let partial = SectionXmlRow {
+            attributes: BTreeSet::new(),
+            meetings: Vec::new(),
+            final_exam_meeting: None,
+            ..full
+        };
+        assert!(store.upsert_section_xml(fall(), &partial).await.unwrap());
+        let section = store.section(fall(), Crn(10001)).await.unwrap().unwrap();
+        assert_eq!(section.listing.meetings, vec![timed("MWF", 540, 590)]);
+        let (attributes, finals): (Vec<String>, i64) = sqlx::query_as(
+            "select s.attributes, (select count(*) from meetings m where m.section_id = s.id and m.kind = 'final') \
+             from sections s",
+        )
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+        assert_eq!(attributes, vec!["GRP3".to_owned()]);
+        assert_eq!(finals, 1);
+        let q = crate::catalog::SectionQuery::for_term(fall());
+        assert_eq!(store.search_sections(&q).await.unwrap().total, 1);
+    }
+
+    /// The queries ingest and `doctor` used to run themselves.
+    #[sqlx::test]
+    async fn keyed_runs_history_due_and_archive_reads(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        store.ping().await.unwrap();
+        seed_term(&store, "202710").await;
+        let ok_summary = |rows: u64| RunSummaryRow {
+            outcome: RunOutcome::Ok,
+            requests: 1,
+            targets: 1,
+            failures: 0,
+            bytes: 1,
+            rows_written: rows,
+            error: None,
+        };
+        // Catalog runs are keyed by year and compared within it.
+        let y2027 = store
+            .start_run_keyed("catalog", Some(RunKey::Year(CatalogYear(2027))))
+            .await
+            .unwrap();
+        store
+            .record_parse_stats(y2027, "catalog", &[("title".to_owned(), 10, 10)])
+            .await
+            .unwrap();
+        store.finish_run(y2027, &ok_summary(6500)).await.unwrap();
+        let y2024 = store
+            .start_run_keyed("catalog", Some(RunKey::Year(CatalogYear(2024))))
+            .await
+            .unwrap();
+        store.finish_run(y2024, &ok_summary(100)).await.unwrap();
+        let last = store
+            .last_ok_run_keyed("catalog", Some(RunKey::Year(CatalogYear(2027))))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!((last.id, last.term_code.as_deref()), (y2027, Some("2027")));
+        assert!(
+            store
+                .last_ok_run_keyed("catalog", Some(RunKey::Year(CatalogYear(2025))))
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            store
+                .fill_history(
+                    "catalog",
+                    Some(RunKey::Year(CatalogYear(2027))),
+                    "catalog",
+                    7
+                )
+                .await
+                .unwrap(),
+            vec![("title".to_owned(), 10, 10)]
+        );
+        assert!(
+            store
+                .fill_history(
+                    "catalog",
+                    Some(RunKey::Year(CatalogYear(2024))),
+                    "catalog",
+                    7
+                )
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        // `last_run` sees an open run; `last_ok_run` does not.
+        let open = store.start_run("listings", Some(fall())).await.unwrap();
+        assert!(
+            store
+                .last_ok_run("listings", Some(fall()))
+                .await
+                .unwrap()
+                .is_none()
+        );
+        let seen = store
+            .last_run("listings", Some(RunKey::Term(fall())))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!((seen.id, seen.finished_at), (open, None));
+
+        // Due queues and the XML stamp.
+        store
+            .upsert_sections(
+                fall(),
+                &[
+                    listing(10001, "COMP 140", "CT", vec![timed("MWF", 540, 590)]),
+                    listing(10002, "COMP 182", "AT", vec![]),
+                ],
+            )
+            .await
+            .unwrap();
+        let counts = store.live_section_counts(fall()).await.unwrap();
+        assert_eq!(counts.get("COMP"), Some(&2));
+        let zero = std::time::Duration::from_secs(0);
+        assert_eq!(
+            store.crns_due(fall(), DueColumn::Xml, zero).await.unwrap(),
+            vec![Crn(10001), Crn(10002)]
+        );
+        assert!(store.mark_xml_fetched(fall(), Crn(10001)).await.unwrap());
+        assert!(!store.mark_xml_fetched(fall(), Crn(99999)).await.unwrap());
+        assert_eq!(
+            store
+                .crns_due(fall(), DueColumn::Xml, std::time::Duration::from_hours(1))
+                .await
+                .unwrap(),
+            vec![Crn(10002)]
+        );
+        assert_eq!(
+            store
+                .crns_due(fall(), DueColumn::Detail, zero)
+                .await
+                .unwrap()
+                .len(),
+            2
+        );
+
+        // Archive reads: replay sees the newest body per URL from ok runs.
+        let url = "https://courses.rice.edu/listing?p_subj=COMP";
+        let at = |offset: i64| time::OffsetDateTime::now_utc() - time::Duration::hours(offset);
+        let raw = |run: i64, fetched_at: time::OffsetDateTime, sha: u8| RawResponseInput {
+            run_id: run,
+            source: RawSource::Listing,
+            url: url.to_owned(),
+            term: Some(fall()),
+            fetched_at,
+            status: 200,
+            content_type: Some("text/html".to_owned()),
+            byte_len: 1,
+            sha256: [sha; 32],
+            headers: serde_json::json!({}),
+        };
+        store
+            .record_raw_response(&raw(open, at(3), 1))
+            .await
+            .unwrap();
+        store.finish_run(open, &ok_summary(2)).await.unwrap();
+        let good = store.start_run("listings", Some(fall())).await.unwrap();
+        store
+            .record_raw_response(&raw(good, at(2), 2))
+            .await
+            .unwrap();
+        store.finish_run(good, &ok_summary(2)).await.unwrap();
+        let bad = store.start_run("listings", Some(fall())).await.unwrap();
+        store
+            .record_raw_response(&raw(bad, at(1), 3))
+            .await
+            .unwrap();
+        store
+            .finish_run(
+                bad,
+                &RunSummaryRow {
+                    outcome: RunOutcome::Quarantined,
+                    ..ok_summary(0)
+                },
+            )
+            .await
+            .unwrap();
+        let since = time::OffsetDateTime::now_utc().date() - time::Duration::days(2);
+        let replayable = store
+            .raw_responses_since(RawSource::Listing, since)
+            .await
+            .unwrap();
+        assert_eq!(replayable.len(), 1);
+        assert_eq!(replayable[0].sha256, vec![2; 32]);
+        assert_eq!(replayable[0].key().unwrap(), [2; 32]);
+        assert!(
+            store
+                .raw_responses_since(RawSource::Detail, since)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        let history = store.raw_history(url, 2).await.unwrap();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].sha256, vec![3; 32]);
+        assert_eq!(history[0].run_outcome.as_deref(), Some("quarantined"));
+        assert_eq!(history[1].run_outcome.as_deref(), Some("ok"));
     }
 
     #[sqlx::test]

@@ -11,8 +11,8 @@ use serde::Deserialize;
 use skyspace_core::catalog::Attribute;
 use skyspace_core::code::{CourseCode, Subject};
 use skyspace_core::program::{
-    CatalogYear, CourseFilter, CourseSelector, CreditScope, NonCourseKind, Requirement,
-    RequirementBody, RequirementId, SourceRef,
+    CatalogYear, CourseFilter, CourseSelector, CreditScope, NonCourseKind, ProgramKind,
+    Requirement, RequirementBody, RequirementId, SourceRef,
 };
 use skyspace_core::term::{CreditRange, Credits};
 use skyspace_ingest::{RunOutcome, job_names};
@@ -33,6 +33,10 @@ struct File {
 struct ProgramHeader {
     slug: String,
     name: String,
+    /// One of `programs.kind`'s spellings; `review approve` publishes
+    /// under it unless `--kind` says otherwise.
+    #[serde(default)]
+    kind: Option<String>,
     #[serde(default)]
     credential: String,
     catalog_year: u16,
@@ -267,13 +271,35 @@ fn requirement(
     })
 }
 
+/// What the file declares, beside the draft.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Header {
+    /// `[program] slug`.
+    pub slug: String,
+    /// `[program] catalog_year`.
+    pub catalog_year: CatalogYear,
+    /// `[program] kind`, checked against the five spellings.
+    pub kind: Option<ProgramKind>,
+}
+
 /// Read the file into the draft shape the review queue holds.
 ///
 /// # Errors
 /// `ImportError::Shape` for anything outside the documented shape.
-pub fn draft_from_toml(text: &str) -> Result<(ProgramDraft, String, CatalogYear), ImportError> {
+pub fn draft_from_toml(text: &str) -> Result<(ProgramDraft, Header), ImportError> {
     let file: File = toml::from_str(text).map_err(|e| shape(format!("toml: {e}")))?;
     let header = file.program;
+    let kind = header
+        .kind
+        .as_deref()
+        .map(|k| {
+            crate::commands::review::parse_kind(k).ok_or_else(|| {
+                shape(format!(
+                    "program.kind {k:?} is not university, major, minor, certificate or concentration"
+                ))
+            })
+        })
+        .transpose()?;
     let source = SourceRef {
         url: header.source_url.clone(),
         anchor: None,
@@ -306,7 +332,42 @@ pub fn draft_from_toml(text: &str) -> Result<(ProgramDraft, String, CatalogYear)
         aliases: Vec::new(),
         footnotes: Vec::new(),
     };
-    Ok((draft, header.slug, CatalogYear(header.catalog_year)))
+    Ok((
+        draft,
+        Header {
+            slug: header.slug,
+            catalog_year: CatalogYear(header.catalog_year),
+            kind,
+        },
+    ))
+}
+
+/// The draft as JSON with the file's `kind` beside it, so `review
+/// approve` publishes under the declared kind rather than a guess from
+/// the slug. `ProgramDraft` ignores the extra key when it reads the body
+/// back.
+///
+/// # Errors
+/// `serde_json::Error` when the draft cannot be serialised.
+pub fn draft_body(
+    draft: &ProgramDraft,
+    kind: Option<ProgramKind>,
+) -> serde_json::Result<serde_json::Value> {
+    let mut body = serde_json::to_value(draft)?;
+    if let (Some(kind), Some(object)) = (kind, body.as_object_mut()) {
+        let text = match kind {
+            ProgramKind::University => "university",
+            ProgramKind::Major => "major",
+            ProgramKind::Minor => "minor",
+            ProgramKind::Certificate => "certificate",
+            ProgramKind::Concentration => "concentration",
+        };
+        object.insert(
+            "kind".to_owned(),
+            serde_json::Value::String(text.to_owned()),
+        );
+    }
+    Ok(body)
 }
 
 /// Load the file and queue it as a pending draft under an `import` run.
@@ -316,7 +377,12 @@ pub fn draft_from_toml(text: &str) -> Result<(ProgramDraft, String, CatalogYear)
 pub async fn university(file: &Path, config: &Config) -> anyhow::Result<i32> {
     let text = std::fs::read_to_string(file)
         .map_err(|e| anyhow::anyhow!("cannot read {}: {e}", file.display()))?;
-    let (draft, slug, year) = draft_from_toml(&text)?;
+    let (draft, header) = draft_from_toml(&text)?;
+    let Header {
+        slug,
+        catalog_year: year,
+        kind,
+    } = header;
     let rules: usize = draft.areas.iter().map(|a| a.rules.len()).sum();
     let store = config.store().await?;
     let run = store.start_run(job_names::IMPORT, None).await?;
@@ -327,7 +393,7 @@ pub async fn university(file: &Path, config: &Config) -> anyhow::Result<i32> {
             catalog_year: year,
             source_url: draft.source_url.clone(),
             source_sha256: skyspace_ingest::archive::sha256(text.as_bytes()),
-            body: serde_json::to_value(&draft)?,
+            body: draft_body(&draft, kind)?,
         })
         .await;
     let summary = RunSummaryRow {
@@ -340,13 +406,19 @@ pub async fn university(file: &Path, config: &Config) -> anyhow::Result<i32> {
         targets: 1,
         failures: 0,
         bytes: u64::try_from(text.len()).unwrap_or(0),
-        rows_written: u64::from(result.is_ok()),
+        rows_written: u64::from(result.as_ref().is_ok_and(|p| p.created())),
         error: result.as_ref().err().map(ToString::to_string),
     };
     store.finish_run(run, &summary).await?;
-    let id = result?;
+    let put = result?;
+    let id = put.id();
+    let verb = if put.created() {
+        "queued"
+    } else {
+        "already queued"
+    };
     println!(
-        "queued draft {} for {slug} {}: {} areas, {rules} rules; review with `skyspace review approve {} --reviewer <name>`",
+        "{verb} draft {} for {slug} {}: {} areas, {rules} rules; review with `skyspace review approve {} --reviewer <name>`",
         id.0,
         year.0,
         draft.areas.len(),
@@ -357,16 +429,21 @@ pub async fn university(file: &Path, config: &Config) -> anyhow::Result<i32> {
 
 #[cfg(test)]
 mod tests {
-    use skyspace_core::program::RequirementBody;
+    use skyspace_core::program::{ProgramKind, RequirementBody};
 
-    use super::draft_from_toml;
+    use super::{draft_body, draft_from_toml};
 
     #[test]
     fn the_checked_in_file_loads() {
         let text = include_str!("../../../../data/university/2026.toml");
-        let (draft, slug, year) = draft_from_toml(text).unwrap();
-        assert_eq!(slug, "university-requirements");
-        assert_eq!(year.0, 2026);
+        let (draft, header) = draft_from_toml(text).unwrap();
+        assert_eq!(header.slug, "university-requirements");
+        assert_eq!(header.catalog_year.0, 2026);
+        assert_eq!(header.kind, Some(ProgramKind::University));
+        let body = draft_body(&draft, header.kind).unwrap();
+        assert_eq!(body["kind"], "university");
+        let back: skyspace_parse::ProgramDraft = serde_json::from_value(body).unwrap();
+        assert_eq!(back, draft);
         assert_eq!(draft.credential, "");
         assert_eq!(
             draft.total_credits.map(skyspace_core::Credits::cents),
@@ -379,7 +456,7 @@ mod tests {
             RequirementBody::DistinctDepartments { minimum: 2, .. }
         ));
         // Same file, same placeholder ids.
-        let (again, _, _) = draft_from_toml(text).unwrap();
+        let (again, _) = draft_from_toml(text).unwrap();
         assert_eq!(again.areas[0].rules[0].id, draft.areas[0].rules[0].id);
     }
 
@@ -388,5 +465,11 @@ mod tests {
         let text = "[program]\nslug='x'\nname='X'\ncatalog_year=2026\nsource_url='u'\n[[area]]\ntitle='A'\n[[area.rule]]\nlabel='r'\nkind='magic'\n";
         let err = draft_from_toml(text).unwrap_err().to_string();
         assert!(err.contains("magic"), "{err}");
+        let text =
+            "[program]\nslug='x'\nname='X'\nkind='faculty'\ncatalog_year=2026\nsource_url='u'\n";
+        let err = draft_from_toml(text).unwrap_err().to_string();
+        assert!(err.contains("faculty"), "{err}");
+        let text = "[program]\nslug='x'\nname='X'\ncatalog_year=2026\nsource_url='u'\n";
+        assert_eq!(draft_from_toml(text).unwrap().1.kind, None);
     }
 }

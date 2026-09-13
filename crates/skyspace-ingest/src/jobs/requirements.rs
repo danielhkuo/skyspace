@@ -95,7 +95,8 @@ async fn one_program<F: Fetch>(
     };
     let parsed = parse_program_page(&page.text, url.as_str())?;
     run.report(url.as_str(), &parsed.report).await?;
-    run.ctx()
+    let put = run
+        .ctx()
         .store
         .put_draft(&DraftInput {
             run_id: run.id(),
@@ -106,6 +107,10 @@ async fn one_program<F: Fetch>(
             body: serde_json::to_value(&parsed.value)?,
         })
         .await?;
-    run.add_rows(1);
+    if put.created() {
+        run.add_rows(1);
+    } else {
+        tracing::info!(slug = %link.slug, draft = put.id().0, "unchanged page; draft already queued");
+    }
     Ok(())
 }

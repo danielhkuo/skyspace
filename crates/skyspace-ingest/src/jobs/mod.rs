@@ -11,14 +11,13 @@ mod seats;
 mod sections;
 
 use std::collections::BTreeMap;
-use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::Instant;
 
 pub use skyspace_store::RunOutcome;
 
 use skyspace_core::term::TermCode;
 use skyspace_parse::{ParseReport, RefKind, ReferenceEntry, parse_reference_list};
-use skyspace_store::{IssueSeverity, JobLock, RawResponseInput, RunSummaryRow};
+use skyspace_store::{IssueSeverity, JobLock, RawResponseInput, RunKey, RunSummaryRow};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -123,7 +122,9 @@ pub const fn exit_code(outcome: RunOutcome) -> i32 {
     }
 }
 
-/// Job names as `ingest_runs.job` records them.
+/// Job names as `ingest_runs.job` records them. The store's
+/// `DATA_VERSION_JOBS` names the ones whose good run moves the catalog
+/// `ETag`; a test below keeps the two lists in step.
 pub mod job_names {
     /// `pull reference`.
     pub const REFERENCE: &str = "reference";
@@ -145,14 +146,20 @@ pub mod job_names {
     pub const IMPORT: &str = "import";
 }
 
-/// The advisory lock key for a job: a stable hash of its name, so two
-/// timers firing the same job serialise and different jobs do not.
+/// The advisory lock key for a job: FNV-1a over `skyspace-ingest/<job>`,
+/// spelled out here so the key is the same in every build and Rust
+/// release (`DefaultHasher` promises neither), and an old and a new binary
+/// in a rolling deploy still serialise.
 #[must_use]
 pub fn lock_key(job: &str) -> i64 {
-    let mut hasher = DefaultHasher::new();
-    "skyspace-ingest".hash(&mut hasher);
-    job.hash(&mut hasher);
-    i64::from_ne_bytes(hasher.finish().to_ne_bytes())
+    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut hash = OFFSET;
+    for byte in b"skyspace-ingest/".iter().chain(job.as_bytes()) {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    i64::from_ne_bytes(hash.to_ne_bytes())
 }
 
 /// The sums a run accumulates, plus the per-field fill counts that become
@@ -178,7 +185,7 @@ pub(crate) struct Run<'a> {
     ctx: &'a JobCtx,
     id: i64,
     job: &'static str,
-    term: Option<TermCode>,
+    key: Option<RunKey>,
     started: OffsetDateTime,
     clock: Instant,
     counters: Counters,
@@ -196,28 +203,43 @@ impl<'a> Run<'a> {
         job: &'static str,
         term: Option<TermCode>,
     ) -> Result<Self, JobError> {
+        Self::begin_keyed(ctx, job, term.map(RunKey::Term)).await
+    }
+
+    /// `begin` for a run keyed by a term, a catalog year, or nothing.
+    ///
+    /// # Errors
+    /// As `begin`.
+    pub(crate) async fn begin_keyed(
+        ctx: &'a JobCtx,
+        job: &'static str,
+        key: Option<RunKey>,
+    ) -> Result<Self, JobError> {
         let lock = ctx
             .store
             .try_advisory_lock(lock_key(job))
             .await?
             .ok_or(JobError::Locked)?;
-        let id = ctx.store.start_run(job, term).await?;
-        tracing::info!(
-            job,
-            term_code = term.map(|t| t.to_string()),
-            run = id,
-            "run started"
-        );
+        let id = ctx.store.start_run_keyed(job, key).await?;
+        tracing::info!(job, key = key.map(RunKey::as_db), run = id, "run started");
         Ok(Self {
             ctx,
             id,
             job,
-            term,
+            key,
             started: OffsetDateTime::now_utc(),
             clock: Instant::now(),
             counters: Counters::default(),
             lock: Some(lock),
         })
+    }
+
+    /// The term this run is keyed by, when it is.
+    fn term(&self) -> Option<TermCode> {
+        match self.key {
+            Some(RunKey::Term(term)) => Some(term),
+            Some(RunKey::Year(_)) | None => None,
+        }
     }
 
     pub(crate) fn ctx(&self) -> &'a JobCtx {
@@ -254,10 +276,12 @@ impl<'a> Run<'a> {
 
     /// Fetch one archived document and index it in `raw_responses`.
     /// `Ok(None)` when the fetch failed after its retries: the failure is
-    /// counted and the job moves on. Five failures in a row end the run.
+    /// counted and the job moves on. Five outages in a row (transport
+    /// errors, retried statuses; not a 404 or an oversize body) end the
+    /// run.
     ///
     /// # Errors
-    /// `JobError::ConsecutiveFailures` at the fifth failure in a row;
+    /// `JobError::ConsecutiveFailures` at the fifth outage in a row;
     /// `Store` when the index row cannot be written.
     pub(crate) async fn fetch<F: Fetch>(
         &mut self,
@@ -273,15 +297,15 @@ impl<'a> Run<'a> {
             .store
             .record_raw_response(&RawResponseInput {
                 run_id: self.id,
-                source: source.raw(),
+                source,
                 url: url.to_string(),
-                term: self.term,
+                term: self.term(),
                 fetched_at: outcome.fetched_at,
                 status: outcome.status,
                 content_type: outcome.content_type.clone(),
                 byte_len: u32::try_from(outcome.body.len()).unwrap_or(u32::MAX),
                 sha256: outcome.sha256,
-                headers: serde_json::Value::Object(serde_json::Map::new()),
+                headers: serde_json::to_value(&outcome.headers)?,
             })
             .await?;
         Ok(Some(outcome))
@@ -316,7 +340,11 @@ impl<'a> Run<'a> {
             }
             Err(e) => {
                 self.counters.failures = self.counters.failures.saturating_add(1);
-                self.counters.consecutive_failures += 1;
+                if e.is_outage() {
+                    self.counters.consecutive_failures += 1;
+                } else {
+                    self.counters.consecutive_failures = 0;
+                }
                 tracing::warn!(url = %url, error = %e, consecutive = self.counters.consecutive_failures, "fetch failed");
                 if self.counters.consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
                     return Err(JobError::ConsecutiveFailures(
@@ -439,7 +467,7 @@ impl<'a> Run<'a> {
         let finished = OffsetDateTime::now_utc();
         tracing::info!(
             job = self.job,
-            term_code = self.term.map(|t| t.to_string()),
+            key = self.key.map(RunKey::as_db),
             run = self.id,
             outcome = outcome_text(outcome),
             requests = c.requests,
@@ -526,4 +554,52 @@ pub(crate) async fn subject_codes(
         }
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{job_names as j, lock_key};
+
+    /// The key is a fixed function of the name, not of the toolchain.
+    #[test]
+    fn lock_keys_are_stable() {
+        assert_eq!(lock_key(j::LISTINGS), lock_key("listings"));
+        assert_ne!(lock_key(j::LISTINGS), lock_key(j::SEATS));
+        // FNV-1a of "skyspace-ingest/listings", pinned.
+        assert_eq!(lock_key(j::LISTINGS), -4_827_120_266_633_811_147_i64);
+    }
+
+    /// Every job whose good run changes what the catalog serves is in the
+    /// store's `ETag` list, and nothing in that list is a name we do not
+    /// run.
+    #[test]
+    fn data_version_jobs_match_job_names() {
+        let ours = [
+            j::REFERENCE,
+            j::CATALOG,
+            j::LISTINGS,
+            j::SECTIONS,
+            j::DETAIL,
+            j::SEATS,
+            j::REQUIREMENTS,
+            j::REPLAY,
+            j::IMPORT,
+        ];
+        for job in skyspace_store::DATA_VERSION_JOBS {
+            assert!(ours.contains(&job), "{job} is not a job name");
+        }
+        for job in [
+            j::LISTINGS,
+            j::DETAIL,
+            j::REFERENCE,
+            j::SECTIONS,
+            j::CATALOG,
+        ] {
+            assert!(
+                skyspace_store::DATA_VERSION_JOBS.contains(&job),
+                "{job} writes catalog rows but does not move the ETag"
+            );
+        }
+        assert_eq!(skyspace_store::CATALOG_JOB, j::CATALOG);
+    }
 }

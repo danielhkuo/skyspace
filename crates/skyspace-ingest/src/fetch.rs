@@ -4,16 +4,24 @@
 //! anything interprets the bytes.
 //!
 //! Caching is content hashing only. Banner's `ETag` is not content-derived
-//! and it sends no `Last-Modified`, so there is no conditional GET.
+//! and it sends no `Last-Modified`, so there is no conditional GET. The
+//! hash comparison (`FetchOutcome::unchanged`) is informational: an
+//! unchanged body is still parsed and upserted, because the upsert is
+//! what refreshes `last_seen_at` and clears a withdrawal, and a timer run
+//! is a fresh process with no memory of the previous body anyway.
+//!
+//! The limiter is per process. Two `skyspace pull` processes against the
+//! same host each keep their own 150 ms gap, so the timers must not
+//! overlap `seats` with `detail` (or any two pulling jobs) on the same
+//! host; the systemd units serialise them.
 
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::str::FromStr;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use skyspace_store::RawSource;
+pub use skyspace_store::RawSource as Source;
 use time::OffsetDateTime;
 use url::Url;
 
@@ -45,96 +53,15 @@ pub const BACKOFF: [Duration; 3] = [
 pub const JITTER: Duration = Duration::from_millis(500);
 /// A job stops after this many failures in a row on a host.
 pub const MAX_CONSECUTIVE_FAILURES: u32 = 5;
+/// The largest body accepted. Rice's biggest page is a 1.8 MB listing;
+/// anything past this is not a page we know, and reading it whole would
+/// hold twice its size in memory.
+pub const MAX_BODY_BYTES: u64 = 32 * 1024 * 1024;
 
 /// The User-Agent a polite client sends: identified, with a real address.
 #[must_use]
 pub fn user_agent(site: &str, contact: &str) -> String {
     format!("skyspace/0.1 (+https://{site}; contact: {contact})")
-}
-
-/// What kind of document is being fetched. Matches the `raw_responses.source`
-/// check constraint; seats are absent on purpose, because their XML is never
-/// archived (`Fetch::get_live`). No `clap` derive: the CLI maps `--source`
-/// through `FromStr`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Source {
-    /// A subject listing page.
-    Listing,
-    /// A `CATALIST` page.
-    Catalog,
-    /// `ASSOCIATED-SECTIONS` XML.
-    SectionXml,
-    /// A section detail page.
-    Detail,
-    /// A reference list.
-    Reference,
-    /// The GA program index.
-    ProgramIndex,
-    /// A GA program page.
-    Program,
-}
-
-impl Source {
-    /// Every source, in the order of the check constraint.
-    pub const ALL: [Self; 7] = [
-        Self::Listing,
-        Self::Catalog,
-        Self::SectionXml,
-        Self::Detail,
-        Self::Reference,
-        Self::ProgramIndex,
-        Self::Program,
-    ];
-
-    /// The stored text.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Listing => "listing",
-            Self::Catalog => "catalog",
-            Self::SectionXml => "section_xml",
-            Self::Detail => "detail",
-            Self::Reference => "reference",
-            Self::ProgramIndex => "program_index",
-            Self::Program => "program",
-        }
-    }
-
-    /// The store's twin of this enum.
-    #[must_use]
-    pub const fn raw(self) -> RawSource {
-        match self {
-            Self::Listing => RawSource::Listing,
-            Self::Catalog => RawSource::Catalog,
-            Self::SectionXml => RawSource::SectionXml,
-            Self::Detail => RawSource::Detail,
-            Self::Reference => RawSource::Reference,
-            Self::ProgramIndex => RawSource::ProgramIndex,
-            Self::Program => RawSource::Program,
-        }
-    }
-}
-
-impl FromStr for Source {
-    type Err = String;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        Self::ALL
-            .into_iter()
-            .find(|s| s.as_str() == text)
-            .ok_or_else(|| {
-                format!(
-                    "unknown source {text:?}; one of {}",
-                    Self::ALL.map(Self::as_str).join(", ")
-                )
-            })
-    }
-}
-
-impl std::fmt::Display for Source {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
 }
 
 /// One fetched document.
@@ -150,13 +77,28 @@ pub struct FetchOutcome {
     pub status: u16,
     /// The `Content-Type` header, kept for `raw_responses`.
     pub content_type: Option<String>,
+    /// The response headers worth keeping (`content-type`,
+    /// `content-length`, `etag`, `last-modified`, `date`), lowercase
+    /// names, for `raw_responses.headers`.
+    pub headers: BTreeMap<String, String>,
     /// True when `sha256` matches the last body this fetcher archived for
     /// the same URL. Tracked in process only: the store keeps no per-URL
     /// hash lookup, so a new process starts with every URL "changed".
+    /// Informational: an unchanged body is still parsed (see the module
+    /// doc).
     pub unchanged: bool,
     /// When the response finished.
     pub fetched_at: OffsetDateTime,
 }
+
+/// The headers `FetchOutcome::headers` keeps.
+const KEPT_HEADERS: [&str; 5] = [
+    "content-type",
+    "content-length",
+    "etag",
+    "last-modified",
+    "date",
+];
 
 /// Implemented by [`Fetcher`] for real pulls and by a fixture reader in
 /// tests, so job tests need no HTTP mock crate. Written as a returned
@@ -176,7 +118,9 @@ pub trait Fetch {
 }
 
 /// One permit at a time, so concurrency is one by construction: the guard
-/// is held across the sleep and across the request.
+/// is held across the sleep and across the request. Per process: another
+/// `skyspace` process has its own, so the timers keep pulling jobs from
+/// overlapping (see the module doc).
 #[derive(Debug)]
 pub struct HostLimiter {
     min_gap: Duration,
@@ -269,10 +213,7 @@ impl Fetcher {
     /// One attempt after the other, with backoff. The host permit is held
     /// from the request until the body has arrived, so the next gap is
     /// measured from the end of this response.
-    async fn fetch_bytes(
-        &self,
-        url: &Url,
-    ) -> Result<(Bytes, u16, Option<String>, OffsetDateTime), FetchError> {
+    async fn fetch_bytes(&self, url: &Url) -> Result<Fetched, FetchError> {
         let mut attempt = 0u32;
         loop {
             let permit = self.limiter.acquire().await;
@@ -280,7 +221,7 @@ impl Fetcher {
             drop(permit);
             let retry = match &result {
                 Ok(Attempt::Retry(_)) => true,
-                Ok(Attempt::Done(_) | Attempt::Failed(_)) => false,
+                Ok(Attempt::Done(_) | Attempt::Failed(_) | Attempt::TooLarge(_)) => false,
                 Err(e) => e.is_connect() || e.is_timeout(),
             };
             if !retry || attempt >= RETRIES {
@@ -289,6 +230,7 @@ impl Fetcher {
                     Attempt::Retry(status) | Attempt::Failed(status) => {
                         Err(FetchError::Status(status))
                     }
+                    Attempt::TooLarge(bytes) => Err(FetchError::TooLarge(bytes)),
                 };
             }
             let backoff = BACKOFF[usize::try_from(attempt).unwrap_or(2).min(2)] + jitter();
@@ -298,9 +240,10 @@ impl Fetcher {
         }
     }
 
-    /// One request, body included.
+    /// One request, body included. The body is read in chunks against
+    /// `MAX_BODY_BYTES`, after `Content-Length` when the server sends one.
     async fn attempt(&self, url: &Url) -> Result<Attempt, reqwest::Error> {
-        let response = self.http.get(url.clone()).send().await?;
+        let mut response = self.http.get(url.clone()).send().await?;
         let status = response.status().as_u16();
         if retryable_status(status) {
             return Ok(Attempt::Retry(status));
@@ -308,34 +251,61 @@ impl Fetcher {
         if !response.status().is_success() {
             return Ok(Attempt::Failed(status));
         }
-        let content_type = response
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .map(str::to_owned);
-        let body = response.bytes().await?;
-        Ok(Attempt::Done((
-            body,
+        if let Some(len) = response.content_length()
+            && len > MAX_BODY_BYTES
+        {
+            return Ok(Attempt::TooLarge(len));
+        }
+        let headers: BTreeMap<String, String> = KEPT_HEADERS
+            .iter()
+            .filter_map(|name| {
+                let value = response.headers().get(*name)?.to_str().ok()?;
+                Some(((*name).to_owned(), value.to_owned()))
+            })
+            .collect();
+        let content_type = headers.get("content-type").cloned();
+        let mut body: Vec<u8> = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            let total = body.len() as u64 + chunk.len() as u64;
+            if total > MAX_BODY_BYTES {
+                return Ok(Attempt::TooLarge(total));
+            }
+            body.extend_from_slice(&chunk);
+        }
+        Ok(Attempt::Done(Fetched {
+            body: Bytes::from(body),
             status,
             content_type,
-            OffsetDateTime::now_utc(),
-        )))
+            headers,
+            finished_at: OffsetDateTime::now_utc(),
+        }))
     }
 }
 
-/// What one attempt produced: a body, or a status worth retrying.
+/// A body with the response facts the archive index keeps.
+struct Fetched {
+    body: Bytes,
+    status: u16,
+    content_type: Option<String>,
+    headers: BTreeMap<String, String>,
+    finished_at: OffsetDateTime,
+}
+
+/// What one attempt produced: a body, a status worth retrying, a status
+/// that is not, or a body past the cap.
 enum Attempt {
-    Done((Bytes, u16, Option<String>, OffsetDateTime)),
+    Done(Fetched),
     Retry(u16),
     Failed(u16),
+    TooLarge(u64),
 }
 
 impl Fetch for Fetcher {
     // The trait spells its methods as returned `impl Future` (see the trait
     // doc); an implementation may refine that with `async fn`.
     async fn get(&self, url: &Url, source: Source) -> Result<FetchOutcome, FetchError> {
-        let (body, status, content_type, fetched_at) = self.fetch_bytes(url).await?;
-        let sha = self.archive.put(&body)?;
+        let fetched = self.fetch_bytes(url).await?;
+        let sha = self.archive.put(&fetched.body)?;
         let unchanged = {
             let mut last = self
                 .last_sha
@@ -343,30 +313,32 @@ impl Fetch for Fetcher {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             last.insert(url.to_string(), sha) == Some(sha)
         };
-        tracing::debug!(url = %url, source = %source, status, bytes = body.len(), unchanged, "fetched");
-        let text = decode(&body, content_type.as_deref());
+        tracing::debug!(url = %url, source = %source, status = fetched.status, bytes = fetched.body.len(), unchanged, "fetched");
+        let text = decode(&fetched.body, fetched.content_type.as_deref());
         Ok(FetchOutcome {
-            body,
+            body: fetched.body,
             text,
             sha256: sha,
-            status,
-            content_type,
+            status: fetched.status,
+            content_type: fetched.content_type,
+            headers: fetched.headers,
             unchanged,
-            fetched_at,
+            fetched_at: fetched.finished_at,
         })
     }
 
     async fn get_live(&self, url: &Url) -> Result<FetchOutcome, FetchError> {
-        let (body, status, content_type, fetched_at) = self.fetch_bytes(url).await?;
-        let text = decode(&body, content_type.as_deref());
+        let fetched = self.fetch_bytes(url).await?;
+        let text = decode(&fetched.body, fetched.content_type.as_deref());
         Ok(FetchOutcome {
-            sha256: sha256(&body),
+            sha256: sha256(&fetched.body),
             text,
-            body,
-            status,
-            content_type,
+            body: fetched.body,
+            status: fetched.status,
+            content_type: fetched.content_type,
+            headers: fetched.headers,
             unchanged: false,
-            fetched_at,
+            fetched_at: fetched.finished_at,
         })
     }
 }

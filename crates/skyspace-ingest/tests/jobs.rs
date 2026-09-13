@@ -45,9 +45,11 @@ const SUBJECTS: &[u8] = b"<SUBJECTS term=\"202710\" year=\"2027\">\
   <SUBJECT code=\"MUSI\"><VAL>MUSI</VAL><OPT>Music (MUSI)</OPT>Music</SUBJECT>\
 </SUBJECTS>";
 
-/// Serves bytes by URL and archives them like the real fetcher would.
+/// Serves bytes by URL and archives them like the real fetcher would. A
+/// URL in `statuses` answers with that status instead of a body.
 struct FixtureFetch {
     pages: Mutex<BTreeMap<String, Vec<u8>>>,
+    statuses: Mutex<BTreeMap<String, u16>>,
     archive: Archive,
     calls: Mutex<Vec<String>>,
 }
@@ -56,9 +58,17 @@ impl FixtureFetch {
     fn new(archive: Archive) -> Self {
         Self {
             pages: Mutex::new(BTreeMap::new()),
+            statuses: Mutex::new(BTreeMap::new()),
             archive,
             calls: Mutex::new(Vec::new()),
         }
+    }
+
+    fn fail_with(&self, url: &url::Url, status: u16) {
+        self.statuses
+            .lock()
+            .unwrap()
+            .insert(url.to_string(), status);
     }
 
     fn put(&self, url: &url::Url, bytes: &[u8]) {
@@ -78,6 +88,9 @@ impl FixtureFetch {
 
     fn lookup(&self, url: &url::Url) -> Result<Vec<u8>, FetchError> {
         self.calls.lock().unwrap().push(url.to_string());
+        if let Some(status) = self.statuses.lock().unwrap().get(url.as_str()) {
+            return Err(FetchError::Status(*status));
+        }
         self.pages
             .lock()
             .unwrap()
@@ -88,16 +101,35 @@ impl FixtureFetch {
 
     fn outcome(bytes: Vec<u8>) -> FetchOutcome {
         let text = String::from_utf8_lossy(&bytes).into_owned();
+        let headers = BTreeMap::from([
+            (
+                "content-type".to_owned(),
+                "text/html; charset=UTF-8".to_owned(),
+            ),
+            ("content-length".to_owned(), bytes.len().to_string()),
+        ]);
         FetchOutcome {
             sha256: sha256(&bytes),
             text,
             body: Bytes::from(bytes),
             status: 200,
             content_type: Some("text/html; charset=UTF-8".to_owned()),
+            headers,
             unchanged: false,
             fetched_at: OffsetDateTime::now_utc(),
         }
     }
+}
+
+/// The listing fixture without the section rows that mention any of
+/// `needles` (`p_crn=12437`, `p_subj=MUSI`).
+fn listing_without(needles: &[&str]) -> Vec<u8> {
+    let text = String::from_utf8_lossy(LISTING);
+    text.lines()
+        .filter(|line| !(line.starts_with("<tr>") && needles.iter().any(|n| line.contains(n))))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .into_bytes()
 }
 
 impl Fetch for FixtureFetch {
@@ -211,6 +243,15 @@ async fn listing_pull_writes_rows_and_records_a_run(pool: PgPool) {
         ctx.archive.contains(&sha256(LISTING)),
         "the page was archived before it was parsed"
     );
+    let (content_type, length): (Option<String>, Option<String>) = sqlx::query_as(
+        "select headers ->> 'content-type', headers ->> 'content-length' from raw_responses \
+         where source = 'listing' limit 1",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(content_type.as_deref(), Some("text/html; charset=UTF-8"));
+    assert_eq!(length.as_deref(), Some(&LISTING.len().to_string()[..]));
 }
 
 #[sqlx::test(migrations = "../skyspace-store/migrations")]
@@ -295,7 +336,7 @@ async fn wrong_term_header_fails_the_run(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "../skyspace-store/migrations")]
-async fn five_failures_in_a_row_stop_the_run(pool: PgPool) {
+async fn five_outages_in_a_row_stop_the_run_but_gone_pages_do_not(pool: PgPool) {
     let (ctx, f) = setup(pool.clone());
     pull_reference_lists(&f, &ctx, fall()).await.unwrap();
     pull_section_listings(&f, &ctx, fall()).await.unwrap();
@@ -304,7 +345,25 @@ async fn five_failures_in_a_row_stop_the_run(pool: PgPool) {
     // Two failures are tolerated; the run still ends, quarantined by volume.
     let summary = pull_section_listings(&f, &ctx, fall()).await.unwrap();
     assert_eq!(summary.failures, 2);
-    // Sections due for XML, every fetch a 404: the fifth ends the run.
+    // Sections due for XML, every fetch a 404: each is that page's
+    // problem, counted and skipped; the run reaches its end.
+    let summary = pull_section_xml(&f, &ctx, fall(), Duration::from_secs(0))
+        .await
+        .unwrap();
+    assert_eq!(summary.outcome, RunOutcome::Ok, "{summary:?}");
+    assert_eq!((summary.failures, summary.requests), (8, 8));
+    // Every fetch a 503 after retries: Rice is down, the fifth ends the run.
+    let due = ctx
+        .crns_due(
+            fall(),
+            skyspace_ingest::DueColumn::Xml,
+            Duration::from_secs(0),
+        )
+        .await
+        .unwrap();
+    for crn in &due {
+        f.fail_with(&urls::associated_sections(fall(), *crn).unwrap(), 503);
+    }
     let summary = pull_section_xml(&f, &ctx, fall(), Duration::from_secs(0))
         .await
         .unwrap();
@@ -312,6 +371,121 @@ async fn five_failures_in_a_row_stop_the_run(pool: PgPool) {
     assert_eq!(summary.failures, 5);
     assert!(summary.requests < summary.targets);
     assert!(summary.note.unwrap().contains("5 consecutive"));
+}
+
+/// A replay repairs from the newest good body of each URL: it cannot
+/// bring back what a later good run withdrew, and a subject page with no
+/// sections is a note, not a crash.
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn replay_keeps_withdrawals_and_survives_an_empty_subject(pool: PgPool) {
+    let (ctx, f) = setup(pool.clone());
+    let comp = urls::listing(fall(), &subject("COMP")).unwrap();
+    // MUSI has no sections this term: Rice answers with the search form.
+    f.put(
+        &urls::listing(fall(), &subject("MUSI")).unwrap(),
+        SEARCH_FORM,
+    );
+    pull_reference_lists(&f, &ctx, fall()).await.unwrap();
+    let first = pull_section_listings(&f, &ctx, fall()).await.unwrap();
+    assert_eq!(first.outcome, RunOutcome::Ok, "{first:?}");
+    assert_eq!(first.rows_written, 8);
+    // A later good run (its body not archived here) withdrew every COMP
+    // section but 12422.
+    let withdrawn = "select count(*) from sections where withdrawn_at is not null";
+    let comp_sections = count(
+        &pool,
+        "select count(*) from sections s join courses c on c.id = s.course_id where c.subject = 'COMP'",
+    )
+    .await;
+    assert!(comp_sections > 1);
+    ctx.store
+        .withdraw_missing(fall(), &subject("COMP"), &[skyspace_core::code::Crn(12422)])
+        .await
+        .unwrap();
+    assert_eq!(count(&pool, withdrawn).await, comp_sections - 1);
+
+    let since = OffsetDateTime::now_utc().date().previous_day().unwrap();
+    let summary = replay(&ctx, Source::Listing, since).await.unwrap();
+    assert_eq!(summary.outcome, RunOutcome::Ok, "{summary:?}");
+    assert_eq!(summary.targets, 2, "the COMP body and the MUSI form");
+    assert_eq!(summary.rows_written, 8);
+    assert_eq!(
+        count(&pool, withdrawn).await,
+        comp_sections - 1,
+        "a body older than the withdrawal resurrects nothing"
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "select count(*) from parse_issues i join ingest_runs r on r.id = i.run_id \
+             where r.job = 'replay' and i.code = 'no_rows'"
+        )
+        .await,
+        1
+    );
+    // A body newer than the withdrawal does bring the sections back: the
+    // subjects now each list their own rows, and COMP 222 has left.
+    f.put(&comp, &listing_without(&["p_subj=MUSI", "p_crn=12437"]));
+    f.put(
+        &urls::listing(fall(), &subject("MUSI")).unwrap(),
+        &listing_without(&["p_subj=COMP"]),
+    );
+    let third = pull_section_listings(&f, &ctx, fall()).await.unwrap();
+    assert_eq!(third.outcome, RunOutcome::Ok, "{third:?}");
+    assert_eq!(
+        count(&pool, withdrawn).await,
+        1,
+        "only the row that left the page"
+    );
+}
+
+/// The catalog job's baseline is the last good run of the same year.
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn catalog_guards_compare_within_a_year(pool: PgPool) {
+    let (ctx, f) = setup(pool.clone());
+    for year in [CatalogYear(2026), CatalogYear(2024)] {
+        f.put(&urls::subjects_for_year(year).unwrap(), SUBJECTS);
+        f.put(&urls::catalist(year, &subject("COMP")).unwrap(), CATALIST);
+        f.put(&urls::catalist(year, &subject("MUSI")).unwrap(), CATALIST);
+    }
+    let both = pull_catalog(&f, &ctx, CatalogYear(2026)).await.unwrap();
+    assert_eq!(both.outcome, RunOutcome::Ok, "{both:?}");
+    // 2024 has half the records: its first run has no baseline to fail.
+    f.put(
+        &urls::catalist(CatalogYear(2024), &subject("MUSI")).unwrap(),
+        SEARCH_FORM,
+    );
+    let half = pull_catalog(&f, &ctx, CatalogYear(2024)).await.unwrap();
+    assert_eq!(half.outcome, RunOutcome::Ok, "{half:?}");
+    assert_eq!(half.rows_written * 2, both.rows_written);
+    let keys: Vec<Option<String>> =
+        sqlx::query_scalar("select term_code from ingest_runs where job = 'catalog' order by id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(keys, vec![Some("2026".to_owned()), Some("2024".to_owned())]);
+    // Doubling 2024 against its own last run is a drift.
+    f.put(
+        &urls::catalist(CatalogYear(2024), &subject("MUSI")).unwrap(),
+        CATALIST,
+    );
+    let doubled = pull_catalog(&f, &ctx, CatalogYear(2024)).await.unwrap();
+    assert_eq!(doubled.outcome, RunOutcome::Quarantined, "{doubled:?}");
+    assert!(doubled.note.unwrap().contains("course count"));
+}
+
+/// A failed TERMS fetch is reported as that, not as "not listed".
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn reference_note_names_a_missing_terms_list(pool: PgPool) {
+    let (ctx, f) = setup(pool.clone());
+    f.fail_with(&urls::reference(RefKind::Terms, fall()).unwrap(), 404);
+    let summary = pull_reference_lists(&f, &ctx, fall()).await.unwrap();
+    assert_eq!(summary.outcome, RunOutcome::Ok);
+    assert_eq!(summary.failures, 1);
+    assert_eq!(
+        summary.note.as_deref(),
+        Some("the TERMS list could not be fetched")
+    );
 }
 
 #[sqlx::test(migrations = "../skyspace-store/migrations")]
@@ -407,6 +581,27 @@ async fn requirements_pull_writes_drafts_only(pool: PgPool) {
             "select count(*) from parse_issues where code = 'slug_not_on_index'"
         )
         .await,
+        1
+    );
+    // The same page again is not a second draft.
+    let again = pull_requirements(&f, &ctx, year, &only).await.unwrap();
+    assert_eq!(again.outcome, RunOutcome::Ok, "{again:?}");
+    assert_eq!(again.rows_written, 0);
+    assert_eq!(
+        ctx.store.drafts(DraftState::Pending).await.unwrap().len(),
+        1
+    );
+    let replayed = replay(
+        &ctx,
+        Source::Program,
+        OffsetDateTime::now_utc().date().previous_day().unwrap(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(replayed.outcome, RunOutcome::Ok, "{replayed:?}");
+    assert_eq!(replayed.rows_written, 0);
+    assert_eq!(
+        ctx.store.drafts(DraftState::Pending).await.unwrap().len(),
         1
     );
 }

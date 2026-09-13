@@ -165,6 +165,20 @@ pub(crate) fn free_name(taken: &[String], name: &str) -> String {
         .unwrap_or_else(|| name.to_owned())
 }
 
+/// A schedule names a term the store holds; a term it does not is a
+/// caller error, not a foreign-key failure for the API to turn into 500.
+async fn require_term(conn: &mut PgConnection, term: TermCode) -> Result<(), StoreError> {
+    let held: bool = sqlx::query_scalar("select exists (select 1 from terms where code = $1)")
+        .bind(term.to_string())
+        .fetch_one(conn)
+        .await?;
+    if held {
+        Ok(())
+    } else {
+        Err(StoreError::Input(format!("term {term} is not held")))
+    }
+}
+
 impl Store {
     /// The account's schedules for a term, most recently written first.
     ///
@@ -220,8 +234,8 @@ impl Store {
     /// `schedule.id` in the stored body. The term must be held.
     ///
     /// # Errors
-    /// `StoreError::Database` (including a foreign-key failure for a term
-    /// not held), `Input` or `Json`.
+    /// `StoreError::Input` when the term is not held; `Database`, `Input`
+    /// or `Json` otherwise.
     pub async fn create_schedule(
         &self,
         account: AccountId,
@@ -229,6 +243,7 @@ impl Store {
         client_id: Option<Uuid>,
     ) -> Result<(ScheduleId, i32, OffsetDateTime), StoreError> {
         let mut tx = self.pool.begin().await?;
+        require_term(&mut tx, schedule.term).await?;
         let created =
             insert_schedule(&mut tx, account, schedule, client_id, &schedule.name).await?;
         tx.commit().await?;
@@ -239,7 +254,8 @@ impl Store {
     /// `schedule_sections` in the same transaction. `None` means stale.
     ///
     /// # Errors
-    /// `StoreError::Database`, `Input` or `Json`.
+    /// `StoreError::Input` when the term is not held; `Database`, `Input`
+    /// or `Json` otherwise.
     pub async fn save_schedule(
         &self,
         account: AccountId,
@@ -252,6 +268,7 @@ impl Store {
             ..schedule.clone()
         };
         let mut tx = self.pool.begin().await?;
+        require_term(&mut tx, schedule.term).await?;
         let row: Option<VersionRow> = sqlx::query_as(
             "update schedules set body = $4, name = $5, term_code = $6, version = version + 1, updated_at = now() \
              where id = $1 and account_id = $2 and version = $3 returning version, updated_at",
@@ -384,6 +401,7 @@ mod sql_tests {
     use uuid::Uuid;
 
     use super::GuestScheduleInput;
+    use crate::error::StoreError;
     use crate::pool::Store;
     use crate::testing::{fall, listing, schedule, seed_account, seed_term, timed};
 
@@ -395,6 +413,28 @@ mod sql_tests {
         .fetch_all(store.pool())
         .await
         .unwrap()
+    }
+
+    /// A term the store does not hold is the caller's mistake.
+    #[sqlx::test]
+    async fn unheld_term_is_an_input_error(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        let account = seed_account(&store, "a@rice.edu").await;
+        let mut unheld = schedule("Fall", &[10001]);
+        unheld.term = crate::testing::term("209910");
+        assert!(matches!(
+            store.create_schedule(account, &unheld, None).await,
+            Err(StoreError::Input(_))
+        ));
+        seed_term(&store, "202710").await;
+        let (id, version, _) = store
+            .create_schedule(account, &schedule("Fall", &[]), None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            store.save_schedule(account, id, version, &unheld).await,
+            Err(StoreError::Input(_))
+        ));
     }
 
     #[sqlx::test]

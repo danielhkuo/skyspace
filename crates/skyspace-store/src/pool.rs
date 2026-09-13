@@ -54,7 +54,9 @@ impl Store {
         Ok(())
     }
 
-    /// The underlying pool, for the advisory lock a job holds across its run.
+    /// The underlying pool, for tests that read a table directly. Every
+    /// SQL statement in the project lives in this crate: ingest and the
+    /// CLI go through `Store` methods (`JobLock` included), never this.
     #[must_use]
     pub fn pool(&self) -> &PgPool {
         &self.pool

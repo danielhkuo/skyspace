@@ -1,13 +1,14 @@
 //! `pull catalog`: one `CATALIST` page per subject for one academic year.
-//! Records are keyed by year, not term, so the run carries no term code.
-//! The volume and fill-rate guards run over the whole year before any
-//! course is written.
+//! Records are keyed by year, not term, so the run is keyed by the year
+//! (`ingest_runs.term_code` holds its four digits) and the volume and
+//! fill-rate guards compare against the last good run of the same year,
+//! over the whole year, before any course is written.
 
 use skyspace_core::catalog::Course;
 use skyspace_core::code::Subject;
 use skyspace_core::program::CatalogYear;
 use skyspace_parse::{ParseError, RefKind, parse_catalog_subject, parse_reference_list};
-use skyspace_store::IssueSeverity;
+use skyspace_store::{IssueSeverity, RunKey};
 use tracing::Instrument;
 
 use crate::ctx::JobCtx;
@@ -29,7 +30,7 @@ pub async fn pull_catalog<F: Fetch>(
 ) -> Result<Summary, JobError> {
     let span = tracing::info_span!("job", job = job_names::CATALOG, catalog_year = year.0);
     async move {
-        let mut run = Run::begin(ctx, job_names::CATALOG, None).await?;
+        let mut run = Run::begin_keyed(ctx, job_names::CATALOG, Some(RunKey::Year(year))).await?;
         let result = body(&mut run, f, year).await;
         run.conclude(result).await
     }
@@ -53,16 +54,17 @@ async fn body<F: Fetch>(
     let subjects = subject_codes(run, subjects_url.as_str(), &entries).await?;
     run.add_targets(subjects.len());
 
+    let key = Some(RunKey::Year(year));
     let previous_total: u64 = run
         .ctx()
         .store
-        .last_ok_run(job_names::CATALOG, None)
+        .last_ok_run_keyed(job_names::CATALOG, key)
         .await?
         .and_then(|r| u64::try_from(r.rows_written).ok())
         .unwrap_or(0);
     let history = run
         .ctx()
-        .fill_history(job_names::CATALOG, None, Source::Catalog.as_str())
+        .fill_history(job_names::CATALOG, key, Source::Catalog.as_str())
         .await?;
 
     let mut courses: Vec<Course> = Vec::new();

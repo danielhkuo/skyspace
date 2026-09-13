@@ -135,11 +135,19 @@ impl IntoResponse for ApiError {
 }
 
 impl From<skyspace_store::StoreError> for ApiError {
-    /// A store error is always `500`: a missing row is an `Option` turned
-    /// into `NotFound` at the call site, so a query returning nothing for
-    /// the wrong reason cannot quietly become a `404`.
+    /// A store error is `500` except the two the store raises about the
+    /// request itself: `Input` (a document naming a term we do not hold)
+    /// is `400`, and `DuplicateName` is `409`. A missing row is an `Option`
+    /// turned into `NotFound` at the call site, so a query returning
+    /// nothing for the wrong reason cannot quietly become a `404`.
     fn from(error: skyspace_store::StoreError) -> Self {
-        Self::Internal(anyhow::Error::new(error))
+        match error {
+            skyspace_store::StoreError::Input(field) => Self::Invalid(field),
+            skyspace_store::StoreError::DuplicateName => {
+                Self::Conflict(ConflictKind::DuplicateName)
+            }
+            other => Self::Internal(anyhow::Error::new(other)),
+        }
     }
 }
 

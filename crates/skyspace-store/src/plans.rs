@@ -8,7 +8,7 @@ use skyspace_core::evaluate::{CourseFacts, CourseInfo, PlanBundle};
 use skyspace_core::plan::{AccountId, Plan, PlanId, TermKind};
 use skyspace_core::prereq::{Exclusion, PrereqExpr, PrereqObservation, fold_prerequisites};
 use skyspace_core::program::{CatalogYear, CourseSelector, Program, RequirementBody};
-use skyspace_core::term::{Credits, TermCode};
+use skyspace_core::term::{Credits, Season, TermCode, TermPosition};
 use skyspace_core::warn::CreditLimits;
 use sqlx::PgConnection;
 use time::OffsetDateTime;
@@ -93,6 +93,20 @@ struct BodyRow {
 struct VersionRow {
     version: i32,
     updated_at: OffsetDateTime,
+}
+
+/// Serialise this transaction's plan writes for one account: the
+/// "last plan" count, the "first plan is active" rule and the one-active
+/// index are all check-then-write, so two requests for the same account
+/// take this lock first. Transaction scoped: released at commit or
+/// rollback. Keyed by `hashtext` of the uuid text, which is stable
+/// across Postgres releases.
+async fn lock_account(conn: &mut PgConnection, account: AccountId) -> Result<(), StoreError> {
+    sqlx::query("select pg_advisory_xact_lock(hashtext($1::text))")
+        .bind(account.0)
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 async fn insert_plan(
@@ -384,6 +398,31 @@ async fn exclusions(
     Ok(newest.into_values().collect())
 }
 
+/// The term a calendar date falls in, for `today` before an operator has
+/// set a current term (or while a quadmester is current): August to
+/// December is the fall of the next academic year, January to May the
+/// spring, June and July the summer. Matriculation is not a fallback:
+/// it would make every planned term "now or future" and hide past-term
+/// warnings.
+#[must_use]
+pub fn position_of_date(date: time::Date) -> TermPosition {
+    let year = u16::try_from(date.year()).unwrap_or(u16::MAX);
+    match u8::from(date.month()) {
+        8..=12 => TermPosition {
+            academic_year: year.saturating_add(1),
+            season: Season::Fall,
+        },
+        1..=5 => TermPosition {
+            academic_year: year,
+            season: Season::Spring,
+        },
+        _ => TermPosition {
+            academic_year: year,
+            season: Season::Summer,
+        },
+    }
+}
+
 impl Store {
     /// The account's plans, active first, then by last write.
     ///
@@ -430,8 +469,11 @@ impl Store {
         account: AccountId,
         plan: &Plan,
     ) -> Result<(PlanId, i32), StoreError> {
-        let mut conn = self.pool.acquire().await?;
-        insert_plan(&mut conn, account, plan, true).await
+        let mut tx = self.pool.begin().await?;
+        lock_account(&mut tx, account).await?;
+        let created = insert_plan(&mut tx, account, plan, true).await?;
+        tx.commit().await?;
+        Ok(created)
     }
 
     /// Replace the body when `version` is still current. `None` means a
@@ -473,6 +515,7 @@ impl Store {
         id: PlanId,
     ) -> Result<DeleteOutcome, StoreError> {
         let mut tx = self.pool.begin().await?;
+        lock_account(&mut tx, account).await?;
         let count: i64 = sqlx::query_scalar("select count(*) from plans where account_id = $1")
             .bind(account.0)
             .fetch_one(&mut *tx)
@@ -540,6 +583,7 @@ impl Store {
         id: PlanId,
     ) -> Result<bool, StoreError> {
         let mut tx = self.pool.begin().await?;
+        lock_account(&mut tx, account).await?;
         sqlx::query("update plans set is_active = false where account_id = $1 and is_active")
             .bind(account.0)
             .execute(&mut *tx)
@@ -601,7 +645,7 @@ impl Store {
         let exclusions = exclusions(&mut conn, &codes).await?;
         let today = current
             .and_then(TermCode::position)
-            .unwrap_or(plan.matriculation);
+            .unwrap_or_else(|| position_of_date(OffsetDateTime::now_utc().date()));
         Ok(Some(PlanBundle {
             plan,
             programs,
@@ -743,6 +787,101 @@ mod tests {
         assert_eq!(
             store.delete_plan(account, first).await.unwrap(),
             DeleteOutcome::NotFound
+        );
+    }
+
+    /// Two deletes at once cannot both see "two plans left".
+    #[sqlx::test]
+    async fn concurrent_deletes_keep_one_plan(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        let account = seed_account(&store, "a@rice.edu").await;
+        let (first, _) = store
+            .create_plan(account, &plan("First", 2026, Vec::new(), &[]))
+            .await
+            .unwrap();
+        let (second, _) = store
+            .create_plan(account, &plan("Second", 2026, Vec::new(), &[]))
+            .await
+            .unwrap();
+        let (a, b) = tokio::join!(
+            store.delete_plan(account, first),
+            store.delete_plan(account, second)
+        );
+        let outcomes = [a.unwrap(), b.unwrap()];
+        assert!(outcomes.contains(&DeleteOutcome::Deleted), "{outcomes:?}");
+        assert!(outcomes.contains(&DeleteOutcome::LastPlan), "{outcomes:?}");
+        let left = store.plans(account).await.unwrap();
+        assert_eq!(left.len(), 1);
+        assert!(left[0].is_active, "the survivor is active");
+    }
+
+    /// Two first creates at once: both succeed, exactly one is active.
+    #[sqlx::test]
+    async fn concurrent_first_creates_make_one_active(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        let account = seed_account(&store, "a@rice.edu").await;
+        let plan_a = plan("A", 2026, Vec::new(), &[]);
+        let plan_b = plan("B", 2026, Vec::new(), &[]);
+        let (a, b) = tokio::join!(
+            store.create_plan(account, &plan_a),
+            store.create_plan(account, &plan_b)
+        );
+        a.unwrap();
+        b.unwrap();
+        let list = store.plans(account).await.unwrap();
+        assert_eq!(list.len(), 2);
+        assert_eq!(list.iter().filter(|p| p.is_active).count(), 1);
+        let (c, d) = tokio::join!(
+            store.set_active_plan(account, list[0].id),
+            store.set_active_plan(account, list[1].id)
+        );
+        assert!(c.unwrap() && d.unwrap());
+        let list = store.plans(account).await.unwrap();
+        assert_eq!(list.iter().filter(|p| p.is_active).count(), 1);
+    }
+
+    /// Before an operator sets a current term, `today` is the wall-clock
+    /// date's term, not matriculation.
+    #[sqlx::test]
+    async fn today_falls_back_to_the_date(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        let account = seed_account(&store, "a@rice.edu").await;
+        let mut p = plan("Plan", 2026, Vec::new(), &[]);
+        p.matriculation = TermPosition {
+            academic_year: 2000,
+            season: Season::Fall,
+        };
+        let (id, _) = store.create_plan(account, &p).await.unwrap();
+        let bundle = store.plan_bundle(account, id).await.unwrap().unwrap();
+        assert_eq!(
+            bundle.today,
+            super::position_of_date(time::OffsetDateTime::now_utc().date())
+        );
+        assert_ne!(bundle.today, p.matriculation);
+    }
+
+    #[test]
+    fn dates_map_to_terms() {
+        use time::macros::date;
+        let fall = TermPosition {
+            academic_year: 2027,
+            season: Season::Fall,
+        };
+        assert_eq!(super::position_of_date(date!(2026 - 08 - 24)), fall);
+        assert_eq!(super::position_of_date(date!(2026 - 12 - 31)), fall);
+        assert_eq!(
+            super::position_of_date(date!(2027 - 01 - 10)),
+            TermPosition {
+                academic_year: 2027,
+                season: Season::Spring
+            }
+        );
+        assert_eq!(
+            super::position_of_date(date!(2027 - 06 - 15)),
+            TermPosition {
+                academic_year: 2027,
+                season: Season::Summer
+            }
         );
     }
 

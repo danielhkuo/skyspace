@@ -76,9 +76,15 @@ impl Store {
                 continue;
             };
             if row.changed {
-                sqlx::query(
+                // Rice's `time-now` can repeat across polls; a second
+                // change under the same stamp replaces the row and is not
+                // counted, so `changes` is rows the chart gained.
+                let inserted: bool = sqlx::query_scalar(
                     "insert into seat_snapshots (section_id, observed_at, enrolled, capacity, wait_count, wait_capacity) \
-                     values ($1, $2, $3, $4, $5, $6) on conflict (section_id, observed_at) do nothing",
+                     values ($1, $2, $3, $4, $5, $6) on conflict (section_id, observed_at) do update set \
+                        enrolled = excluded.enrolled, capacity = excluded.capacity, \
+                        wait_count = excluded.wait_count, wait_capacity = excluded.wait_capacity \
+                     returning (xmax = 0) as inserted",
                 )
                 .bind(row.section_id)
                 .bind(source_time)
@@ -86,9 +92,9 @@ impl Store {
                 .bind(i32::from(reading.capacity))
                 .bind(i32::from(reading.waitlist_count))
                 .bind(i32::from(reading.waitlist_capacity))
-                .execute(&mut *tx)
+                .fetch_one(&mut *tx)
                 .await?;
-                changes += 1;
+                changes += u64::from(inserted);
             }
         }
         tx.commit().await?;
@@ -181,6 +187,46 @@ mod tests {
     use crate::testing::{
         code, fall, listing, schedule, seats, seed_account, seed_term, timed, unparsed,
     };
+
+    /// Rice's `time-now` repeating across two polls does not lose the
+    /// later reading or over-count the chart's rows.
+    #[sqlx::test]
+    async fn repeated_source_time_replaces_the_snapshot(pool: PgPool) {
+        let store = Store::from_pool(pool);
+        seed_term(&store, "202710").await;
+        store
+            .upsert_sections(
+                fall(),
+                &[listing(
+                    10001,
+                    "COMP 140",
+                    "CT",
+                    vec![timed("MWF", 540, 590)],
+                )],
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            store
+                .record_seats(fall(), &[(Crn(10001), seats(5, 30, 1_700_000_000))])
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            store
+                .record_seats(fall(), &[(Crn(10001), seats(6, 30, 1_700_000_000))])
+                .await
+                .unwrap(),
+            0
+        );
+        let (rows, enrolled): (i64, i32) =
+            sqlx::query_as("select count(*), max(enrolled) from seat_snapshots")
+                .fetch_one(store.pool())
+                .await
+                .unwrap();
+        assert_eq!((rows, enrolled), (1, 6));
+    }
 
     #[sqlx::test]
     async fn snapshots_only_on_change(pool: PgPool) {
