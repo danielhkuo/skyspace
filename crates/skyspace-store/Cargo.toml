@@ -1,0 +1,21 @@
+[package]
+name = "skyspace-store"
+description = "Every SQL statement in Skyspace: PostgreSQL access shared by ingest and the API."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+skyspace-core = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
