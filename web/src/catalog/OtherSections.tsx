@@ -1,4 +1,4 @@
-import {Stack} from '@astryxdesign/core/Stack';
+import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import type {CSSProperties} from 'react';
 
@@ -56,19 +56,21 @@ export function OtherSections({
               }
             }}
           >
-            <Stack gap={0} align="start">
-              <Stack direction="horizontal" gap={1} vAlign="end" wrap="wrap">
-                <Text size="sm" weight="semibold" hasTabularNumbers>
-                  {listing.section}
-                </Text>
-                <Text size="sm" hasTabularNumbers>
-                  {meets === '' ? 'no meeting time' : meets}
+            <StackItem size="fill">
+              <Stack gap={0} align="stretch" width="100%">
+                <Stack direction="horizontal" gap={1} vAlign="end" wrap="wrap">
+                  <Text size="sm" weight="semibold" hasTabularNumbers>
+                    {listing.section}
+                  </Text>
+                  <Text size="sm" hasTabularNumbers>
+                    {meets === '' ? 'no meeting time' : meets}
+                  </Text>
+                </Stack>
+                <Text type="supporting" maxLines={1}>
+                  {formatInstructors(listing) || 'No instructor listed'}
                 </Text>
               </Stack>
-              <Text type="supporting" maxLines={1}>
-                {formatInstructors(listing) || 'No instructor listed'}
-              </Text>
-            </Stack>
+            </StackItem>
             <SeatSummary seats={section.seats} layout="cell" />
           </Stack>
         );

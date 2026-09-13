@@ -77,7 +77,7 @@ export function SectionRows({
             }}
           >
             <StackItem size="fill">
-              <Stack width="100%" gap={0.5} align="start">
+              <Stack width="100%" gap={0.5} align="stretch">
                 <Stack
                   direction="horizontal"
                   gap={1.5}

@@ -145,12 +145,12 @@ export function CourseRow({
         />
       )}
       <StackItem size="fill">
-        <Stack gap={0} align="start" width="100%">
+        <Stack gap={0} align="stretch" width="100%">
           {title !== undefined && (
-            <Stack direction="horizontal" gap={1} vAlign="center">
-              <Text type="supporting" maxLines={1}>
-                {title}
-              </Text>
+            <Stack direction="horizontal" gap={1} vAlign="center" width="100%">
+              <StackItem size="fill">
+                <Text type="supporting">{title}</Text>
+              </StackItem>
               {!planned && (
                 <Token label={ORIGIN_LABEL[card.origin]} size="sm" />
               )}

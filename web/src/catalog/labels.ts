@@ -27,7 +27,7 @@ export function seatsHeadline(seats: Seats): string {
 export const SEAT_DOT = {
   open: {variant: 'success', label: 'Open'},
   nearlyFull: {variant: 'warning', label: 'Nearly full'},
-  waitlistOpen: {variant: 'warning', label: 'Waitlist open'},
+  waitlistOpen: {variant: 'neutral', label: 'Waitlist open'},
   full: {variant: 'error', label: 'Full'},
 } as const;
 

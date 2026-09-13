@@ -142,7 +142,7 @@ export function FavoritesTray({
               label="Drag handle"
             />
             <StackItem size="fill">
-              <Stack width="100%" gap={0} align="start">
+              <Stack width="100%" gap={0} align="stretch">
                 <Text
                   size="sm"
                   weight="semibold"
@@ -151,9 +151,7 @@ export function FavoritesTray({
                 >
                   {formatCourseCode(course)}
                 </Text>
-                <Text type="supporting" maxLines={1}>
-                  {info?.title ?? ''}
-                </Text>
+                <Text type="supporting">{info?.title ?? ''}</Text>
                 <Text type="supporting" size="xsm">
                   {formatCredits(credits)} cr
                   {term === undefined ? '' : ` · in ${term}`}

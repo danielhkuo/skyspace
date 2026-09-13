@@ -125,9 +125,7 @@ function CandidateRow({
           {code}
         </Text>
         <StackItem size="fill" style={{minWidth: 0}}>
-          <Text type="supporting" maxLines={1}>
-            {candidate.visible ? title : 'hidden'}
-          </Text>
+          <Text type="supporting">{title}</Text>
         </StackItem>
         <Text type="supporting" hasTabularNumbers textWrap="nowrap">
           {credits === undefined ? '' : `${formatCredits(credits)} cr`}

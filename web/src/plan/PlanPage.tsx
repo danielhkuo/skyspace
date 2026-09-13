@@ -4,6 +4,7 @@ import {Button} from '@astryxdesign/core/Button';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
 import {MoreMenu} from '@astryxdesign/core/MoreMenu';
+import {useResizable, ResizeHandle} from '@astryxdesign/core/Resizable';
 import {Text} from '@astryxdesign/core/Text';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 import {useCallback, useEffect, useMemo, useState} from 'react';
@@ -48,8 +49,6 @@ import {isRecordedClaim, termName} from './labels';
 import {locateEntry, usePlan, termRemoveBlocker} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
 import {LoadErrorCard} from '../shell/LoadErrorCard';
-
-const SIDEBAR_WIDTH = 400;
 
 function entryOf(warning: Warning): EntryId | undefined {
   switch (warning.kind) {
@@ -148,7 +147,19 @@ function PlanBoardPage({
   const width = useViewportWidth();
   const desktop = width >= DESKTOP_WIDTH;
   const [showWarnings, setShowWarnings] = useState(true);
-  const [trayOpen, setTrayOpen] = useState(true);
+  const favoritesResizable = useResizable({
+    defaultSize: 320,
+    minSize: 320,
+    maxSize: 480,
+    collapsible: true,
+    collapsedSize: 40,
+  });
+
+  const requirementsResizable = useResizable({
+    defaultSize: 400,
+    minSize: 360,
+    maxSize: 640,
+  });
   const [sheet, setSheet] = useState<'saved' | 'requirements' | undefined>(
     undefined,
   );
@@ -467,23 +478,37 @@ function PlanBoardPage({
         }
         start={
           desktop ? (
-            <LayoutPanel
-              width={trayOpen ? 280 : 40}
-              hasDivider
-              isScrollable={false}
-            >
-              <FavoritesTray
-                bundle={bundle}
-                favorites={favorites}
-                isOpen={trayOpen}
-                onToggle={() => setTrayOpen(v => !v)}
-                isDropHovered={hovered?.kind === 'tray'}
-                isDragging={dragging && drag.state?.payload.kind === 'card'}
-                onCoursePointerDown={drag.onCoursePointerDown}
-                registerTarget={drag.registerTarget}
-                onAddTo={addTo}
+            <>
+              <LayoutPanel
+                resizable={favoritesResizable.props}
+                hasDivider={false}
+                isScrollable={false}
+              >
+                <FavoritesTray
+                  bundle={bundle}
+                  favorites={favorites}
+                  isOpen={!favoritesResizable.isCollapsed}
+                  onToggle={() => {
+                    if (favoritesResizable.isCollapsed) {
+                      favoritesResizable.expand();
+                    } else {
+                      favoritesResizable.collapse();
+                    }
+                  }}
+                  isDropHovered={hovered?.kind === 'tray'}
+                  isDragging={dragging && drag.state?.payload.kind === 'card'}
+                  onCoursePointerDown={drag.onCoursePointerDown}
+                  registerTarget={drag.registerTarget}
+                  onAddTo={addTo}
+                />
+              </LayoutPanel>
+              <ResizeHandle
+                direction="horizontal"
+                hasDivider
+                resizable={favoritesResizable.props}
+                label="Resize favorites"
               />
-            </LayoutPanel>
+            </>
           ) : undefined
         }
         content={
@@ -548,21 +573,34 @@ function PlanBoardPage({
         }
         end={
           desktop ? (
-            <LayoutPanel width={SIDEBAR_WIDTH} hasDivider isScrollable={false}>
-              <RequirementsSidebar
-                plan={bundle.plan}
-                programs={bundle.programs}
-                report={report}
-                dispatch={dispatch}
-                raisedRequirements={drag.state?.raisedRequirements}
-                renderSuggestions={renderSuggestions}
-                wrapRequirement={wrapRequirement}
-                onOpenSelfCheck={(program, requirement) =>
-                  setSelfCheck({program, requirement})
-                }
-                onEditCourse={setEditingCourse}
+            <>
+              <ResizeHandle
+                direction="horizontal"
+                hasDivider
+                resizable={requirementsResizable.props}
+                label="Resize requirements"
+                isReversed
               />
-            </LayoutPanel>
+              <LayoutPanel
+                resizable={requirementsResizable.props}
+                hasDivider={false}
+                isScrollable={false}
+              >
+                <RequirementsSidebar
+                  plan={bundle.plan}
+                  programs={bundle.programs}
+                  report={report}
+                  dispatch={dispatch}
+                  raisedRequirements={drag.state?.raisedRequirements}
+                  renderSuggestions={renderSuggestions}
+                  wrapRequirement={wrapRequirement}
+                  onOpenSelfCheck={(program, requirement) =>
+                    setSelfCheck({program, requirement})
+                  }
+                  onEditCourse={setEditingCourse}
+                />
+              </LayoutPanel>
+            </>
           ) : undefined
         }
       >
