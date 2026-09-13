@@ -193,7 +193,10 @@ export function CourseRow({
       <Text size="sm" color="secondary" hasTabularNumbers>
         {formatCredits(card.credits)}
       </Text>
-      {menu}
+      {/* Pointer events on the menu must not bubble to the row's drag handler. */}
+      {menu !== undefined && (
+        <span onPointerDown={e => e.stopPropagation()}>{menu}</span>
+      )}
     </Stack>
   );
 }

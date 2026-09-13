@@ -603,155 +603,154 @@ function PlanBoardPage({
             </>
           ) : undefined
         }
-      >
-        {!desktop && (
-          <BottomSheet
-            isOpen={sheet === 'saved'}
-            onOpenChange={open => setSheet(open ? 'saved' : undefined)}
-            label="Favorites"
-            height="tall"
-          >
-            <FavoritesTray
-              bundle={bundle}
-              favorites={favorites}
-              isOpen
-              onToggle={() => setSheet(undefined)}
-              isDropHovered={false}
-              isDragging={false}
-              onCoursePointerDown={drag.onCoursePointerDown}
-              registerTarget={() => undefined}
-              onAddTo={course => {
-                addTo(course);
-                setSheet(undefined);
-              }}
-            />
-          </BottomSheet>
-        )}
-        {!desktop && (
-          <BottomSheet
-            isOpen={sheet === 'requirements'}
-            onOpenChange={open => setSheet(open ? 'requirements' : undefined)}
-            label="Requirements"
-            height="tall"
-          >
-            <RequirementsSidebar
-              plan={bundle.plan}
-              programs={bundle.programs}
-              report={report}
-              dispatch={dispatch}
-              renderSuggestions={renderSuggestions}
-              onOpenSelfCheck={(program, requirement) =>
-                setSelfCheck({program, requirement})
-              }
-              onEditCourse={setEditingCourse}
-            />
-          </BottomSheet>
-        )}
-        <AddCourseDialog
-          isOpen={addingTo !== undefined}
-          bundle={bundle}
-          termLabel={
-            addingToTerm === undefined
-              ? ''
-              : shortTermLabel(addingToTerm.position)
-          }
-          onClose={() => setAddingTo(undefined)}
-          onPick={(course, credits) => {
-            if (addingTo !== undefined) {
-              drag.dropOn(
-                {kind: 'course', course, credits},
-                {kind: 'term', term: addingTo, slot: Number.MAX_SAFE_INTEGER},
-              );
-            }
-          }}
-        />
-        <EditTermDialog
-          term={editing}
-          onClose={() => setEditingTerm(undefined)}
-          onSave={(kind, label) => {
-            if (editing !== undefined) {
-              dispatch({
-                type: 'setTerm',
-                term: editing.id,
-                kind,
-                label,
-                facts: bundle.facts,
-              });
-            }
-            setEditingTerm(undefined);
-          }}
-        />
-        {(() => {
-          if (editingCourse === undefined) {
-            return null;
-          }
-          const located = locateEntry(bundle.plan, editingCourse);
-          if (located === undefined) {
-            return null;
-          }
-          return (
-            <EditCourseDialog
-              entry={editingCourse}
-              card={located.where === 'rice' ? located.course : located.card}
-              bundle={bundle}
-              dispatch={dispatch}
-              onClose={() => setEditingCourse(undefined)}
-            />
-          );
-        })()}
-        {settingsOpen && (
-          <PlanSettingsDialog
+      ></Layout>
+      {!desktop && (
+        <BottomSheet
+          isOpen={sheet === 'saved'}
+          onOpenChange={open => setSheet(open ? 'saved' : undefined)}
+          label="Favorites"
+          height="tall"
+        >
+          <FavoritesTray
             bundle={bundle}
-            available={available}
-            dispatch={dispatch}
-            onClose={() => setSettingsOpen(false)}
+            favorites={favorites}
+            isOpen
+            onToggle={() => setSheet(undefined)}
+            isDropHovered={false}
+            isDragging={false}
+            onCoursePointerDown={drag.onCoursePointerDown}
+            registerTarget={() => undefined}
+            onAddTo={course => {
+              addTo(course);
+              setSheet(undefined);
+            }}
           />
-        )}
-        {selfCheck !== undefined && (
-          <SelfCheckDialog
-            program={selfCheck.program}
-            requirement={selfCheck.requirement}
-            existing={bundle.plan.selfChecks.find(
-              s => s.requirement === selfCheck.requirement.requirement,
-            )}
+        </BottomSheet>
+      )}
+      {!desktop && (
+        <BottomSheet
+          isOpen={sheet === 'requirements'}
+          onOpenChange={open => setSheet(open ? 'requirements' : undefined)}
+          label="Requirements"
+          height="tall"
+        >
+          <RequirementsSidebar
+            plan={bundle.plan}
+            programs={bundle.programs}
+            report={report}
             dispatch={dispatch}
-            onClose={() => setSelfCheck(undefined)}
+            renderSuggestions={renderSuggestions}
+            onOpenSelfCheck={(program, requirement) =>
+              setSelfCheck({program, requirement})
+            }
+            onEditCourse={setEditingCourse}
           />
-        )}
-        <TermPickerDialog
-          isOpen={picking !== undefined}
-          course={picking?.course}
-          credits={picking?.credits ?? 0}
+        </BottomSheet>
+      )}
+      <AddCourseDialog
+        isOpen={addingTo !== undefined}
+        bundle={bundle}
+        termLabel={
+          addingToTerm === undefined
+            ? ''
+            : shortTermLabel(addingToTerm.position)
+        }
+        onClose={() => setAddingTo(undefined)}
+        onPick={(course, credits) => {
+          if (addingTo !== undefined) {
+            drag.dropOn(
+              {kind: 'course', course, credits},
+              {kind: 'term', term: addingTo, slot: Number.MAX_SAFE_INTEGER},
+            );
+          }
+        }}
+      />
+      <EditTermDialog
+        term={editing}
+        onClose={() => setEditingTerm(undefined)}
+        onSave={(kind, label) => {
+          if (editing !== undefined) {
+            dispatch({
+              type: 'setTerm',
+              term: editing.id,
+              kind,
+              label,
+              facts: bundle.facts,
+            });
+          }
+          setEditingTerm(undefined);
+        }}
+      />
+      {(() => {
+        if (editingCourse === undefined) {
+          return null;
+        }
+        const located = locateEntry(bundle.plan, editingCourse);
+        if (located === undefined) {
+          return null;
+        }
+        return (
+          <EditCourseDialog
+            entry={editingCourse}
+            card={located.where === 'rice' ? located.course : located.card}
+            bundle={bundle}
+            dispatch={dispatch}
+            onClose={() => setEditingCourse(undefined)}
+          />
+        );
+      })()}
+      {settingsOpen && (
+        <PlanSettingsDialog
           bundle={bundle}
-          report={report}
-          onClose={() => setPicking(undefined)}
-          onPick={term => {
-            if (picking !== undefined) {
-              drag.dropOn(
-                {
-                  kind: 'course',
-                  course: picking.course,
-                  credits: picking.credits,
-                },
-                {kind: 'term', term, slot: Number.MAX_SAFE_INTEGER},
-              );
-            }
-          }}
+          available={available}
+          dispatch={dispatch}
+          onClose={() => setSettingsOpen(false)}
         />
-        {drag.state !== undefined && (
-          <DragGhost
-            drag={drag.state}
-            note={
-              liftedFrom === undefined
-                ? drag.state.payload.kind === 'course' &&
-                  drag.state.payload.fills !== undefined
-                  ? 'fills this requirement'
-                  : 'from Saved'
-                : `lifted from ${shortTermLabel(liftedFrom.position)}`
-            }
-          />
-        )}
-      </Layout>
+      )}
+      {selfCheck !== undefined && (
+        <SelfCheckDialog
+          program={selfCheck.program}
+          requirement={selfCheck.requirement}
+          existing={bundle.plan.selfChecks.find(
+            s => s.requirement === selfCheck.requirement.requirement,
+          )}
+          dispatch={dispatch}
+          onClose={() => setSelfCheck(undefined)}
+        />
+      )}
+      <TermPickerDialog
+        isOpen={picking !== undefined}
+        course={picking?.course}
+        credits={picking?.credits ?? 0}
+        bundle={bundle}
+        report={report}
+        onClose={() => setPicking(undefined)}
+        onPick={term => {
+          if (picking !== undefined) {
+            drag.dropOn(
+              {
+                kind: 'course',
+                course: picking.course,
+                credits: picking.credits,
+              },
+              {kind: 'term', term, slot: Number.MAX_SAFE_INTEGER},
+            );
+          }
+        }}
+      />
+      {drag.state !== undefined && (
+        <DragGhost
+          drag={drag.state}
+          note={
+            liftedFrom === undefined
+              ? drag.state.payload.kind === 'course' &&
+                drag.state.payload.fills !== undefined
+                ? 'fills this requirement'
+                : 'from Saved'
+              : `lifted from ${shortTermLabel(liftedFrom.position)}`
+          }
+        />
+      )}
     </>
   );
 }
