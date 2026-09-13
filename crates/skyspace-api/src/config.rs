@@ -22,7 +22,24 @@ pub enum ConfigError {
     /// `SKYSPACE_SSO_*` is set but the bind address is not loopback.
     #[error("SKYSPACE_BIND must be a loopback address when SSO is configured")]
     SsoNeedsLoopback,
+    /// The bind address is reachable from outside but the origin is plain
+    /// `http://`, so the session cookie would go out without `Secure`.
+    #[error(
+        "SKYSPACE_PUBLIC_ORIGIN must be https:// when SKYSPACE_BIND is not a loopback address \
+         (got {origin} on {bind})"
+    )]
+    InsecureOrigin {
+        /// The origin as configured.
+        origin: String,
+        /// The bind address as configured.
+        bind: SocketAddr,
+    },
 }
+
+/// The origin `from_env` falls back to: the Vite dev server. `main` warns
+/// when it is in use, because a deploy that forgot `SKYSPACE_PUBLIC_ORIGIN`
+/// would otherwise fail its CSRF check silently.
+pub const DEFAULT_PUBLIC_ORIGIN: &str = "http://127.0.0.1:5173";
 
 /// The proxy-terminated single sign-on. The proxy sends the verified
 /// identity in `identity_header`; the request is trusted only when
@@ -59,8 +76,13 @@ pub struct Config {
     pub database_url: String,
     /// Default `127.0.0.1:8080`; must be loopback when `sso` is set.
     pub bind: SocketAddr,
-    /// Mutating requests must carry a matching `Origin`.
+    /// Mutating requests must carry a matching `Origin`. Must be `https://`
+    /// unless `bind` is loopback; `DEFAULT_PUBLIC_ORIGIN` otherwise.
     pub public_origin: String,
+    /// `SKYSPACE_TRUSTED_PROXY=1`: the server sits behind one proxy that
+    /// appends the peer to `X-Forwarded-For`, so the last hop is the client.
+    /// Off, the header is ignored and the socket peer is the client.
+    pub trusted_proxy: bool,
     /// Cookie lifetime.
     pub session_ttl_days: u16,
     /// Sign-in code lifetime.
@@ -69,12 +91,17 @@ pub struct Config {
     pub allowed_email_domains: Vec<String>,
     /// `None` until a proxy terminates Rice SSO.
     pub sso: Option<SsoConfig>,
-    /// `None` in development: the code is logged, not mailed.
+    /// `None` in development: nothing is mailed. The code reaches the log
+    /// only with `log_login_codes` (see `reveals_login_codes`).
     pub smtp: Option<SmtpConfig>,
     /// Shown on the privacy page and in the User-Agent.
     pub contact_email: String,
     /// Log as JSON (production) rather than compact text.
     pub log_json: bool,
+    /// `SKYSPACE_LOG_LOGIN_CODES=1`: without SMTP, log each sign-in code at
+    /// `info` with a redacted address. Ignored when `log_json` is set, so a
+    /// production log can never carry a code.
+    pub log_login_codes: bool,
 }
 
 impl Config {
@@ -118,6 +145,15 @@ impl Config {
         if sso.is_some() && !bind.ip().is_loopback() {
             return Err(ConfigError::SsoNeedsLoopback);
         }
+        let public_origin =
+            lookup("SKYSPACE_PUBLIC_ORIGIN").unwrap_or_else(|| DEFAULT_PUBLIC_ORIGIN.to_owned());
+        if !public_origin.starts_with("https://") && !bind.ip().is_loopback() {
+            return Err(ConfigError::InsecureOrigin {
+                origin: public_origin,
+                bind,
+            });
+        }
+        let flag = |name: &str| lookup(name).is_some_and(|v| v == "1" || v == "true");
         let smtp = match lookup("SKYSPACE_SMTP_HOST") {
             Some(host) => Some(SmtpConfig {
                 host,
@@ -131,8 +167,8 @@ impl Config {
         Ok(Self {
             database_url: required("DATABASE_URL")?,
             bind,
-            public_origin: lookup("SKYSPACE_PUBLIC_ORIGIN")
-                .unwrap_or_else(|| "http://127.0.0.1:5173".to_owned()),
+            public_origin,
+            trusted_proxy: flag("SKYSPACE_TRUSTED_PROXY"),
             session_ttl_days: parsed("SKYSPACE_SESSION_TTL_DAYS", "30")?,
             login_code_ttl_minutes: parsed("SKYSPACE_LOGIN_CODE_TTL_MINUTES", "10")?,
             allowed_email_domains: lookup("SKYSPACE_ALLOWED_EMAIL_DOMAINS")
@@ -145,8 +181,21 @@ impl Config {
             smtp,
             contact_email: lookup("SKYSPACE_CONTACT_EMAIL")
                 .unwrap_or_else(|| "contact@example.invalid".to_owned()),
-            log_json: lookup("SKYSPACE_LOG_JSON").is_some_and(|v| v == "1" || v == "true"),
+            log_json: flag("SKYSPACE_LOG_JSON"),
+            log_login_codes: flag("SKYSPACE_LOG_LOGIN_CODES"),
         })
+    }
+
+    /// Whether `public_origin` is the built-in development default.
+    #[must_use]
+    pub fn uses_default_origin(&self) -> bool {
+        self.public_origin == DEFAULT_PUBLIC_ORIGIN
+    }
+
+    /// Whether the log mailer may print codes: asked for, and not JSON logs.
+    #[must_use]
+    pub const fn reveals_login_codes(&self) -> bool {
+        self.log_login_codes && !self.log_json
     }
 
     /// Defaults for tests: no SMTP, no SSO, a local origin.
@@ -155,7 +204,8 @@ impl Config {
         Self {
             database_url: database_url.to_owned(),
             bind: SocketAddr::from(([127, 0, 0, 1], 0)),
-            public_origin: "http://127.0.0.1:5173".to_owned(),
+            public_origin: DEFAULT_PUBLIC_ORIGIN.to_owned(),
+            trusted_proxy: false,
             session_ttl_days: 30,
             login_code_ttl_minutes: 10,
             allowed_email_domains: vec!["rice.edu".to_owned()],
@@ -163,6 +213,7 @@ impl Config {
             smtp: None,
             contact_email: "test@example.invalid".to_owned(),
             log_json: false,
+            log_login_codes: false,
         }
     }
 
@@ -202,6 +253,62 @@ mod tests {
         assert_eq!(config.allowed_email_domains, vec!["rice.edu"]);
         assert!(config.sso.is_none());
         assert!(config.smtp.is_none());
+        assert!(!config.trusted_proxy);
+        assert!(config.uses_default_origin());
+        assert!(!config.reveals_login_codes());
+    }
+
+    #[test]
+    fn a_public_bind_needs_an_https_origin() {
+        let vars = env(&[
+            ("DATABASE_URL", "postgres://x"),
+            ("SKYSPACE_BIND", "0.0.0.0:8080"),
+        ]);
+        let refused = Config::from_lookup(|k| vars.get(k).cloned());
+        assert!(
+            matches!(refused, Err(ConfigError::InsecureOrigin { .. })),
+            "{refused:?}"
+        );
+        let vars = env(&[
+            ("DATABASE_URL", "postgres://x"),
+            ("SKYSPACE_BIND", "0.0.0.0:8080"),
+            ("SKYSPACE_PUBLIC_ORIGIN", "http://plans.example.edu"),
+        ]);
+        let refused = Config::from_lookup(|k| vars.get(k).cloned()).unwrap_err();
+        assert!(refused.to_string().contains("https://"), "{refused}");
+        let vars = env(&[
+            ("DATABASE_URL", "postgres://x"),
+            ("SKYSPACE_BIND", "0.0.0.0:8080"),
+            ("SKYSPACE_PUBLIC_ORIGIN", "https://plans.example.edu"),
+            ("SKYSPACE_TRUSTED_PROXY", "1"),
+        ]);
+        let config = Config::from_lookup(|k| vars.get(k).cloned()).unwrap();
+        assert!(!config.uses_default_origin());
+        assert!(config.trusted_proxy);
+        // Loopback may stay on plain http: the dev server.
+        let vars = env(&[
+            ("DATABASE_URL", "postgres://x"),
+            ("SKYSPACE_PUBLIC_ORIGIN", "http://localhost:5173"),
+        ]);
+        assert!(Config::from_lookup(|k| vars.get(k).cloned()).is_ok());
+    }
+
+    #[test]
+    fn login_codes_are_never_revealed_in_json_logs() {
+        let vars = env(&[
+            ("DATABASE_URL", "postgres://x"),
+            ("SKYSPACE_LOG_LOGIN_CODES", "1"),
+        ]);
+        let dev = Config::from_lookup(|k| vars.get(k).cloned()).unwrap();
+        assert!(dev.reveals_login_codes());
+        let vars = env(&[
+            ("DATABASE_URL", "postgres://x"),
+            ("SKYSPACE_LOG_LOGIN_CODES", "1"),
+            ("SKYSPACE_LOG_JSON", "1"),
+        ]);
+        let prod = Config::from_lookup(|k| vars.get(k).cloned()).unwrap();
+        assert!(prod.log_login_codes);
+        assert!(!prod.reveals_login_codes());
     }
 
     #[test]

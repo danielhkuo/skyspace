@@ -8,7 +8,8 @@ mod common;
 use axum::http::{Method, StatusCode};
 use common::{app, call, get, json, plan, seed_catalog, seed_program, sign_in};
 use serde_json::{Value, json};
-use skyspace_core::plan::{PlanTerm, TermId, TermKind};
+use skyspace_core::plan::{NonCourseClaim, PlanTerm, TermId, TermKind};
+use skyspace_core::program::RequirementId;
 use skyspace_core::term::{Season, TermPosition};
 
 async fn create_plan(
@@ -260,4 +261,59 @@ async fn the_abuse_guard_names_the_field(pool: sqlx::PgPool) {
             .len(),
         40
     );
+}
+
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn the_abuse_guard_counts_every_vector_in_the_document(pool: sqlx::PgPool) {
+    let (app, state) = app(pool);
+    seed_catalog(&state.store).await;
+    let cookie = sign_in(&app, &state, "owl@rice.edu").await;
+    let ids = |n: usize| -> Vec<RequirementId> {
+        (0..n)
+            .map(|_| RequirementId(uuid::Uuid::new_v4()))
+            .collect()
+    };
+    // One card, five thousand fills: under the card cap, over the id cap.
+    let mut stuffed = plan("Stuffed", vec![], &["COMP 140"]);
+    if let TermKind::Rice { courses, .. } = &mut stuffed.terms[0].kind {
+        courses[0].fills = ids(5000);
+    }
+    let refused = create_plan(&app, &cookie, &json!({ "plan": stuffed })).await;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(json(refused).await["message"], "fills");
+
+    // The cap is over the whole document: non-course claims on the term
+    // plus fills on a card, neither over the cap alone, name the larger.
+    let mut claims = plan("Claims", vec![], &["COMP 140"]);
+    if let TermKind::Rice { courses, .. } = &mut claims.terms[0].kind {
+        courses[0].fills = ids(1600);
+    }
+    claims.terms[0].non_course = ids(2500)
+        .into_iter()
+        .map(|requirement| NonCourseClaim {
+            requirement,
+            label: "x".to_owned(),
+        })
+        .collect();
+    let refused = create_plan(&app, &cookie, &json!({ "plan": claims })).await;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(json(refused).await["message"], "nonCourse");
+
+    // Fills spread over two cards are summed; the field is still `fills`.
+    let mut split = plan("Split", vec![], &["COMP 140", "COMP 182"]);
+    if let TermKind::Rice { courses, .. } = &mut split.terms[0].kind {
+        courses[0].fills = ids(2001);
+        courses[1].fills = ids(2000);
+    }
+    let refused = create_plan(&app, &cookie, &json!({ "plan": split })).await;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(json(refused).await["message"], "fills");
+
+    // Exactly the cap is accepted.
+    let mut full = plan("Full", vec![], &["COMP 140"]);
+    if let TermKind::Rice { courses, .. } = &mut full.terms[0].kind {
+        courses[0].fills = ids(4000);
+    }
+    let accepted = create_plan(&app, &cookie, &json!({ "plan": full })).await;
+    assert_eq!(accepted.status(), StatusCode::OK);
 }

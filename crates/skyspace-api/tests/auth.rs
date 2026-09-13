@@ -6,10 +6,13 @@
 
 mod common;
 
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
 use axum::body::Body;
+use axum::extract::ConnectInfo;
 use axum::http::header::{CACHE_CONTROL, RETRY_AFTER, SET_COOKIE};
 use axum::http::{Method, Request, StatusCode};
-use common::{app, call, cookie_pair, get, json, send, sign_in};
+use common::{app, app_with, call, cookie_pair, get, json, send, sign_in};
 use serde_json::json;
 
 async fn request_code(app: &axum::Router, email: &str) -> axum::http::Response<Body> {
@@ -120,53 +123,110 @@ async fn send_limits_answer_429_with_retry_after(pool: sqlx::PgPool) {
     assert_eq!(body["code"], "rate_limited");
     assert_eq!(body["retryAfterSeconds"], retry);
 
-    // Twenty sends from one address in an hour, across many mailboxes.
-    for i in 0..6 {
-        for _ in 0..3 {
-            let response = send(
-                &app,
-                Request::builder()
-                    .method(Method::POST)
-                    .uri("/api/v1/auth/email/request")
-                    .header("origin", common::ORIGIN_VALUE)
-                    .header("content-type", "application/json")
-                    .header("x-forwarded-for", "203.0.113.9")
-                    .body(Body::from(
-                        serde_json::to_vec(&json!({ "email": format!("s{i}@rice.edu") })).unwrap(),
-                    ))
-                    .unwrap(),
-            )
-            .await;
-            assert_eq!(response.status(), StatusCode::ACCEPTED, "send {i}");
-        }
-    }
-    for (n, expected) in [
-        (0, StatusCode::ACCEPTED),
-        (0, StatusCode::ACCEPTED),
-        (0, StatusCode::TOO_MANY_REQUESTS),
-    ] {
-        let response = send(
-            &app,
-            Request::builder()
-                .method(Method::POST)
-                .uri("/api/v1/auth/email/request")
-                .header("origin", common::ORIGIN_VALUE)
-                .header("content-type", "application/json")
-                .header("x-forwarded-for", "203.0.113.9")
-                .body(Body::from(
-                    serde_json::to_vec(&json!({ "email": format!("t{n}@rice.edu") })).unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await;
-        assert_eq!(response.status(), expected);
-        if expected == StatusCode::TOO_MANY_REQUESTS {
-            assert!(response.headers().contains_key(RETRY_AFTER));
-        }
-    }
     // Another address is not affected.
     assert_eq!(
         request_code(&app, "elsewhere@rice.edu").await.status(),
+        StatusCode::ACCEPTED
+    );
+}
+
+/// A code request from `peer` carrying `forwarded` as `X-Forwarded-For`.
+async fn request_code_from(
+    app: &axum::Router,
+    email: &str,
+    peer: Option<IpAddr>,
+    forwarded: Option<&str>,
+) -> StatusCode {
+    let mut builder = Request::builder()
+        .method(Method::POST)
+        .uri("/api/v1/auth/email/request")
+        .header("origin", common::ORIGIN_VALUE)
+        .header("content-type", "application/json");
+    if let Some(forwarded) = forwarded {
+        builder = builder.header("x-forwarded-for", forwarded);
+    }
+    let mut request = builder
+        .body(Body::from(
+            serde_json::to_vec(&json!({ "email": email })).unwrap(),
+        ))
+        .unwrap();
+    if let Some(peer) = peer {
+        request
+            .extensions_mut()
+            .insert(ConnectInfo(SocketAddr::new(peer, 40000)));
+    }
+    send(app, request).await.status()
+}
+
+/// Twenty-five requests from one peer, `i` in the address so the
+/// per-address limit never fires and `forwarded(i)` as the header.
+async fn statuses(
+    app: &axum::Router,
+    peer: IpAddr,
+    forwarded: impl Fn(usize) -> String,
+) -> Vec<StatusCode> {
+    let mut out = Vec::new();
+    for i in 0..25 {
+        let email = format!("u{}-{i}@rice.edu", peer.to_string().replace('.', "-"));
+        out.push(request_code_from(app, &email, Some(peer), Some(&forwarded(i))).await);
+    }
+    out
+}
+
+fn tally(statuses: &[StatusCode]) -> (usize, usize) {
+    let accepted = statuses
+        .iter()
+        .filter(|s| **s == StatusCode::ACCEPTED)
+        .count();
+    let limited = statuses
+        .iter()
+        .filter(|s| **s == StatusCode::TOO_MANY_REQUESTS)
+        .count();
+    (accepted, limited)
+}
+
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn forwarded_for_is_ignored_without_a_trusted_proxy(pool: sqlx::PgPool) {
+    let (app, _) = app(pool);
+    let peer = IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7));
+    // A rotating header from one socket peer still hits the per-IP cap.
+    let spoofed = statuses(&app, peer, |i| format!("9.9.9.{i}")).await;
+    assert_eq!(tally(&spoofed), (20, 5), "{spoofed:?}");
+    // The cap is keyed on the peer: another peer is unaffected, and no
+    // header at all is the same peer.
+    let other = IpAddr::V4(Ipv4Addr::new(198, 51, 100, 8));
+    assert_eq!(
+        request_code_from(&app, "other@rice.edu", Some(other), Some("9.9.9.1")).await,
+        StatusCode::ACCEPTED
+    );
+    assert_eq!(
+        request_code_from(&app, "same@rice.edu", Some(peer), None).await,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+}
+
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn a_trusted_proxy_supplies_the_client_as_the_last_forwarded_hop(pool: sqlx::PgPool) {
+    let (app, _) = app_with(pool, |c| c.trusted_proxy = true);
+    let peer = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2));
+    // The client-chosen first hop rotates; the proxy-appended last hop is
+    // what counts, so the cap fires.
+    let fixed_last = statuses(&app, peer, |i| format!("9.9.9.{i}, 203.0.113.9")).await;
+    assert_eq!(tally(&fixed_last), (20, 5), "{fixed_last:?}");
+    // A different last hop is a different client.
+    assert_eq!(
+        request_code_from(
+            &app,
+            "next@rice.edu",
+            Some(peer),
+            Some("9.9.9.1, 203.0.113.10")
+        )
+        .await,
+        StatusCode::ACCEPTED
+    );
+    // A trusted proxy that sent no header falls back to the peer.
+    assert_eq!(
+        request_code_from(&app, "bare@rice.edu", Some(peer), None).await,
         StatusCode::ACCEPTED
     );
 }

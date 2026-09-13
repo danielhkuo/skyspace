@@ -2,7 +2,7 @@
 
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use axum_extra::extract::Query;
 use serde::Deserialize;
 use skyspace_core::program::{CatalogYear, ProgramId};
@@ -16,6 +16,7 @@ use crate::routes::{cached, freshness_for, short_hash};
 use crate::state::AppState;
 
 const MAX_AGE_PROGRAM: u32 = 3600;
+const MAX_AGE_PROGRAM_LIST: u32 = 300;
 /// Reports accepted per hour across everyone; counted on the table itself.
 pub const REPORTS_PER_HOUR: u64 = 60;
 const MAX_REPORT_CHARS: usize = 4000;
@@ -75,9 +76,11 @@ fn matches_filter(summary: &skyspace_store::ProgramSummaryRow, query: &ProgramsQ
 }
 
 /// `GET /api/v1/programs?catalogYear=&credential=&q=`: every published
-/// program for the year, with the years each is published for.
+/// program for the year, with the years each is published for. The
+/// `ETag` hashes the list itself: a publish for any year changes it.
 pub async fn list(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<ProgramsQuery>,
 ) -> Result<Response, ApiError> {
     let year = resolve_year(&state.store, query.catalog_year).await?;
@@ -97,12 +100,12 @@ pub async fn list(
             total_credits: row.total_credits,
         });
     }
-    let mut response = axum::Json(out).into_response();
-    response.headers_mut().insert(
-        axum::http::header::CACHE_CONTROL,
-        axum::http::HeaderValue::from_static("public, max-age=300"),
+    let etag = format!(
+        "W/\"programs-{}-{}\"",
+        year.0,
+        short_hash(&serde_json::to_string(&out).unwrap_or_default())
     );
-    Ok(response)
+    Ok(cached(&headers, MAX_AGE_PROGRAM_LIST, &etag, &out))
 }
 
 /// `GET /api/v1/programs/{id}?catalogYear=`: exactly that year's version.

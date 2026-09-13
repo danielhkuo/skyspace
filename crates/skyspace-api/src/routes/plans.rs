@@ -5,7 +5,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use skyspace_core::evaluate::{PlanBundle, Report, evaluate};
-use skyspace_core::plan::{Plan, PlanId, TermKind};
+use skyspace_core::plan::{ManualCourseCard, Plan, PlanId, PlannedCourse, TermKind};
 use skyspace_store::DeleteOutcome;
 use uuid::Uuid;
 
@@ -18,19 +18,69 @@ use crate::state::AppState;
 pub const MAX_TERMS: usize = 40;
 /// Cards one plan may hold, incoming credit included.
 pub const MAX_CARDS: usize = 400;
+/// Requirement references one plan may hold across every card's `fills`
+/// and `claims`, every term's `nonCourse` and the `selfChecks`: ten per
+/// card at the card limit.
+pub const MAX_IDS: usize = 4000;
 const MAX_NAME_CHARS: usize = 200;
 
-fn card_count(plan: &Plan) -> usize {
-    plan.incoming_credit.len()
-        + plan
-            .terms
-            .iter()
-            .map(|t| match &t.kind {
-                TermKind::Rice { courses, .. } => courses.len(),
-                TermKind::Away { cards } => cards.len(),
-                TermKind::Off => 0,
-            })
-            .sum::<usize>()
+/// How many of each unbounded collection a plan holds, by the JSON field
+/// the `400` names.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Sizes {
+    cards: usize,
+    fills: usize,
+    claims: usize,
+    non_course: usize,
+    self_checks: usize,
+}
+
+impl Sizes {
+    fn planned(&mut self, course: &PlannedCourse) {
+        self.cards += 1;
+        self.fills += course.fills.len();
+        self.claims += course.claims.len();
+    }
+
+    fn manual(&mut self, card: &ManualCourseCard) {
+        self.cards += 1;
+        self.fills += card.fills.len();
+        self.claims += card.claims.len();
+    }
+
+    fn ids(&self) -> usize {
+        self.fills + self.claims + self.non_course + self.self_checks
+    }
+
+    /// The id-bearing field with the most entries, for the `400`.
+    fn widest_id_field(&self) -> &'static str {
+        [
+            (self.fills, "fills"),
+            (self.claims, "claims"),
+            (self.non_course, "nonCourse"),
+            (self.self_checks, "selfChecks"),
+        ]
+        .into_iter()
+        .max_by_key(|(n, _)| *n)
+        .map_or("fills", |(_, name)| name)
+    }
+}
+
+fn sizes(plan: &Plan) -> Sizes {
+    let mut sizes = Sizes {
+        self_checks: plan.self_checks.len(),
+        ..Sizes::default()
+    };
+    plan.incoming_credit.iter().for_each(|c| sizes.manual(c));
+    for term in &plan.terms {
+        sizes.non_course += term.non_course.len();
+        match &term.kind {
+            TermKind::Rice { courses, .. } => courses.iter().for_each(|c| sizes.planned(c)),
+            TermKind::Away { cards } => cards.iter().for_each(|c| sizes.manual(c)),
+            TermKind::Off => {}
+        }
+    }
+    sizes
 }
 
 fn validate_name(name: &str) -> Result<(), ApiError> {
@@ -41,15 +91,21 @@ fn validate_name(name: &str) -> Result<(), ApiError> {
     Ok(())
 }
 
-/// The abuse guard, naming the field. Nothing else about the document is
-/// checked here: the engine reports on it.
+/// The abuse guard, naming the field: every `Vec` in the document is
+/// counted, so a card cannot smuggle thousands of `fills` past the card
+/// cap. Nothing else about the document is checked here: the engine
+/// reports on it.
 fn validate(plan: &Plan) -> Result<(), ApiError> {
     validate_name(&plan.name)?;
     if plan.terms.len() > MAX_TERMS {
         return Err(ApiError::Invalid("terms".to_owned()));
     }
-    if card_count(plan) > MAX_CARDS {
+    let sizes = sizes(plan);
+    if sizes.cards > MAX_CARDS {
         return Err(ApiError::Invalid("courses".to_owned()));
+    }
+    if sizes.ids() > MAX_IDS {
+        return Err(ApiError::Invalid(sizes.widest_id_field().to_owned()));
     }
     Ok(())
 }

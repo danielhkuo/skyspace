@@ -8,7 +8,7 @@ mod common;
 use axum::body::Body;
 use axum::http::header::{CACHE_CONTROL, ETAG, IF_NONE_MATCH};
 use axum::http::{Method, Request, StatusCode};
-use common::{app, get, json, seed_catalog, send};
+use common::{app, get, json, seed_catalog, seed_program, send};
 
 #[sqlx::test(migrations = "../skyspace-store/migrations")]
 async fn search_returns_sections_on_the_fixture_term(pool: sqlx::PgPool) {
@@ -304,4 +304,45 @@ async fn meta_and_health_answer_without_data(pool: sqlx::PgPool) {
     let body = json(unknown).await;
     assert_eq!(body["code"], "not_found");
     assert!(!body["requestId"].as_str().unwrap().is_empty());
+}
+
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn the_program_list_carries_an_etag_and_answers_304(pool: sqlx::PgPool) {
+    let (app, state) = app(pool);
+    seed_catalog(&state.store).await;
+    seed_program(&state.store).await;
+    let first = get(&app, "/api/v1/programs", None).await;
+    assert_eq!(first.status(), StatusCode::OK);
+    assert_eq!(
+        first.headers().get(CACHE_CONTROL).unwrap(),
+        "public, max-age=300"
+    );
+    let etag = first
+        .headers()
+        .get(ETAG)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    assert!(etag.starts_with("W/\"programs-2027-"), "{etag}");
+    let body = json(first).await;
+    assert_eq!(body.as_array().unwrap().len(), 1);
+    assert_eq!(body[0]["slug"], "example-bs");
+    assert_eq!(body[0]["catalogYears"], serde_json::json!([2027]));
+    let again = send(
+        &app,
+        Request::builder()
+            .uri("/api/v1/programs")
+            .header(IF_NONE_MATCH, &etag)
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(again.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(again.headers().get(ETAG).unwrap(), etag.as_str());
+    // A filter that changes the list changes the tag.
+    let filtered = get(&app, "/api/v1/programs?q=nothing-matches", None).await;
+    assert_eq!(filtered.status(), StatusCode::OK);
+    assert_ne!(filtered.headers().get(ETAG).unwrap(), etag.as_str());
+    assert_eq!(json(filtered).await, serde_json::json!([]));
 }

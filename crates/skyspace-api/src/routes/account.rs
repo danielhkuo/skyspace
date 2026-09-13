@@ -19,7 +19,8 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::auth::{
-    clear_session_cookie, hash_login_code, mint_login_code, mint_session_token, session_cookie,
+    clear_session_cookie, constant_time_eq, hash_login_code, mint_login_code, mint_session_token,
+    session_cookie,
 };
 use crate::dto::{
     AccountPatch, AccountView, AuthMethods, ClaimRequest, ClaimResult, ClaimSkip, ClaimSkipReason,
@@ -39,32 +40,42 @@ pub const MAX_CLAIM_COLLECTIONS: usize = 12;
 /// Items one claimed document may hold.
 pub const MAX_CLAIM_ITEMS: usize = 200;
 
-/// The address the send limit counts. The first `X-Forwarded-For` hop when
-/// a proxy set one, else the peer, else loopback (tests drive the router
-/// with no socket).
+/// The address the send limit counts. With `Config::trusted_proxy`, the
+/// last `X-Forwarded-For` hop: the one our own proxy appended, so a client
+/// cannot choose it. Otherwise the header is ignored (anyone can send one)
+/// and the socket peer counts, else loopback (tests drive the router with
+/// no socket).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientIp(pub IpAddr);
 
-impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
+impl FromRequestParts<AppState> for ClientIp {
     type Rejection = std::convert::Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
-        let forwarded = parts
-            .headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next())
-            .and_then(|v| v.trim().parse::<IpAddr>().ok());
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let peer = parts
             .extensions
             .get::<ConnectInfo<SocketAddr>>()
             .map(|c| c.0.ip());
         Ok(Self(
-            forwarded
-                .or(peer)
+            client_ip(state.config.trusted_proxy, &parts.headers, peer)
                 .unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)),
         ))
     }
+}
+
+/// The last `X-Forwarded-For` hop when the proxy is trusted, else `peer`.
+/// A trusted proxy that sent no usable header still falls back to `peer`.
+fn client_ip(trusted_proxy: bool, headers: &HeaderMap, peer: Option<IpAddr>) -> Option<IpAddr> {
+    let forwarded = trusted_proxy
+        .then(|| headers.get("x-forwarded-for"))
+        .flatten()
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.rsplit(',').next())
+        .and_then(|v| v.trim().parse::<IpAddr>().ok());
+    forwarded.or(peer)
 }
 
 fn normalise_email(email: &str) -> String {
@@ -195,8 +206,8 @@ pub async fn sso_complete(
     let sso = state.config.sso.as_ref().ok_or(ApiError::NotFound)?;
     let secret = headers
         .get(sso.secret_header.as_str())
-        .and_then(|v| v.to_str().ok());
-    if secret != Some(sso.shared_secret.as_str()) {
+        .map_or(&[][..], HeaderValue::as_bytes);
+    if !constant_time_eq(secret, sso.shared_secret.as_bytes()) {
         return Err(ApiError::Unauthenticated);
     }
     let email = headers
@@ -325,4 +336,29 @@ pub async fn claim(
         collections: collections.into_iter().map(claimed).collect(),
         skipped,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn headers(forwarded: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", HeaderValue::from_str(forwarded).unwrap());
+        headers
+    }
+
+    #[test]
+    fn forwarded_for_is_read_only_behind_a_trusted_proxy_and_from_the_last_hop() {
+        let peer = Some(IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7)));
+        let spoofed = headers("9.9.9.9, 203.0.113.9");
+        assert_eq!(client_ip(false, &spoofed, peer), peer);
+        assert_eq!(
+            client_ip(true, &spoofed, peer),
+            Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 9)))
+        );
+        assert_eq!(client_ip(true, &headers("not an ip"), peer), peer);
+        assert_eq!(client_ip(true, &HeaderMap::new(), None), None);
+        assert_eq!(client_ip(false, &spoofed, None), None);
+    }
 }

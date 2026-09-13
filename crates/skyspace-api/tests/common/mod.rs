@@ -10,7 +10,8 @@ use axum::body::{Body, to_bytes};
 use axum::http::header::{CONTENT_TYPE, COOKIE, ORIGIN, SET_COOKIE};
 use axum::http::{Method, Request, Response, StatusCode};
 use serde_json::Value;
-use skyspace_api::{AppState, router};
+use skyspace_api::config::Config;
+use skyspace_api::{AppState, Mailer, router};
 use skyspace_core::Timestamp;
 use skyspace_core::catalog::{
     Course, CourseFlags, DaySet, FinalExam, Meeting, MeetingPattern, MeetingTime, MinuteOfDay,
@@ -49,6 +50,18 @@ pub fn fall() -> TermCode {
 /// capturing mailer the sign-in helper reads.
 pub fn app(pool: sqlx::PgPool) -> (Router, AppState) {
     let state = AppState::for_test(Store::from_pool(pool));
+    (router(state.clone()), state)
+}
+
+/// Like `app`, with `edit` applied to the test configuration first.
+pub fn app_with(pool: sqlx::PgPool, edit: impl FnOnce(&mut Config)) -> (Router, AppState) {
+    let mut config = Config::for_test("postgres://test");
+    edit(&mut config);
+    let state = AppState::new(
+        Store::from_pool(pool),
+        config,
+        Mailer::Capture(std::sync::Arc::default()),
+    );
     (router(state.clone()), state)
 }
 

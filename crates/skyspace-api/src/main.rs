@@ -21,8 +21,18 @@ async fn main() -> anyhow::Result<()> {
         }
     };
     skyspace_api::observability::init(config.log_json)?;
+    if config.uses_default_origin() {
+        tracing::warn!(
+            origin = %config.public_origin,
+            "SKYSPACE_PUBLIC_ORIGIN is unset: using the development default, so only the Vite \
+             dev server passes the CSRF check and the session cookie is not Secure"
+        );
+    }
+    if config.reveals_login_codes() {
+        tracing::warn!("SKYSPACE_LOG_LOGIN_CODES is set: sign-in codes will appear in this log");
+    }
     let store = Store::connect(&config.database_url, POOL_SIZE).await?;
-    let mailer = Mailer::from_config(config.smtp.as_ref())?;
+    let mailer = Mailer::from_config(&config)?;
     let bind = config.bind;
     let listener = tokio::net::TcpListener::bind(bind).await?;
     tracing::info!(bind = %bind, "listening");

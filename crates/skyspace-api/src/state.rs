@@ -7,7 +7,7 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use sha2::{Digest, Sha256};
 
-use crate::config::{Config, SmtpConfig};
+use crate::config::Config;
 
 /// Cloned into every handler. Cheap: the store is a pool handle.
 #[derive(Clone)]
@@ -77,20 +77,29 @@ pub enum Mailer {
     },
     /// Tests: every code is kept in memory.
     Capture(Arc<Mutex<Vec<SentCode>>>),
-    /// Development without SMTP: a log line says a code was issued, and
-    /// never says to whom or which.
-    Log,
+    /// Development without SMTP. A log line says a code was issued for a
+    /// hashed address; with `reveal_codes` (`Config::reveals_login_codes`:
+    /// `SKYSPACE_LOG_LOGIN_CODES=1` and not JSON logs) the line also carries
+    /// the code and a redacted address, so a developer can sign in. The
+    /// full address is never logged.
+    Log {
+        /// Print the code and a redacted address.
+        reveal_codes: bool,
+    },
 }
 
 impl Mailer {
-    /// `Smtp` when the configuration names a relay, otherwise `Log`.
+    /// `Smtp` when the configuration names a relay, otherwise `Log`, which
+    /// prints codes only when `config.reveals_login_codes()`.
     ///
     /// # Errors
     /// `MailError::Address` when the `From:` address is not a mailbox;
     /// `Transport` when the relay name is unusable.
-    pub fn from_config(smtp: Option<&SmtpConfig>) -> Result<Self, MailError> {
-        let Some(smtp) = smtp else {
-            return Ok(Self::Log);
+    pub fn from_config(config: &Config) -> Result<Self, MailError> {
+        let Some(smtp) = config.smtp.as_ref() else {
+            return Ok(Self::Log {
+                reveal_codes: config.reveals_login_codes(),
+            });
         };
         let transport = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp.host)?
             .port(smtp.port)
@@ -132,7 +141,18 @@ impl Mailer {
                 }
                 Ok(())
             }
-            Self::Log => {
+            Self::Log { reveal_codes: true } => {
+                tracing::info!(
+                    to_hash = %address_hash(to),
+                    to = %redact_address(to),
+                    code,
+                    "login code issued (not mailed: no SMTP configured)"
+                );
+                Ok(())
+            }
+            Self::Log {
+                reveal_codes: false,
+            } => {
                 tracing::info!(to_hash = %address_hash(to), "login code issued");
                 Ok(())
             }
@@ -144,7 +164,7 @@ impl Mailer {
     pub fn captured(&self) -> Vec<SentCode> {
         match self {
             Self::Capture(sent) => sent.lock().map(|s| s.clone()).unwrap_or_default(),
-            Self::Smtp { .. } | Self::Log => Vec::new(),
+            Self::Smtp { .. } | Self::Log { .. } => Vec::new(),
         }
     }
 }
@@ -154,6 +174,21 @@ impl Mailer {
 fn address_hash(address: &str) -> String {
     let digest = Sha256::digest(address.trim().to_ascii_lowercase().as_bytes());
     crate::auth::hex(&digest[..4])
+}
+
+/// `ow…@rice.edu`: the first two characters of the local part and the
+/// domain. A local part of one or two characters is dropped entirely, so
+/// at least one character is always hidden and the line never spells out
+/// a whole address.
+fn redact_address(address: &str) -> String {
+    let address = address.trim();
+    let (local, domain) = address.rsplit_once('@').unwrap_or((address, ""));
+    let shown: String = if local.chars().count() >= 3 {
+        local.chars().take(2).collect()
+    } else {
+        String::new()
+    };
+    format!("{shown}…@{domain}")
 }
 
 #[cfg(test)]
@@ -174,27 +209,104 @@ mod tests {
                 code: "123456".into()
             }]
         );
-        Mailer::Log
-            .send_login_code("owl@rice.edu", "1")
-            .await
-            .unwrap();
-        assert!(Mailer::Log.captured().is_empty());
+        let quiet = Mailer::Log {
+            reveal_codes: false,
+        };
+        quiet.send_login_code("owl@rice.edu", "1").await.unwrap();
+        assert!(quiet.captured().is_empty());
         assert_eq!(address_hash("Owl@Rice.edu"), address_hash("owl@rice.edu"));
         assert_eq!(address_hash("x").len(), 8);
     }
 
     #[test]
+    fn addresses_are_redacted_to_two_characters_and_the_domain() {
+        assert_eq!(redact_address("owl@rice.edu"), "ow…@rice.edu");
+        assert_eq!(redact_address(" Owlet@rice.edu "), "Ow…@rice.edu");
+        assert_eq!(redact_address("abc@rice.edu"), "ab…@rice.edu");
+        assert_eq!(redact_address("ab@rice.edu"), "…@rice.edu");
+        assert_eq!(redact_address("nonsense"), "no…@");
+    }
+
+    /// A subscriber whose output the test can read back.
+    #[derive(Clone, Default)]
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+
+    impl std::io::Write for Sink {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Sink {
+        type Writer = Self;
+        fn make_writer(&'a self) -> Self {
+            self.clone()
+        }
+    }
+
+    async fn logged(mailer: Mailer) -> String {
+        let sink = Sink::default();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(sink.clone())
+            .with_ansi(false)
+            .finish();
+        let _guard = tracing::subscriber::set_default(subscriber);
+        mailer
+            .send_login_code("owl@rice.edu", "424242")
+            .await
+            .unwrap();
+        String::from_utf8(sink.0.lock().unwrap().clone()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_log_mailer_prints_the_code_only_when_asked() {
+        let quiet = logged(Mailer::Log {
+            reveal_codes: false,
+        })
+        .await;
+        assert!(quiet.contains("login code issued"), "{quiet}");
+        assert!(!quiet.contains("424242"), "{quiet}");
+        assert!(!quiet.contains("rice.edu"), "{quiet}");
+        let loud = logged(Mailer::Log { reveal_codes: true }).await;
+        assert!(loud.contains("424242"), "{loud}");
+        assert!(loud.contains("ow…@rice.edu"), "{loud}");
+        assert!(!loud.contains("owl@rice.edu"), "{loud}");
+    }
+
+    #[test]
     fn log_mailer_without_smtp() {
-        assert!(matches!(Mailer::from_config(None), Ok(Mailer::Log)));
-        let smtp = SmtpConfig {
+        let mut config = Config::for_test("postgres://x");
+        assert!(matches!(
+            Mailer::from_config(&config),
+            Ok(Mailer::Log {
+                reveal_codes: false
+            })
+        ));
+        config.log_login_codes = true;
+        assert!(matches!(
+            Mailer::from_config(&config),
+            Ok(Mailer::Log { reveal_codes: true })
+        ));
+        config.log_json = true;
+        assert!(matches!(
+            Mailer::from_config(&config),
+            Ok(Mailer::Log {
+                reveal_codes: false
+            })
+        ));
+        config.smtp = Some(crate::config::SmtpConfig {
             host: "smtp.example.invalid".into(),
             port: 587,
             username: "u".into(),
             password: "p".into(),
             from: "not a mailbox".into(),
-        };
+        });
         assert!(matches!(
-            Mailer::from_config(Some(&smtp)),
+            Mailer::from_config(&config),
             Err(MailError::Address(_))
         ));
     }

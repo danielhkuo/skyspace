@@ -22,6 +22,21 @@ pub fn hex(bytes: &[u8]) -> String {
         })
 }
 
+/// Whether two byte strings are equal, in time that depends on their
+/// lengths and not their contents: every byte of both is visited and the
+/// differences are folded into one word, so a shared secret cannot be
+/// guessed prefix by prefix from response times.
+#[must_use]
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    let mut diff = a.len() ^ b.len();
+    for i in 0..a.len().max(b.len()) {
+        let x = a.get(i).copied().unwrap_or(0);
+        let y = b.get(i).copied().unwrap_or(0);
+        diff |= usize::from(x ^ y);
+    }
+    std::hint::black_box(diff) == 0
+}
+
 /// A freshly minted session token: the value for the cookie and the hash
 /// for the database.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,6 +119,16 @@ mod tests {
         assert_eq!(hash_cookie_value(&token.cookie_value), Some(token.sha256));
         assert_ne!(mint_session_token().cookie_value, token.cookie_value);
         assert_eq!(hash_cookie_value("short"), None);
+    }
+
+    #[test]
+    fn constant_time_eq_agrees_with_equality() {
+        assert!(constant_time_eq(b"", b""));
+        assert!(constant_time_eq(b"secret", b"secret"));
+        assert!(!constant_time_eq(b"secret", b"secreT"));
+        assert!(!constant_time_eq(b"secret", b"secre"));
+        assert!(!constant_time_eq(b"secret", b"secret!"));
+        assert!(!constant_time_eq(b"", b"x"));
     }
 
     #[test]
