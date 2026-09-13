@@ -77,7 +77,7 @@ export function TermPickerDialog({
             {already === 'incoming'
               ? 'incoming credit'
               : termName(bundle.plan, already)}
-            . Rice gives credit once; move it from there instead.
+            . You only get credit once; move it from there instead.
           </Text>
         )}
         <Stack gap={0} width="100%">

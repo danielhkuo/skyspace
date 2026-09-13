@@ -1,5 +1,5 @@
 import {Button} from '@astryxdesign/core/Button';
-import {Card} from '@astryxdesign/core/Card';
+import {Section} from '@astryxdesign/core/Section';
 import {Selector} from '@astryxdesign/core/Selector';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
@@ -224,7 +224,7 @@ export function OnboardingPage() {
   return (
     <Stack width="100%" height="100%" align="center" isScrollable>
       <Stack width={640} maxWidth="100%" paddingBlock={4} paddingInline={3}>
-        <Card padding={0} width="100%">
+        <Section variant="section" padding={0} width="100%">
           <Stack width="100%" gap={0}>
             <Stack
               width="100%"
@@ -275,9 +275,9 @@ export function OnboardingPage() {
                     onChange={setMinors}
                   />
                   <Text type="supporting">
-                    Rice has 351 programs; reviewed requirements exist for a
-                    few. A program without reviewed requirements still counts
-                    toward University requirements.
+                    Reviewed requirements exist for a limited number of
+                    programs. A program without reviewed requirements still
+                    counts toward University requirements.
                   </Text>
                 </>
               )}
@@ -317,7 +317,7 @@ export function OnboardingPage() {
                   </Stack>
                   <Selector
                     label="Catalog year"
-                    description="Rice lets you follow any year between when you matriculated and when you graduate"
+                    description="You can follow any year between matriculation and graduation"
                     size="sm"
                     value={String(catalogYear)}
                     options={years.map(y => ({
@@ -417,11 +417,10 @@ export function OnboardingPage() {
                     ))}
                   </Stack>
                   <Text type="supporting">
-                    Give each card the Rice course it posts as; the hours then
-                    come from that course. A card with no Rice equivalent counts
-                    as hours only and is flagged. Only the registrar&apos;s
-                    evaluation makes an equivalence official; AP and IB never
-                    count toward distribution.
+                    Assign each card its Rice equivalent to apply its credit
+                    hours. Cards without an equivalent will only count for raw
+                    hours. Only your official transfer evaluation from the
+                    registrar is final. count toward distribution.
                   </Text>
                 </>
               )}
@@ -472,7 +471,7 @@ export function OnboardingPage() {
               )}
             </Stack>
           </Stack>
-        </Card>
+        </Section>
       </Stack>
       <AlertDialog
         isOpen={confirming}

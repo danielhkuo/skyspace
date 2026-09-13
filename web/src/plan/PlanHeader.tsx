@@ -6,7 +6,7 @@ import {useSyncExternalStore} from 'react';
 import {getSaveStatus, subscribeSaveStatus} from '../datasource/planSaver';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
-import {Section} from '@astryxdesign/core/Section';
+import {LayoutHeader} from '@astryxdesign/core/Layout';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import type {ReactNode} from 'react';
@@ -61,13 +61,7 @@ export function PlanHeader({
   const navigate = useNavigate();
   const {progress} = report;
   return (
-    <Section
-      variant="section"
-      dividers={['bottom']}
-      paddingInline={3}
-      paddingBlock={1.5}
-      width="100%"
-    >
+    <LayoutHeader hasDivider padding={3}>
       <Stack
         direction="horizontal"
         width="100%"
@@ -137,7 +131,7 @@ export function PlanHeader({
           />
         </Stack>
       </Stack>
-    </Section>
+    </LayoutHeader>
   );
 }
 

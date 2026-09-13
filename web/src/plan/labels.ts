@@ -98,17 +98,17 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'duplicateCourse':
       return `Also in ${[...new Set(warning.value.terms.map(t => termName(plan, t)))].join(' and ')}.`;
     case 'overSemesterLoad':
-      return 'Above the 18 hours Rice allows without written approval. Not a cap.';
+      return 'Above 18 hours without written approval. Not a hard cap.';
     case 'programUnavailable':
       return 'No reviewed requirements for this program yet.';
     case 'programYearSubstituted':
       return `Evaluated with the ${warning.value.used}-${String(warning.value.used + 1).slice(2)} requirements instead.`;
     case 'requirementChoiceUnmatched':
-      return `${basisText(warning.value.basis)} Skyspace can't verify Rice will count it; check your degree audit in Esther or ask your advisor.`;
+      return `${basisText(warning.value.basis)} We can't verify if this will count; check your degree audit in Esther or ask your advisor.`;
     case 'incomingCreditIneligible':
       return `${ORIGIN_NAME[warning.value.origin]} credit counts toward your total and your major, not toward distribution or Analyzing Diversity. Not counted here; your Esther degree audit shows what the registrar posted.`;
     case 'doubleCounted':
-      return 'Counted toward a major and a minor or certificate. Rice sets no university-wide cap, but the minor or certificate may limit overlap on its General Announcements page; Skyspace cannot read that limit, so check the page.';
+      return 'Counted toward a major and a minor or certificate. Check the General Announcements for any overlap limits.';
     case 'courseFactsChanged': {
       const v = warning.value;
       const year = `${v.observedYear}-${String(v.observedYear + 1).slice(2)}`;
@@ -128,10 +128,10 @@ export function warningText(warning: Warning, plan: Plan): string {
           `was ${formatCredits(v.creditsBefore)} hours in ${year} and is ${formatCredits(v.creditsNow)} now`,
         );
       }
-      return `The catalog changed: it ${parts.join('; ')}. Rice usually honours the term you took it, but Skyspace can't verify that; check your degree audit in Esther, or pin it to the requirement with "counted under the catalog year I took it".`;
+      return `The catalog changed: it ${parts.join('; ')}. Check your degree audit in Esther, or pin it to the requirement with "counted under the catalog year I took it".`;
     }
     case 'manualCredits':
-      return `${formatCredits(warning.value.credits)} hours entered by hand: it counts as hours, not as a Rice course. Skyspace can't verify what the registrar will post; check your transfer evaluation in Esther.`;
+      return `${formatCredits(warning.value.credits)} hours entered by hand: it counts as hours, not as a specific course. We can't verify what the registrar will post; check your transfer evaluation in Esther.`;
     case 'requirementChoiceMissing':
       return warning.value.retired
         ? 'The requirement you chose was retired in review.'
@@ -142,12 +142,12 @@ export function warningText(warning: Warning, plan: Plan): string {
       const prereq = formatCourseCode(warning.value.prerequisite);
       const problem = warning.value.problem;
       if (problem.kind === 'sameTerm') {
-        return `Prerequisite ${prereq} is in the same term. Rice checks prerequisites at registration.`;
+        return `Prerequisite ${prereq} is in the same term.`;
       }
       if (problem.kind === 'later') {
-        return `Prerequisite ${prereq} comes later. Rice checks prerequisites at registration.`;
+        return `Prerequisite ${prereq} comes later.`;
       }
-      return `Prerequisite ${prereq} is not in this plan. Rice checks prerequisites at registration.`;
+      return `Prerequisite ${prereq} is not in this plan.`;
     }
     case 'prerequisiteUnparsed':
       return `Prerequisites: ${warning.value.published}`;
@@ -156,7 +156,7 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'seasonUnlikely':
       return `Usually offered in another season (${warning.value.termsSeen} terms seen).`;
     case 'selfCheck':
-      return "Skyspace can't verify this from Rice's data. Not counted until you confirm it with a reason.";
+      return "We can't verify this. Not counted until you confirm it with a reason.";
   }
 }
 

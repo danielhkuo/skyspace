@@ -50,7 +50,11 @@ const COLS = {
   seats: col(104),
   star: col(44),
 };
-const fixedLayout: CSSProperties = {tableLayout: 'fixed', width: '100%'};
+const fixedLayout: CSSProperties = {
+  tableLayout: 'fixed',
+  width: '100%',
+  minWidth: 700,
+};
 const clickable: CSSProperties = {cursor: 'pointer'};
 /** The wash goes on the cells: the table paints cell backgrounds above the row's. */
 const selectedCell: CSSProperties = {

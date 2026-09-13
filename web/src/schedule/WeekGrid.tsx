@@ -205,31 +205,29 @@ export function WeekGrid({schedule, sectionsByCrn, conflicts}: WeekGridProps) {
                 padding={1}
                 style={blockStyle(block, earliest)}
               >
-                <Stack direction="horizontal" gap={1} vAlign="start">
-                  <Stack gap={0} align="start" style={{minWidth: 0}}>
-                    <Text
-                      size="sm"
-                      weight="semibold"
-                      hasTabularNumbers
-                      maxLines={1}
-                    >
-                      {block.code}
-                    </Text>
-                    <Text type="supporting" hasTabularNumbers maxLines={1}>
-                      {block.section} ·{' '}
-                      {timeSpan({days: [], start: block.start, end: block.end})}
-                    </Text>
-                    {block.conflict && (
-                      <Text type="supporting" maxLines={1}>
-                        ⚠ conflicts
-                      </Text>
-                    )}
-                  </Stack>
-                  {block.seats !== undefined &&
-                    seatStatus(block.seats) !== 'open' && (
-                      <StatusDot {...seatsDot(block.seats)} />
-                    )}
+                <Stack gap={0} align="stretch" style={{minWidth: 0}}>
+                  <Text size="sm" weight="semibold" hasTabularNumbers>
+                    {block.code}
+                  </Text>
+                  <Text type="supporting" hasTabularNumbers>
+                    {block.section} ·{' '}
+                    {timeSpan({days: [], start: block.start, end: block.end})}
+                  </Text>
+                  {block.conflict && <Text type="supporting">⚠ conflicts</Text>}
                 </Stack>
+                {block.seats !== undefined &&
+                  seatStatus(block.seats) !== 'open' && (
+                    <StatusDot
+                      {...seatsDot(block.seats)}
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        boxShadow:
+                          '0 0 0 2px var(--color-background-card), 0 1px 3px rgba(0,0,0,0.3)',
+                      }}
+                    />
+                  )}
               </Card>
             ))}
           </Stack>

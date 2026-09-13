@@ -2,7 +2,9 @@ import {Banner} from '@astryxdesign/core/Banner';
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
+import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
 import {MoreMenu} from '@astryxdesign/core/MoreMenu';
+import {useResizable, ResizeHandle} from '@astryxdesign/core/Resizable';
 import {Text} from '@astryxdesign/core/Text';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 import {useCallback, useEffect, useMemo, useState} from 'react';
@@ -47,8 +49,6 @@ import {isRecordedClaim, termName} from './labels';
 import {locateEntry, usePlan, termRemoveBlocker} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
 import {LoadErrorCard} from '../shell/LoadErrorCard';
-
-const SIDEBAR_WIDTH = 400;
 
 function entryOf(warning: Warning): EntryId | undefined {
   switch (warning.kind) {
@@ -147,7 +147,19 @@ function PlanBoardPage({
   const width = useViewportWidth();
   const desktop = width >= DESKTOP_WIDTH;
   const [showWarnings, setShowWarnings] = useState(true);
-  const [trayOpen, setTrayOpen] = useState(true);
+  const favoritesResizable = useResizable({
+    defaultSize: 320,
+    minSize: 320,
+    maxSize: 480,
+    collapsible: true,
+    collapsedSize: 40,
+  });
+
+  const requirementsResizable = useResizable({
+    defaultSize: 400,
+    minSize: 360,
+    maxSize: 640,
+  });
   const [sheet, setSheet] = useState<'saved' | 'requirements' | undefined>(
     undefined,
   );
@@ -189,7 +201,7 @@ function PlanBoardPage({
   const onDuplicate = useCallback(
     (course: CourseCode, where: TermId | 'incoming') => {
       setNotice(
-        `${formatCourseCode(course)} is already in ${where === 'incoming' ? 'incoming credit' : termName(bundle.plan, where)}. Rice gives credit once; move it from there instead.`,
+        `${formatCourseCode(course)} is already in ${where === 'incoming' ? 'incoming credit' : termName(bundle.plan, where)}. You only get credit once; move it from there instead.`,
       );
     },
     [bundle.plan],
@@ -429,58 +441,78 @@ function PlanBoardPage({
   );
 
   return (
-    <Stack width="100%" height="100%" gap={0}>
+    <>
       <VisuallyHidden as="div" aria-live="polite">
         {announcement}
       </VisuallyHidden>
-      <PlanHeader
-        plan={bundle.plan}
-        programs={bundle.programs}
-        report={report}
-        warningCount={report.warnings.filter(w => !isRecordedClaim(w)).length}
-        onToggleWarnings={() => setShowWarnings(v => !v)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        extraActions={
-          desktop ? undefined : (
+      <Layout
+        header={
+          <PlanHeader
+            plan={bundle.plan}
+            programs={bundle.programs}
+            report={report}
+            warningCount={
+              report.warnings.filter(w => !isRecordedClaim(w)).length
+            }
+            onToggleWarnings={() => setShowWarnings(v => !v)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            extraActions={
+              desktop ? undefined : (
+                <>
+                  <Button
+                    label="Favorites"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setSheet('saved')}
+                  />
+                  <Button
+                    label="Requirements"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setSheet('requirements')}
+                  />
+                </>
+              )
+            }
+          />
+        }
+        start={
+          desktop ? (
             <>
-              <Button
-                label="Favorites"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSheet('saved')}
-              />
-              <Button
-                label="Requirements"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSheet('requirements')}
+              <LayoutPanel
+                resizable={favoritesResizable.props}
+                hasDivider={false}
+                isScrollable={false}
+              >
+                <FavoritesTray
+                  bundle={bundle}
+                  favorites={favorites}
+                  isOpen={!favoritesResizable.isCollapsed}
+                  onToggle={() => {
+                    if (favoritesResizable.isCollapsed) {
+                      favoritesResizable.expand();
+                    } else {
+                      favoritesResizable.collapse();
+                    }
+                  }}
+                  isDropHovered={hovered?.kind === 'tray'}
+                  isDragging={dragging && drag.state?.payload.kind === 'card'}
+                  onCoursePointerDown={drag.onCoursePointerDown}
+                  registerTarget={drag.registerTarget}
+                  onAddTo={addTo}
+                />
+              </LayoutPanel>
+              <ResizeHandle
+                direction="horizontal"
+                hasDivider
+                resizable={favoritesResizable.props}
+                label="Resize favorites"
               />
             </>
-          )
+          ) : undefined
         }
-      />
-      <StackItem size="fill">
-        <Stack
-          direction={desktop ? 'horizontal' : 'vertical'}
-          width="100%"
-          height="100%"
-          gap={0}
-          align="stretch"
-        >
-          {desktop && (
-            <FavoritesTray
-              bundle={bundle}
-              favorites={favorites}
-              isOpen={trayOpen}
-              onToggle={() => setTrayOpen(v => !v)}
-              isDropHovered={hovered?.kind === 'tray'}
-              isDragging={dragging && drag.state?.payload.kind === 'card'}
-              onCoursePointerDown={drag.onCoursePointerDown}
-              registerTarget={drag.registerTarget}
-              onAddTo={addTo}
-            />
-          )}
-          <StackItem size="fill">
+        content={
+          <LayoutContent padding={0} isScrollable={false}>
             <Stack width="100%" height="100%" gap={0}>
               <StackItem size="fill" isScrollable>
                 <Board
@@ -537,26 +569,41 @@ function PlanBoardPage({
                 />
               </StackItem>
             </Stack>
-          </StackItem>
-          {desktop && (
-            <Stack width={SIDEBAR_WIDTH} height="100%">
-              <RequirementsSidebar
-                plan={bundle.plan}
-                programs={bundle.programs}
-                report={report}
-                dispatch={dispatch}
-                raisedRequirements={drag.state?.raisedRequirements}
-                renderSuggestions={renderSuggestions}
-                wrapRequirement={wrapRequirement}
-                onOpenSelfCheck={(program, requirement) =>
-                  setSelfCheck({program, requirement})
-                }
-                onEditCourse={setEditingCourse}
+          </LayoutContent>
+        }
+        end={
+          desktop ? (
+            <>
+              <ResizeHandle
+                direction="horizontal"
+                hasDivider
+                resizable={requirementsResizable.props}
+                label="Resize requirements"
+                isReversed
               />
-            </Stack>
-          )}
-        </Stack>
-      </StackItem>
+              <LayoutPanel
+                resizable={requirementsResizable.props}
+                hasDivider={false}
+                isScrollable={false}
+              >
+                <RequirementsSidebar
+                  plan={bundle.plan}
+                  programs={bundle.programs}
+                  report={report}
+                  dispatch={dispatch}
+                  raisedRequirements={drag.state?.raisedRequirements}
+                  renderSuggestions={renderSuggestions}
+                  wrapRequirement={wrapRequirement}
+                  onOpenSelfCheck={(program, requirement) =>
+                    setSelfCheck({program, requirement})
+                  }
+                  onEditCourse={setEditingCourse}
+                />
+              </LayoutPanel>
+            </>
+          ) : undefined
+        }
+      ></Layout>
       {!desktop && (
         <BottomSheet
           isOpen={sheet === 'saved'}
@@ -704,6 +751,6 @@ function PlanBoardPage({
           }
         />
       )}
-    </Stack>
+    </>
   );
 }

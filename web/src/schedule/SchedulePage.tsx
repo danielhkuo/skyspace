@@ -4,11 +4,16 @@ import {Button} from '@astryxdesign/core/Button';
 import {Dialog} from '@astryxdesign/core/Dialog';
 import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Icon} from '@astryxdesign/core/Icon';
-import {Section} from '@astryxdesign/core/Section';
-import {Stack, StackItem} from '@astryxdesign/core/Stack';
+import {
+  Layout,
+  LayoutHeader,
+  LayoutPanel,
+  LayoutContent,
+} from '@astryxdesign/core/Layout';
+import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
-import {useEffect, useState, type CSSProperties} from 'react';
+import {useEffect, useState} from 'react';
 import {useNavigate} from 'react-router';
 
 import {dataSource} from '../datasource';
@@ -28,8 +33,6 @@ import {WeekGrid} from './WeekGrid';
 
 const LIST_WIDTH = 340;
 const LIST_WIDTH_TABLET = 300;
-const fixedColumn: CSSProperties = {flexShrink: 0};
-const givingColumn: CSSProperties = {minWidth: 0};
 
 /** One term's schedules: candidates on the left, the week on the right. */
 export function SchedulePage() {
@@ -103,85 +106,79 @@ export function SchedulePage() {
   };
 
   const header = (
-    <Section
-      variant="section"
-      dividers={['bottom']}
+    <Stack
+      direction="horizontal"
+      width="100%"
+      vAlign="center"
+      hAlign="between"
+      gap={3}
+      wrap="wrap"
       paddingInline={3}
       paddingBlock={1.5}
-      width="100%"
     >
-      <Stack
-        direction="horizontal"
-        width="100%"
-        vAlign="center"
-        hAlign="between"
-        gap={3}
-        wrap="wrap"
-      >
-        <Stack direction="horizontal" gap={2} vAlign="center">
-          <DropdownMenu
-            button={{label: current.name, variant: 'ghost', size: 'md'}}
-            hasChevron
-            items={[
-              {
-                type: 'section',
-                title: term.label,
-                items: schedules.map(s => ({
-                  id: s.id,
-                  label: s.name,
-                  description: `${s.candidates.length} course${s.candidates.length === 1 ? '' : 's'}`,
-                  icon:
-                    s.id === current.id ? (
-                      <Icon icon="check" size="sm" />
-                    ) : undefined,
-                  onClick: () => state.switchTo(s.id),
-                })),
-              },
-              {type: 'divider'},
-              {id: 'new', label: 'New schedule', onClick: state.create},
-              {
-                id: 'rename',
-                label: 'Rename…',
-                onClick: () => setRenaming(true),
-              },
-              {
-                id: 'delete',
-                label: 'Delete…',
-                variant: 'destructive',
-                onClick: () => setDeleting(true),
-              },
-            ]}
-          />
-          <Text type="supporting" textWrap="nowrap">
-            {term.label}
-          </Text>
-        </Stack>
-        <Stack direction="horizontal" gap={2} vAlign="center">
-          <Text weight="medium" size="sm" hasTabularNumbers textWrap="nowrap">
-            {formatCredits(credits)} credit hours visible
-          </Text>
-          <Button
-            label={copied ? 'Copied' : 'Copy CRNs'}
-            variant="secondary"
-            size="sm"
-            icon={<Icon icon={copied ? 'check' : 'copy'} size="sm" />}
-            isDisabled={crns.length === 0}
-            tooltip={
-              crns.length === 0
-                ? 'Pick a section first'
-                : 'The list to paste into Esther'
-            }
-            clickAction={copyCrns}
-          />
-          <Button
-            label="Print / PDF"
-            variant="secondary"
-            size="sm"
-            onClick={() => window.print()}
-          />
-        </Stack>
+      <Stack direction="horizontal" gap={2} vAlign="center">
+        <DropdownMenu
+          button={{label: current.name, variant: 'ghost', size: 'md'}}
+          hasChevron
+          items={[
+            {
+              type: 'section',
+              title: term.label,
+              items: schedules.map(s => ({
+                id: s.id,
+                label: s.name,
+                description: `${s.candidates.length} course${s.candidates.length === 1 ? '' : 's'}`,
+                icon:
+                  s.id === current.id ? (
+                    <Icon icon="check" size="sm" />
+                  ) : undefined,
+                onClick: () => state.switchTo(s.id),
+              })),
+            },
+            {type: 'divider'},
+            {id: 'new', label: 'New schedule', onClick: state.create},
+            {
+              id: 'rename',
+              label: 'Rename…',
+              onClick: () => setRenaming(true),
+            },
+            {
+              id: 'delete',
+              label: 'Delete…',
+              variant: 'destructive',
+              onClick: () => setDeleting(true),
+            },
+          ]}
+        />
+        <Text type="supporting" textWrap="nowrap">
+          {term.label}
+        </Text>
       </Stack>
-    </Section>
+      <Stack direction="horizontal" gap={2} vAlign="center">
+        <Text weight="medium" size="sm" hasTabularNumbers textWrap="nowrap">
+          {formatCredits(credits)} credit hours visible
+        </Text>
+        <Button
+          label={copied ? 'Copied' : 'Copy CRNs'}
+          variant="secondary"
+          size="sm"
+          icon={<Icon icon={copied ? 'check' : 'copy'} size="sm" />}
+          isDisabled={crns.length === 0}
+          tooltip={
+            crns.length === 0
+              ? 'Pick a section first'
+              : 'The list to paste into Esther'
+          }
+          clickAction={copyCrns}
+        />
+        <Button
+          label="Print / PDF"
+          variant="secondary"
+          size="sm"
+          onClick={() => window.print()}
+        />
+      </Stack>
+    </Stack>
   );
 
   const list = (
@@ -233,27 +230,24 @@ export function SchedulePage() {
   );
 
   return (
-    <Stack width="100%" height="100%" gap={0}>
-      {header}
-      <StackItem size="fill">
-        <Stack
-          direction="horizontal"
-          width="100%"
-          height="100%"
-          gap={0}
-          align="stretch"
-        >
-          <Section
-            variant="section"
-            dividers={['end']}
-            padding={0}
+    <>
+      <Layout
+        header={
+          <LayoutHeader hasDivider padding={0}>
+            {header}
+          </LayoutHeader>
+        }
+        start={
+          <LayoutPanel
             width={desktop ? LIST_WIDTH : LIST_WIDTH_TABLET}
-            height="100%"
-            style={fixedColumn}
+            hasDivider
+            isScrollable={false}
           >
             {list}
-          </Section>
-          <StackItem size="fill" style={givingColumn}>
+          </LayoutPanel>
+        }
+        content={
+          <LayoutContent padding={0} isScrollable={false}>
             <Stack width="100%" height="100%" isScrollable>
               <WeekGrid
                 schedule={current}
@@ -261,9 +255,9 @@ export function SchedulePage() {
                 conflicts={state.conflicts}
               />
             </Stack>
-          </StackItem>
-        </Stack>
-      </StackItem>
+          </LayoutContent>
+        }
+      />
 
       <Dialog
         isOpen={crnText !== undefined}
@@ -325,7 +319,7 @@ export function SchedulePage() {
           state.deleteCurrent();
         }}
       />
-    </Stack>
+    </>
   );
 }
 

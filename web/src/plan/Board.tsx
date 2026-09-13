@@ -136,7 +136,7 @@ export function Board({
           size="fill"
           style={{
             flexBasis: columns === 2 ? 'calc(50% - 8px)' : '100%',
-            minWidth: 0,
+            minWidth: columns === 2 ? 320 : 0,
           }}
         >
           {child}

@@ -96,7 +96,7 @@ export const ghostRow: CSSProperties = {
 export function liftedCard(hue: Hue): CSSProperties {
   return {
     position: 'fixed',
-    zIndex: 20,
+    zIndex: 9999,
     pointerEvents: 'none',
     boxShadow: `0 12px 28px var(--color-shadow), inset 0 0 0 2px var(--color-accent), ${stripe(hue)}`,
     background: 'var(--color-background-card)',

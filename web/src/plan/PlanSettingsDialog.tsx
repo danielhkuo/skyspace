@@ -285,7 +285,7 @@ export function PlanSettingsDialog({
                   />
                   <Selector
                     label="Catalog year"
-                    description={`Requirements follow this year's General Announcements. Rice allows any year from matriculation to graduation; Skyspace holds reviewed requirements for ${years.length === 1 ? 'one year' : `${years.length} years`} so far.`}
+                    description={`Requirements follow this year's General Announcements. You can pick any year from matriculation to graduation; Skyspace holds reviewed requirements for ${years.length === 1 ? 'one year' : `${years.length} years`} so far.`}
                     size="sm"
                     value={String(plan.catalogYear)}
                     options={years.map(y => ({
