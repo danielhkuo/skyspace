@@ -36,3 +36,18 @@ Checks: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
 `wasm-pack test --node crates/skyspace-wasm`, `sh scripts/check-wasm-size.sh`.
 Regenerate the TypeScript wire types with
 `TS_RS_EXPORT_DIR=$PWD/web/src/api/generated cargo test -p skyspace-core -p skyspace-api --features ts`.
+
+## Deploying
+
+`deploy/compose.yml` runs the whole stack on one Docker host: Postgres,
+`skyspace migrate` (once per start), the API, a cron container, and Caddy.
+The only ports on the host are 80 and 443, both Caddy's: it holds the
+certificate, serves the browser app, and proxies `/api/*` and `/health` to
+the API, which is reachable from nowhere else. The cron container runs the
+`skyspace` pull jobs against Rice on a schedule (`deploy/jobs/crontab`):
+seats every 15 minutes inside a poll window, listings nightly, sections and
+detail weekly, `doctor` hourly. Every pull identifies itself with
+`SKYSPACE_CONTACT_EMAIL`, waits 150 ms between requests, and archives the
+raw response in the `archive` volume. The browser app is still on demo data
+until `web/src/datasource` gains an API source. Setup, data bootstrap and
+day-two commands: `deploy/README.md`.
