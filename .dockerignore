@@ -1,0 +1,18 @@
+# Build contexts are the repository root (deploy/compose.yml). Keep the
+# context small: no git history, no local build output, no local secrets.
+.git
+.claude
+docs
+target
+archive
+web/node_modules
+web/dist
+web/src/engine/generated
+*.tsbuildinfo
+.env
+.env.*
+!.env.template
+*.json
+!package.json
+data/*
+!data/university

@@ -1,0 +1,13 @@
+# The pull jobs, on the cadence in docs/tech/01-crates.md. Container time is
+# UTC; 03:00 UTC is 22:00 in Houston. Each job takes its own advisory lock and
+# exits at once when the previous run still holds it, so an overrun is safe.
+# Output goes to the container's stdout, so `docker compose logs jobs` has it.
+SHELL=/bin/sh
+PATH=/usr/local/bin:/usr/bin:/bin
+*/15 * * * * root skyspace-job seats     >> /proc/1/fd/1 2>&1
+0 3 * * *    root skyspace-job listings  >> /proc/1/fd/1 2>&1
+0 4 * * 0    root skyspace-job sections  >> /proc/1/fd/1 2>&1
+0 5 * * 0    root skyspace-job detail    >> /proc/1/fd/1 2>&1
+0 2 * * 1    root skyspace-job reference >> /proc/1/fd/1 2>&1
+0 6 1 * *    root skyspace-job catalog   >> /proc/1/fd/1 2>&1
+30 * * * *   root skyspace-job doctor    >> /proc/1/fd/1 2>&1

@@ -1,0 +1,25 @@
+# One origin for the app and the API, so the session cookie and the CSRF
+# origin check need no cross-site allowance. Caddy gets the certificate from
+# Let's Encrypt for a public hostname; for `localhost` it issues its own.
+{$SKYSPACE_DOMAIN} {
+	encode zstd gzip
+
+	# Caddy sets X-Forwarded-For to the client and drops any incoming value,
+	# which is what SKYSPACE_TRUSTED_PROXY=1 assumes: the last hop is the client.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+	handle /health {
+		reverse_proxy api:8080
+	}
+
+	# The SPA: every route the browser knows resolves to index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+		header Cache-Control "no-cache"
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+	}
+}
