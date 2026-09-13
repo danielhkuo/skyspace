@@ -1,0 +1,176 @@
+# University-wide graduation requirements for the 2026-2027 General
+# Announcements, hand-encoded from rice-data.md §7 (verified 12 September 2026
+# against ga.rice.edu/undergraduate-students/academic-policies-procedures/
+# graduation-requirements/). Loaded by `skyspace import university`, which
+# writes a draft for the same review queue as an extracted program: nothing
+# here reaches a student's plan until a person approves it.
+#
+# Shape: one [program], then [[area]] blocks holding [[area.rule]] rows.
+# rule.kind is one of course | credits | select | non_course | unverifiable |
+# distinct_departments. Selectors are {kind="code", code="COMP 140"},
+# {kind="subject", subject="LPAP"}, {kind="number_range", subject="FWIS",
+# low=101, high=299} (subject optional) or {kind="attribute", attribute="GRP1"}.
+# Hours are Rice's spellings ("3", "1", "3-4").
+
+[program]
+slug = "university-requirements"
+name = "University Graduation Requirements"
+kind = "university"
+credential = ""
+catalog_year = 2026
+total_credits = "120"
+source_url = "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+
+[[area]]
+title = "First-Year Writing-Intensive Seminar"
+
+[[area.rule]]
+label = "FWIS"
+kind = "course"
+hours = "3"
+include = [{ kind = "number_range", subject = "FWIS", low = 101, high = 299 }]
+
+[[area.rule]]
+label = "FWIS 100 does not satisfy the requirement; it precedes it for a two-semester placement. FWIS cannot be taken Pass/Fail or dropped after week two."
+kind = "unverifiable"
+
+[[area]]
+title = "Distribution Group I"
+
+[[area.rule]]
+label = "Distribution Group I course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP1" }]
+
+[[area.rule]]
+label = "Distribution Group I course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP1" }]
+
+[[area.rule]]
+label = "Distribution Group I course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP1" }]
+
+[[area.rule]]
+label = "From at least two departments"
+kind = "distinct_departments"
+minimum = 2
+text = "The 3 courses in each group must include courses in at least two departments in that group."
+
+[[area]]
+title = "Distribution Group II"
+
+[[area.rule]]
+label = "Distribution Group II course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP2" }]
+
+[[area.rule]]
+label = "Distribution Group II course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP2" }]
+
+[[area.rule]]
+label = "Distribution Group II course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP2" }]
+
+[[area.rule]]
+label = "From at least two departments"
+kind = "distinct_departments"
+minimum = 2
+text = "The 3 courses in each group must include courses in at least two departments in that group."
+
+[[area]]
+title = "Distribution Group III"
+
+[[area.rule]]
+label = "Distribution Group III course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP3" }]
+
+[[area.rule]]
+label = "Distribution Group III course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP3" }]
+
+[[area.rule]]
+label = "Distribution Group III course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "GRP3" }]
+
+[[area.rule]]
+label = "From at least two departments"
+kind = "distinct_departments"
+minimum = 2
+text = "The 3 courses in each group must include courses in at least two departments in that group."
+
+[[area]]
+title = "Distribution rules Skyspace cannot check"
+
+[[area.rule]]
+label = "Research, independent study, internships and practica do not count toward distribution. AP and IB credit does not count toward distribution; transfer courses need at least 2.5 hours."
+kind = "unverifiable"
+
+[[area.rule]]
+label = "A course's distribution designation is whatever courses.rice.edu published for the term it was taken."
+kind = "unverifiable"
+
+[[area]]
+title = "Analyzing Diversity"
+
+[[area.rule]]
+label = "Analyzing Diversity course"
+kind = "course"
+hours = "3"
+include = [{ kind = "attribute", attribute = "AD" }]
+
+[[area]]
+title = "Lifetime Physical Activity Program"
+
+[[area.rule]]
+label = "LPAP"
+kind = "course"
+hours = "1"
+include = [{ kind = "subject", subject = "LPAP" }]
+
+[[area.rule]]
+label = "LPAP must be letter-graded. No more than 4 LPAP hours count toward graduation; COLL courses are capped at 3 hours."
+kind = "unverifiable"
+
+[[area]]
+title = "Credit hours"
+
+[[area.rule]]
+label = "At least 120 credit hours"
+kind = "credits"
+minimum = "120"
+scope = "any"
+
+[[area.rule]]
+label = "At least 48 credit hours at the 300 level or above"
+kind = "credits"
+minimum = "48"
+scope = "any"
+include = [{ kind = "number_range", low = 300, high = 9999 }]
+
+[[area.rule]]
+label = "At least 60 credit hours at Rice; at least 25 of the 48 upper-level hours at Rice; more than half of the major's upper-level hours at Rice; at least 4 full-time semesters at Rice."
+kind = "unverifiable"
+
+[[area]]
+title = "Grades"
+
+[[area.rule]]
+label = "A cumulative GPA of at least 1.67, and 2.00 in major, minor and certificate coursework. Skyspace holds no grades; your degree audit in Esther does."
+kind = "unverifiable"

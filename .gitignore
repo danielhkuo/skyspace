@@ -18,7 +18,9 @@ docs/
 # Pulled Rice data. Regenerate with the scripts in scripts/
 /*.json
 !/package.json
-data/
+data/*
+# Hand-encoded, not pulled: the university-wide requirements per catalog year
+!data/university/
 *.gz
 
 # Editor and os
