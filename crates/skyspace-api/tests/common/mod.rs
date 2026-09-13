@@ -261,7 +261,7 @@ pub async fn seed_program(store: &Store) -> ProgramId {
     );
     store
         .publish_program(
-            &program("example-bs", 2027, root),
+            &program("example-bs", 2026, root),
             "alice",
             VersionSource::Manual,
         )

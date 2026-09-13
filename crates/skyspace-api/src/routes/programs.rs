@@ -25,7 +25,8 @@ const MAX_REPORT_CHARS: usize = 4000;
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProgramsQuery {
-    /// Defaults to the current term's academic year.
+    /// Defaults to the General Announcements edition the current term falls
+    /// in (`TermCode::catalog_year`): 2026 for Fall 2026, not the academic year.
     pub catalog_year: Option<CatalogYear>,
     /// `BSCS`, `BA`; matched ignoring case.
     pub credential: Option<String>,
@@ -37,7 +38,8 @@ pub struct ProgramsQuery {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct YearQuery {
-    /// Defaults to the current term's academic year.
+    /// Defaults to the General Announcements edition the current term falls
+    /// in (`TermCode::catalog_year`): 2026 for Fall 2026, not the academic year.
     pub catalog_year: Option<CatalogYear>,
 }
 
@@ -50,7 +52,7 @@ async fn resolve_year(
         None => store
             .current_term()
             .await?
-            .map(|t| CatalogYear(t.academic_year()))
+            .map(|t| CatalogYear(t.catalog_year()))
             .ok_or_else(|| ApiError::Invalid("catalogYear".to_owned())),
     }
 }

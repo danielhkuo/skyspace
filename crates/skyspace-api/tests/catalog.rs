@@ -324,11 +324,11 @@ async fn the_program_list_carries_an_etag_and_answers_304(pool: sqlx::PgPool) {
         .to_str()
         .unwrap()
         .to_owned();
-    assert!(etag.starts_with("W/\"programs-2027-"), "{etag}");
+    assert!(etag.starts_with("W/\"programs-2026-"), "{etag}");
     let body = json(first).await;
     assert_eq!(body.as_array().unwrap().len(), 1);
     assert_eq!(body[0]["slug"], "example-bs");
-    assert_eq!(body[0]["catalogYears"], serde_json::json!([2027]));
+    assert_eq!(body[0]["catalogYears"], serde_json::json!([2026]));
     let again = send(
         &app,
         Request::builder()
