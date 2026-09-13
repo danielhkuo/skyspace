@@ -98,6 +98,15 @@ impl TermCode {
         self.year
     }
 
+    /// The General Announcements edition in force: Fall 2026 (academic
+    /// year 2027) is governed by the 2026-27 announcements, `CatalogYear(2026)`.
+    /// The catalog of course records (`CATALIST`) is keyed by the academic
+    /// year instead; the two differ by one and must not be confused.
+    #[must_use]
+    pub const fn catalog_year(self) -> u16 {
+        self.year - 1
+    }
+
     /// The raw two-digit season code.
     #[must_use]
     pub const fn season_code(self) -> u8 {
