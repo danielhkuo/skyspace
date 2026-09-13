@@ -54,6 +54,21 @@ export type Requirement = {
 export type ProgramKind =
   'university' | 'major' | 'minor' | 'certificate' | 'concentration';
 
+/**
+ * What a picker needs to name a program, mirroring the API's
+ * `ProgramSummary` (`06-api.md`). The rule tree comes with the plan's bundle.
+ */
+export type ProgramSummary = {
+  id: ProgramId;
+  slug: string;
+  kind: ProgramKind;
+  name: string;
+  credential: string;
+  /** Catalog years with a reviewed version on file. */
+  catalogYears: CatalogYear[];
+  totalCredits?: Credits;
+};
+
 export type Program = {
   id: ProgramId;
   catalogYear: CatalogYear;

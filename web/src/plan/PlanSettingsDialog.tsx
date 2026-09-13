@@ -25,8 +25,8 @@ import {
   type CatalogYear,
   type PlanBundle,
   type PlanTerm,
-  type Program,
   type ProgramId,
+  type ProgramSummary,
   type RequirementId,
   type TermKindName,
   type TermPosition,
@@ -40,8 +40,8 @@ import {
 
 type PlanSettingsDialogProps = {
   bundle: PlanBundle;
-  /** Every program the pickers may offer. */
-  available: Program[];
+  /** Every program the pickers may offer: summaries; the rule trees are in `bundle`. */
+  available: ProgramSummary[];
   dispatch: (action: PlanAction) => void;
   onClose: () => void;
 };
@@ -93,7 +93,8 @@ export function PlanSettingsDialog({
   const [name, setName] = useState(plan.name);
   const [refusal, setRefusal] = useState<Record<string, string>>({});
   const [pendingDrop, setPendingDrop] = useState<
-    {programs: ProgramId[]; dropped: Program; affected: number} | undefined
+    | {programs: ProgramId[]; dropped: ProgramSummary; affected: number}
+    | undefined
   >(undefined);
 
   const first = plan.terms[0]?.position ?? plan.matriculation;
@@ -105,7 +106,7 @@ export function PlanSettingsDialog({
   // Announcements edition per academic year). Skyspace can only offer the
   // years it holds reviewed requirements for: there is no historical data.
   const years = useMemo(() => {
-    const held = new Set(available.map(p => p.catalogYear));
+    const held = new Set(available.flatMap(p => p.catalogYears));
     const out: CatalogYear[] = [];
     for (
       let y = plan.matriculation.academicYear - 1;
@@ -150,7 +151,7 @@ export function PlanSettingsDialog({
   const university = available
     .filter(p => p.kind === 'university')
     .map(p => p.id);
-  const kindOf = (id: ProgramId): Program['kind'] | undefined =>
+  const kindOf = (id: ProgramId): ProgramSummary['kind'] | undefined =>
     available.find(p => p.id === id)?.kind;
   const majors = plan.programs.filter(id => kindOf(id) === 'major');
   const minors = plan.programs.filter(id => {
@@ -160,10 +161,17 @@ export function PlanSettingsDialog({
     );
   });
 
-  /** Pins, claims and self-checks that point at a program's requirements. */
-  const affectedBy = (program: Program): number => {
+  /**
+   * Pins, claims and self-checks that point at a program's requirements. A
+   * program being dropped is on the plan, so its rule tree is in the bundle.
+   */
+  const affectedBy = (program: ProgramSummary): number => {
+    const full = bundle.programs.find(p => p.id === program.id);
+    if (full === undefined) {
+      return 0;
+    }
     const ids = new Set<RequirementId>();
-    walkRequirements(program.root, r => ids.add(r.id));
+    walkRequirements(full.root, r => ids.add(r.id));
     let n = plan.selfChecks.filter(s => ids.has(s.requirement)).length;
     const count = (fills: RequirementId[]): void => {
       n += fills.filter(f => ids.has(f)).length;
@@ -194,7 +202,12 @@ export function PlanSettingsDialog({
       setPendingDrop({programs, dropped, affected});
       return;
     }
-    dispatch({type: 'setPrograms', programs, available});
+    dispatch({
+      type: 'setPrograms',
+      programs,
+      available,
+      held: bundle.programs,
+    });
   };
 
   const changeKind = (term: PlanTerm, kind: TermKindName): void => {
@@ -460,6 +473,7 @@ export function PlanSettingsDialog({
               type: 'setPrograms',
               programs: pendingDrop.programs,
               available,
+              held: bundle.programs,
             });
           }
           setPendingDrop(undefined);

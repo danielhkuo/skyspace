@@ -7,6 +7,7 @@ import {
   DEFAULT_QUERY,
   parseCatalogUrl,
   parseTimeText,
+  partsOfTermIn,
   serializeCatalogUrl,
 } from './query';
 
@@ -174,5 +175,31 @@ describe('time text', () => {
     expect(parseTimeText('12 pm')).toBe(720);
     expect(parseTimeText('noon')).toBeUndefined();
     expect(parseTimeText('13 pm')).toBeUndefined();
+  });
+});
+
+describe('parts of term', () => {
+  it('lists each part once, in first-seen order, with code equal to label', () => {
+    const parts = partsOfTermIn(fallSections);
+    const codes = parts.map(p => p.code);
+    expect(codes[0]).toBe('Full Term');
+    expect(new Set(codes).size).toBe(codes.length);
+    for (const part of parts) {
+      expect(part.label).toBe(part.code);
+    }
+    expect(codes).toEqual(
+      [...new Set(fallSections.map(s => s.listing.partOfTerm))].filter(
+        (p): p is string => p !== undefined,
+      ),
+    );
+  });
+
+  it('skips sections with no part of term', () => {
+    const [first] = fallSections;
+    if (first === undefined) {
+      throw new Error('fixture is empty');
+    }
+    const bare = {...first, listing: {...first.listing, partOfTerm: undefined}};
+    expect(partsOfTermIn([bare])).toEqual([]);
   });
 });

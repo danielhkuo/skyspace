@@ -34,6 +34,7 @@ import {engine} from '../engine';
 import {FavoritesFooter} from './FavoritesFooter';
 import {FilterRail, SearchBox} from './FilterRail';
 import {LoadErrorCard} from '../shell/LoadErrorCard';
+import {useSession} from '../shell/useSession';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
 import {
   activeFilterCount,
@@ -70,6 +71,7 @@ export function CatalogPage() {
   const addToPlan = useAddToPlan(data?.bundle, setPlan);
   const addToSchedule = useAddToSchedule(data?.term.code);
   const favorites = useFavorites();
+  const {session} = useSession();
   const [params, setParams] = useSearchParams();
   const desktop = useViewportWidth() >= DESKTOP_WIDTH;
 
@@ -189,16 +191,18 @@ export function CatalogPage() {
   const select = (next: Crn): void =>
     patch({crn: next, term: data?.term.code}, 'push');
 
+  // No bundle (a guest): no report, no "fills in your plan", no "Add to plan".
+  const bundle = data?.bundle;
   const report = useMemo(
-    () => (data === undefined ? undefined : engine.evaluate(data.bundle)),
-    [data],
+    () => (bundle === undefined ? undefined : engine.evaluate(bundle)),
+    [bundle],
   );
   const fills = useMemo(
     () =>
-      data === undefined || report === undefined || selected === undefined
+      bundle === undefined || report === undefined || selected === undefined
         ? undefined
-        : summarizeFills(data.bundle, report, selected.listing.code),
-    [data, report, selected],
+        : summarizeFills(bundle, report, selected.listing.code),
+    [bundle, report, selected],
   );
 
   const rail = (
@@ -370,7 +374,7 @@ export function CatalogPage() {
         <SectionDetailBody
           section={selected}
           prereq={
-            data.bundle.prerequisites.find(p =>
+            data.bundle?.prerequisites.find(p =>
               sameCourse(p.course, selected.listing.code),
             )?.fact
           }
@@ -447,6 +451,7 @@ export function CatalogPage() {
           {loadMoreRow}
         </StackItem>
         <FavoritesFooter
+          signedIn={session !== null && session !== undefined}
           favorites={favorites.favorites ?? []}
           onRemove={favorites.remove}
         />
@@ -513,6 +518,7 @@ export function CatalogPage() {
                 {loadMoreRow}
               </StackItem>
               <FavoritesFooter
+                signedIn={session !== null && session !== undefined}
                 favorites={favorites.favorites ?? []}
                 onRemove={favorites.remove}
               />

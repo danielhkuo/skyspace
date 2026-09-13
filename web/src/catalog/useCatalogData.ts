@@ -1,14 +1,18 @@
 import {useCallback, useEffect, useState} from 'react';
 
 import {dataSource} from '../datasource';
+import {NoPlanError, UnauthenticatedError} from '../datasource/types';
 import type {Plan, PlanBundle, TermCode} from '../domain';
 
 export type CatalogData = {
   term: {code: TermCode; label: string};
   subjects: string[];
-  partsOfTerm: string[];
-  /** For prerequisites, exclusions and "fills in your plan". */
-  bundle: PlanBundle;
+  partsOfTerm: {code: string; label: string}[];
+  /**
+   * For prerequisites, exclusions and "fills in your plan". A guest has no
+   * plan, so no bundle: the catalog still searches, without those.
+   */
+  bundle: PlanBundle | undefined;
 };
 
 export type CatalogState = {
@@ -31,7 +35,9 @@ export function useCatalogData(): CatalogState {
   }, []);
   const setPlan = useCallback((plan: Plan) => {
     setData(prev =>
-      prev === undefined ? prev : {...prev, bundle: {...prev.bundle, plan}},
+      prev?.bundle === undefined
+        ? prev
+        : {...prev, bundle: {...prev.bundle, plan}},
     );
   }, []);
   useEffect(() => {
@@ -41,7 +47,16 @@ export function useCatalogData(): CatalogState {
       const [subjects, partsOfTerm, bundle] = await Promise.all([
         dataSource.listSubjects(term.code),
         dataSource.listPartsOfTerm(term.code),
-        dataSource.loadBundle(),
+        dataSource.loadBundle().catch((error: unknown) => {
+          // Signed out, or signed in with no plan yet: the catalog still works.
+          if (
+            error instanceof UnauthenticatedError ||
+            error instanceof NoPlanError
+          ) {
+            return undefined;
+          }
+          throw error;
+        }),
       ]);
       if (live) {
         setData({term, subjects, partsOfTerm, bundle});

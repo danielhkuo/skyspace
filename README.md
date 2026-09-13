@@ -43,7 +43,23 @@ cargo run -p skyspace-api
 ```
 
 Pull jobs need `SKYSPACE_CONTACT_EMAIL` set to a real address before they
-will touch `courses.rice.edu` or `ga.rice.edu`; see `skyspace --help`.
+will touch `courses.rice.edu` or `ga.rice.edu`; see `skyspace --help`. For a
+database with something in it and no request to Rice,
+`sh scripts/seed-dev-db.sh` replays the parser fixtures (one Fall 2026
+listing page, its terms, one section XML, one detail page) through
+`skyspace replay`, then makes 202710 the current term.
+
+## Developing the web app against the API
+
+```bash
+cd web && VITE_DATA_SOURCE=api npm run dev
+```
+
+Open `http://127.0.0.1:5173` exactly: the API's development CSRF origin is
+that address, not `localhost`. Vite proxies `/api` and `/health` to the API
+on `127.0.0.1:8080` (`SKYSPACE_API_PORT` overrides the port). Without
+`VITE_DATA_SOURCE=api` the app runs on its built-in demo fixture and never
+calls the API.
 
 Checks: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
 `cargo test --workspace` (needs `DATABASE_URL`), `sh ci/check-purity.sh`,

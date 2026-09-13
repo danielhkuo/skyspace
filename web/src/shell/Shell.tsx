@@ -31,7 +31,7 @@ export function Shell() {
   const {pathname} = useLocation();
   const navigate = useNavigate();
   const {session, signOut} = useSession();
-  const [staleSince, setStaleSince] = useState<string | undefined>(undefined);
+  const [stale, setStale] = useState<{since?: string} | undefined>(undefined);
   const guard = useSyncExternalStore(
     subscribeLeaveGuard,
     getLeaveGuard,
@@ -46,7 +46,10 @@ export function Shell() {
     }
   };
   useEffect(() => {
-    void dataSource.freshness().then(f => setStaleSince(f.staleSince));
+    void dataSource
+      .freshness()
+      .then(f => setStale(f.stale ? {since: f.staleSince} : undefined))
+      .catch(() => setStale(undefined));
   }, []);
 
   if (width < MIN_SUPPORTED_WIDTH) {
@@ -148,13 +151,17 @@ export function Shell() {
         }}
       />
       <Stack width="100%" height="100%" gap={0}>
-        {staleSince !== undefined && (
+        {stale !== undefined && (
           <Banner
             status="warning"
             container="section"
             collapsible={false}
             isDismissable
-            title={`Rice's course site has not answered since ${staleSince}. Showing the last good data.`}
+            title={
+              stale.since === undefined
+                ? 'Course data may be out of date: a pull from Rice is overdue.'
+                : `Course data may be out of date: nothing has been pulled from Rice since ${stale.since}.`
+            }
           />
         )}
         <DemoBanner />

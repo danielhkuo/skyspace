@@ -3,7 +3,11 @@ import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {useNavigate} from 'react-router';
 import {useSyncExternalStore} from 'react';
 
-import {getSaveStatus, subscribeSaveStatus} from '../datasource/planSaver';
+import {
+  getSaveStatus,
+  subscribeSaveStatus,
+  type SaveStatus,
+} from '../datasource/planSaver';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {LayoutHeader} from '@astryxdesign/core/Layout';
@@ -135,10 +139,12 @@ export function PlanHeader({
   );
 }
 
-const STATUS_TEXT = {
+const STATUS_TEXT: Record<SaveStatus, string> = {
   saved: 'Saved',
   pending: 'Unsaved changes',
   saving: 'Saving…',
+  conflict: 'Changed elsewhere · reload',
+  failed: 'Not saved',
 };
 
 function SaveStatusText() {

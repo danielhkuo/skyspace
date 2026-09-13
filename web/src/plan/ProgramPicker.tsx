@@ -4,7 +4,7 @@ import {TextInput} from '@astryxdesign/core/TextInput';
 import {Token} from '@astryxdesign/core/Token';
 import {useState} from 'react';
 
-import type {Program, ProgramId, ProgramKind} from '../domain';
+import type {ProgramId, ProgramKind, ProgramSummary} from '../domain';
 
 type ProgramPickerProps = {
   label: string;
@@ -12,7 +12,7 @@ type ProgramPickerProps = {
   placeholder: string;
   /** Which kinds this picker offers: majors, or minors and certificates. */
   kinds: ProgramKind[];
-  available: Program[];
+  available: ProgramSummary[];
   chosen: ProgramId[];
   onChange: (next: ProgramId[]) => void;
   /** Fewer than this many is refused, with the reason on the remove button. */
@@ -90,7 +90,7 @@ export function ProgramPicker({
       <Stack direction="horizontal" gap={1} wrap="wrap">
         {chosen
           .map(id => pool.find(p => p.id === id))
-          .filter((p): p is Program => p !== undefined)
+          .filter((p): p is ProgramSummary => p !== undefined)
           .map(p => (
             <Token
               key={p.id}

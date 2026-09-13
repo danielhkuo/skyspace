@@ -86,7 +86,7 @@ services:
       context: ..
       dockerfile: deploy/web.Dockerfile
       args:
-        VITE_DATA_SOURCE: ${VITE_DATA_SOURCE:-demo}
+        VITE_DATA_SOURCE: ${VITE_DATA_SOURCE:-api}
     environment:
       SKYSPACE_DOMAIN: ${SKYSPACE_DOMAIN:?}
     ports:

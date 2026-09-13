@@ -10,35 +10,46 @@ import {useEffect, useState} from 'react';
 import {useNavigate} from 'react-router';
 
 import {dataSource} from '../datasource';
+import {InvalidCodeError, RateLimitedError} from '../datasource/types';
+import type {CourseCode, TermCode, TermSchedule} from '../domain';
 import {rowDivider} from '../plan/paint';
 import {useSession} from '../shell/useSession';
 
 type Step = 'email' | 'code' | 'claim';
 
+/** How long the resend link waits when the store names no wait of its own. */
+const RESEND_WAIT_SECONDS = 48;
+
 /**
  * Sign in with a Rice email and a mailed code, then claim what this browser
  * already holds (`Sign In and Claim`). No password field exists anywhere.
- * The demo sends no mail: any six digits are accepted, and the page says so.
+ * The code lives in component state and nowhere else. The demo sends no
+ * mail: any six digits are accepted, and the page says so.
  */
 export function SignInPage() {
-  const {signIn} = useSession();
+  const {requestSignInCode, verifySignInCode} = useSession();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
-  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [codeError, setCodeError] = useState<string | undefined>(undefined);
+  const [claimError, setClaimError] = useState<string | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [favorites, setFavorites] = useState<CourseCode[]>([]);
+  // Read at mount, while still signed out: after verify, loadSchedules
+  // answers for the account, and the guest's own work would be lost.
   const [schedulesHeld, setSchedulesHeld] = useState<
-    {count: number; term: string} | undefined
+    {schedules: TermSchedule[]; term: string; code: TermCode} | undefined
   >(undefined);
   const [keepFavorites, setKeepFavorites] = useState(true);
   const [resendIn, setResendIn] = useState(0);
 
   useEffect(() => {
-    void dataSource.loadFavorites().then(f => setFavoritesCount(f.length));
+    void dataSource.loadFavorites().then(setFavorites);
     void dataSource.currentTerm().then(async term => {
       const {schedules} = await dataSource.loadSchedules(term.code);
-      setSchedulesHeld({count: schedules.length, term: term.label});
+      setSchedulesHeld({schedules, term: term.label, code: term.code});
     });
   }, []);
   useEffect(() => {
@@ -49,7 +60,94 @@ export function SignInPage() {
     return () => clearTimeout(t);
   }, [resendIn]);
 
-  const validEmail = /^[^\s@]+@rice\.edu$/i.test(email.trim());
+  const address = email.trim();
+  const validEmail = /^[^\s@]+@rice\.edu$/i.test(address);
+
+  /**
+   * Ask for a code and open the code step. Being rate limited still opens
+   * it: an earlier code may be in the inbox, and the countdown says when
+   * another can be asked for.
+   */
+  const requestCode = (): void => {
+    if (!validEmail) {
+      setError('Enter a rice.edu address.');
+      return;
+    }
+    setBusy(true);
+    void requestSignInCode(address)
+      .then(() => {
+        setResendIn(RESEND_WAIT_SECONDS);
+        setStep('code');
+      })
+      .catch((e: unknown) => {
+        if (e instanceof RateLimitedError) {
+          setResendIn(e.retryAfterSeconds ?? RESEND_WAIT_SECONDS);
+          setStep('code');
+        } else {
+          setError('The code could not be sent. Try again.');
+        }
+      })
+      .finally(() => setBusy(false));
+  };
+
+  const resendCode = (): void => {
+    setBusy(true);
+    setCodeError(undefined);
+    void requestSignInCode(address)
+      .then(() => setResendIn(RESEND_WAIT_SECONDS))
+      .catch((e: unknown) => {
+        if (e instanceof RateLimitedError) {
+          setResendIn(e.retryAfterSeconds ?? RESEND_WAIT_SECONDS);
+        } else {
+          setCodeError('The code could not be sent. Try again.');
+        }
+      })
+      .finally(() => setBusy(false));
+  };
+
+  /** The code is checked before the claim step, so a wrong one stays here. */
+  const verifyCode = (): void => {
+    if (code.length !== 6) {
+      return;
+    }
+    setBusy(true);
+    void verifySignInCode(address, code)
+      .then(() => {
+        setCode('');
+        setStep('claim');
+      })
+      .catch((e: unknown) => {
+        setCodeError(
+          e instanceof InvalidCodeError
+            ? e.message
+            : 'The code could not be checked. Try again.',
+        );
+      })
+      .finally(() => setBusy(false));
+  };
+
+  /** Move what this browser built onto the account, then leave. */
+  const claim = (): void => {
+    setBusy(true);
+    setClaimError(undefined);
+    void (async () => {
+      await dataSource.claimGuestData({
+        schedules: schedulesHeld?.schedules ?? [],
+        collections: keepFavorites
+          ? [{name: 'Favorites', courses: favorites}]
+          : [],
+      });
+      void navigate('/catalog');
+    })()
+      .catch(() => {
+        setClaimError(
+          'Your favorites and schedules could not be moved. They are still in this browser; try again.',
+        );
+      })
+      .finally(() => setBusy(false));
+  };
+
+  const favoritesCount = favorites.length;
 
   return (
     <Stack
@@ -88,28 +186,15 @@ export function SignInPage() {
                     ? undefined
                     : {type: 'error', message: error}
                 }
-                onEnter={() => {
-                  if (validEmail) {
-                    setStep('code');
-                    setResendIn(48);
-                  } else {
-                    setError('Enter a rice.edu address.');
-                  }
-                }}
+                onEnter={requestCode}
               />
               <Button
                 label="Email me a code"
                 variant="primary"
                 size="md"
                 width="100%"
-                onClick={() => {
-                  if (validEmail) {
-                    setStep('code');
-                    setResendIn(48);
-                  } else {
-                    setError('Enter a rice.edu address.');
-                  }
-                }}
+                isLoading={busy}
+                onClick={requestCode}
               />
               <Divider />
               <Text type="supporting">
@@ -123,7 +208,7 @@ export function SignInPage() {
             <>
               <Text type="supporting">Step 2</Text>
               <Text as="h1" size="xl" weight="semibold">
-                Enter the six-digit code we sent to {email.trim()}
+                Enter the six-digit code we sent to {address}
               </Text>
               {dataSource.kind === 'demo' && (
                 <Text type="supporting">
@@ -135,15 +220,19 @@ export function SignInPage() {
                 isLabelHidden
                 size="md"
                 value={code}
-                onChange={v => setCode(v.replace(/\D/g, '').slice(0, 6))}
+                onChange={v => {
+                  setCode(v.replace(/\D/g, '').slice(0, 6));
+                  setCodeError(undefined);
+                }}
                 placeholder="000000"
                 width="100%"
                 hasAutoFocus
-                onEnter={() => {
-                  if (code.length === 6) {
-                    setStep('claim');
-                  }
-                }}
+                status={
+                  codeError === undefined
+                    ? undefined
+                    : {type: 'error', message: codeError}
+                }
+                onEnter={verifyCode}
               />
               <Button
                 label="Continue"
@@ -151,14 +240,29 @@ export function SignInPage() {
                 size="md"
                 width="100%"
                 isDisabled={code.length !== 6}
-                onClick={() => setStep('claim')}
+                isLoading={busy}
+                onClick={verifyCode}
               />
               <Stack gap={1.5} align="start">
-                <Text type="supporting" hasTabularNumbers>
-                  {resendIn > 0
-                    ? `Resend in 0:${String(resendIn).padStart(2, '0')}`
-                    : 'You can request another code.'}
-                </Text>
+                {resendIn > 0 ? (
+                  <Text type="supporting" hasTabularNumbers>
+                    Resend in{' '}
+                    {`${Math.floor(resendIn / 60)}:${String(resendIn % 60).padStart(2, '0')}`}
+                  </Text>
+                ) : (
+                  <Link
+                    href="#"
+                    size="sm"
+                    onClick={e => {
+                      e.preventDefault();
+                      if (!busy) {
+                        resendCode();
+                      }
+                    }}
+                  >
+                    Send another code
+                  </Link>
+                )}
                 <Link
                   href="#"
                   size="sm"
@@ -166,6 +270,7 @@ export function SignInPage() {
                     e.preventDefault();
                     setStep('email');
                     setCode('');
+                    setCodeError(undefined);
                   }}
                 >
                   Use a different email
@@ -220,7 +325,7 @@ export function SignInPage() {
                       <Text type="supporting">
                         {schedulesHeld === undefined
                           ? 'Counting…'
-                          : `${schedulesHeld.count} for ${schedulesHeld.term}, kept as they are`}
+                          : `${schedulesHeld.schedules.length} for ${schedulesHeld.term}, kept as they are`}
                       </Text>
                     </Stack>
                   </Stack>
@@ -243,20 +348,22 @@ export function SignInPage() {
                   </Stack>
                 </Stack>
               </Section>
+              {claimError !== undefined && (
+                <Text
+                  size="sm"
+                  role="alert"
+                  style={{color: 'var(--color-text-red)'}}
+                >
+                  {claimError}
+                </Text>
+              )}
               <Button
                 label="Keep them on my account"
                 variant="primary"
                 size="md"
                 width="100%"
-                onClick={() => {
-                  void (async () => {
-                    if (!keepFavorites) {
-                      await dataSource.saveFavorites([]);
-                    }
-                    await signIn(email.trim());
-                    void navigate('/catalog');
-                  })();
-                }}
+                isLoading={busy}
+                onClick={claim}
               />
               <Text type="supporting">
                 Plans aren&apos;t created until you finish onboarding.

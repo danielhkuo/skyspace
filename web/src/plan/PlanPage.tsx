@@ -1,6 +1,7 @@
 import {Banner} from '@astryxdesign/core/Banner';
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
+import {Card} from '@astryxdesign/core/Card';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
 import {MoreMenu} from '@astryxdesign/core/MoreMenu';
@@ -9,6 +10,7 @@ import {Text} from '@astryxdesign/core/Text';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
+import {useNavigate} from 'react-router';
 
 import {
   courseKey,
@@ -23,11 +25,13 @@ import {
   type PlanBundle,
   type PlanTerm,
   type Program,
+  type ProgramSummary,
   type RequirementReport,
   type TermId,
   type Warning,
 } from '../domain';
 import {dataSource} from '../datasource';
+import {NoPlanError, UnauthenticatedError} from '../datasource/types';
 import {DESKTOP_WIDTH, useViewportWidth} from '../shell/useViewportWidth';
 import {AddCourseDialog} from './AddCourseDialog';
 import {Board} from './Board';
@@ -66,18 +70,47 @@ function entryOf(warning: Warning): EntryId | undefined {
   }
 }
 
+/** A guest has no plan to load (`08-board-interaction.md`): say so, and offer the door. */
+function SignInToPlanCard() {
+  const navigate = useNavigate();
+  return (
+    <Stack width="100%" padding={4} align="center">
+      <Card padding={3} width={448} maxWidth="100%">
+        <Stack width="100%" gap={2} align="start">
+          <Text as="h2" size="lg" weight="semibold">
+            Sign in to plan a degree
+          </Text>
+          <Text type="supporting">
+            A plan lives on your account. The catalog and schedules work without
+            one.
+          </Text>
+          <Button
+            label="Sign in"
+            variant="primary"
+            size="sm"
+            onClick={() => void navigate('/sign-in')}
+          />
+        </Stack>
+      </Card>
+    </Stack>
+  );
+}
+
 /** Loads the plan from the data source, then hands it to the board. */
 export function PlanPage() {
+  const navigate = useNavigate();
   const [loaded, setLoaded] = useState<
     | {
         bundle: PlanBundle;
         favorites: CourseCode[];
         candidates: CourseCode[];
-        available: Program[];
+        available: ProgramSummary[];
       }
     | undefined
   >(undefined);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'error' | 'signedOut' | undefined>(
+    undefined,
+  );
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let cancelled = false;
@@ -92,21 +125,32 @@ export function PlanPage() {
           setLoaded({bundle, favorites, candidates, available});
         }
       })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
         }
+        if (error instanceof NoPlanError) {
+          // Signed in with nothing to show: onboarding makes the first plan.
+          void navigate('/plan/new', {replace: true});
+          return;
+        }
+        setFailed(
+          error instanceof UnauthenticatedError ? 'signedOut' : 'error',
+        );
       });
     return () => {
       cancelled = true;
     };
-  }, [attempt]);
-  if (failed) {
+  }, [attempt, navigate]);
+  if (failed === 'signedOut') {
+    return <SignInToPlanCard />;
+  }
+  if (failed === 'error') {
     return (
       <LoadErrorCard
         what="your plan"
         onRetry={() => {
-          setFailed(false);
+          setFailed(undefined);
           setAttempt(n => n + 1);
         }}
       />
@@ -130,7 +174,7 @@ export function PlanPage() {
 }
 
 type PlanBoardPageProps = {
-  available: Program[];
+  available: ProgramSummary[];
   initial: PlanBundle;
   initialFavorites: CourseCode[];
   catalogCandidates: CourseCode[];
@@ -711,6 +755,7 @@ function PlanBoardPage({
         <SelfCheckDialog
           program={selfCheck.program}
           requirement={selfCheck.requirement}
+          catalogYear={bundle.plan.catalogYear}
           existing={bundle.plan.selfChecks.find(
             s => s.requirement === selfCheck.requirement.requirement,
           )}

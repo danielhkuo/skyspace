@@ -55,9 +55,12 @@ export function useSchedule(term: TermCode | undefined): ScheduleState {
           return;
         }
         if (schedules.length === 0) {
-          const fresh = newSchedule(term, nextScheduleName([]));
-          await dataSource.saveSchedule(fresh);
-          setLoaded({schedules: [fresh], currentId: fresh.id});
+          const fresh = await dataSource.saveSchedule(
+            newSchedule(term, nextScheduleName([])),
+          );
+          if (live) {
+            setLoaded({schedules: [fresh], currentId: fresh.id});
+          }
           return;
         }
         const first = schedules[0];
@@ -171,10 +174,35 @@ export function useSchedule(term: TermCode | undefined): ScheduleState {
     return out;
   }, [current, sectionsByCrn]);
 
-  const save = useCallback((next: Loaded, changed: TermSchedule): void => {
-    setLoaded(next);
-    void dataSource.saveSchedule(changed);
-  }, []);
+  /**
+   * State first, then the write. The store may mint its own id for a new
+   * schedule; when it does, the document is re-keyed in place. A save that
+   * keeps the id leaves state alone: a later edit may already be on screen.
+   */
+  const save = useCallback(
+    (next: Loaded, changed: TermSchedule): Promise<TermSchedule> => {
+      setLoaded(next);
+      return dataSource.saveSchedule(changed).then(persisted => {
+        if (persisted.id !== changed.id) {
+          setLoaded(prev =>
+            prev === undefined
+              ? prev
+              : {
+                  schedules: prev.schedules.map(s =>
+                    s.id === changed.id ? persisted : s,
+                  ),
+                  currentId:
+                    prev.currentId === changed.id
+                      ? persisted.id
+                      : prev.currentId,
+                },
+          );
+        }
+        return persisted;
+      });
+    },
+    [],
+  );
 
   const dispatch = useCallback(
     (action: ScheduleAction) => {
@@ -182,7 +210,7 @@ export function useSchedule(term: TermCode | undefined): ScheduleState {
         return;
       }
       const changed = reduceSchedule(current, action);
-      save(
+      void save(
         {
           ...loaded,
           schedules: loaded.schedules.map(s =>
@@ -214,8 +242,10 @@ export function useSchedule(term: TermCode | undefined): ScheduleState {
       term,
       nextScheduleName(loaded.schedules.map(s => s.name)),
     );
-    save({schedules: [...loaded.schedules, fresh], currentId: fresh.id}, fresh);
-    void dataSource.setCurrentSchedule(term, fresh.id);
+    void save(
+      {schedules: [...loaded.schedules, fresh], currentId: fresh.id},
+      fresh,
+    ).then(persisted => dataSource.setCurrentSchedule(term, persisted.id));
   }, [loaded, term, save]);
 
   const deleteCurrent = useCallback(() => {
@@ -228,8 +258,9 @@ export function useSchedule(term: TermCode | undefined): ScheduleState {
     if (next === undefined) {
       // The page always shows a schedule; an empty one replaces the last.
       const fresh = newSchedule(term, nextScheduleName([]));
-      save({schedules: [fresh], currentId: fresh.id}, fresh);
-      void dataSource.setCurrentSchedule(term, fresh.id);
+      void save({schedules: [fresh], currentId: fresh.id}, fresh).then(
+        persisted => dataSource.setCurrentSchedule(term, persisted.id),
+      );
       return;
     }
     setLoaded({schedules: rest, currentId: next.id});

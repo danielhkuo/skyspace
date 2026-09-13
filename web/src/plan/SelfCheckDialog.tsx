@@ -9,6 +9,7 @@ import {useState} from 'react';
 
 import {
   findRequirement,
+  type CatalogYear,
   type Program,
   type RequirementReport,
   type SelfCheck,
@@ -22,6 +23,8 @@ import type {PlanAction} from './usePlan';
 type SelfCheckDialogProps = {
   program: Program;
   requirement: RequirementReport;
+  /** The plan's year, for a report on this requirement. */
+  catalogYear: CatalogYear;
   existing: SelfCheck | undefined;
   dispatch: (action: PlanAction) => void;
   onClose: () => void;
@@ -43,6 +46,7 @@ const REASONS: SelfCheckReason[] = [
 export function SelfCheckDialog({
   program,
   requirement,
+  catalogYear,
   existing,
   dispatch,
   onClose,
@@ -201,6 +205,7 @@ export function SelfCheckDialog({
         <ReportRequirementDialog
           program={program}
           requirement={requirement}
+          catalogYear={catalogYear}
           onClose={() => setReporting(false)}
         />
       )}

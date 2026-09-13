@@ -67,9 +67,10 @@ export function useAddToSchedule(term: TermCode | undefined): AddToSchedule {
           course: section.listing.code,
           crn: section.listing.crn,
         });
-        await dataSource.saveSchedule(next);
-        await dataSource.setCurrentSchedule(term, next.id);
-        setCurrent(next);
+        // The store may mint the id: keep what it returned, not what was sent.
+        const persisted = await dataSource.saveSchedule(next);
+        await dataSource.setCurrentSchedule(term, persisted.id);
+        setCurrent(persisted);
       })();
     },
     [term],

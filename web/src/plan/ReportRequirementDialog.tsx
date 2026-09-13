@@ -3,40 +3,59 @@ import {Dialog} from '@astryxdesign/core/Dialog';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TextArea} from '@astryxdesign/core/TextArea';
-import {TextInput} from '@astryxdesign/core/TextInput';
 import {useState} from 'react';
 
 import {dataSource} from '../datasource';
-import type {Program, RequirementReport} from '../domain';
+import {RateLimitedError} from '../datasource/types';
+import type {CatalogYear, Program, RequirementReport} from '../domain';
 import {islandHead, rowDivider} from './paint';
 
 type ReportRequirementDialogProps = {
   program: Program;
   requirement: RequirementReport;
+  /** The plan's year: which edition of the requirement is being reported. */
+  catalogYear: CatalogYear;
   onClose: () => void;
 };
 
-/** "Report this requirement": a person reviews every report. The demo keeps it in this browser. */
+/**
+ * "Report this requirement": a person reviews every report. The wire body
+ * takes free text only, so the requirement's label and source URL are folded
+ * into the message. No contact is collected: the store keeps none on
+ * purpose. The demo keeps the report in this browser.
+ */
 export function ReportRequirementDialog({
   program,
   requirement,
+  catalogYear,
   onClose,
 }: ReportRequirementDialogProps) {
   const [what, setWhat] = useState('');
-  const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
 
   const send = (): void => {
+    setSending(true);
+    setError(undefined);
     void dataSource
       .reportRequirement({
         program: program.id,
         requirement: requirement.requirement,
-        label: requirement.label,
-        sourceUrl: requirement.source.url,
-        text: what.trim(),
-        email: email.trim() === '' ? undefined : email.trim(),
+        catalogYear,
+        message: `${requirement.label} (${requirement.source.url}): ${what.trim()}`,
       })
-      .then(() => setSent(true));
+      .then(() => setSent(true))
+      .catch((e: unknown) => {
+        setError(
+          e instanceof RateLimitedError
+            ? e.retryAfterSeconds === undefined
+              ? 'Too many reports for now. Try again later.'
+              : `Too many reports for now. Try again in ${e.retryAfterSeconds} seconds.`
+            : 'The report could not be sent. Try again.',
+        );
+      })
+      .finally(() => setSending(false));
   };
 
   return (
@@ -102,16 +121,15 @@ export function ReportRequirementDialog({
                 width="100%"
                 rows={2}
               />
-              <TextInput
-                label="Email"
-                isOptional
-                type="email"
-                size="sm"
-                value={email}
-                onChange={setEmail}
-                placeholder="netid@rice.edu"
-                width="100%"
-              />
+              {error !== undefined && (
+                <Text
+                  size="sm"
+                  role="alert"
+                  style={{color: 'var(--color-text-red)'}}
+                >
+                  {error}
+                </Text>
+              )}
             </Stack>
             <Stack
               direction="horizontal"
@@ -132,6 +150,7 @@ export function ReportRequirementDialog({
                 variant="primary"
                 size="sm"
                 isDisabled={what.trim() === ''}
+                isLoading={sending}
                 onClick={send}
               />
             </Stack>

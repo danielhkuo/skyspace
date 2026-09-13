@@ -27,6 +27,7 @@ import {
   type PlannedCourse,
   type PlanTerm,
   type Program,
+  type ProgramSummary,
   type TermKindName,
   type Report,
   type RequirementId,
@@ -92,8 +93,17 @@ export type PlanAction =
   | {type: 'removeTerm'; term: TermId}
   | {type: 'renamePlan'; name: string}
   | {type: 'setCatalogYear'; year: CatalogYear}
-  /** The programs a plan follows; University stays. Pins to a dropped program's requirements go with it. */
-  | {type: 'setPrograms'; programs: ProgramId[]; available: Program[]}
+  /**
+   * The programs a plan follows; University stays. Pins to a dropped
+   * program's requirements go with it: `held` is the bundle's programs, the
+   * only place a dropped program's rule tree is, and `available` names kinds.
+   */
+  | {
+      type: 'setPrograms';
+      programs: ProgramId[];
+      available: ProgramSummary[];
+      held: Program[];
+    }
   | {
       type: 'confirmSelfCheck';
       requirement: RequirementId;
@@ -510,7 +520,7 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
         return plan;
       }
       const dropped = new Set<RequirementId>();
-      for (const program of action.available) {
+      for (const program of action.held) {
         if (
           plan.programs.includes(program.id) &&
           !action.programs.includes(program.id)
