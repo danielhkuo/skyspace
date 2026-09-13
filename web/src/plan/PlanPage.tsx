@@ -190,7 +190,7 @@ function PlanBoardPage({
   const onDuplicate = useCallback(
     (course: CourseCode, where: TermId | 'incoming') => {
       setNotice(
-        `${formatCourseCode(course)} is already in ${where === 'incoming' ? 'incoming credit' : termName(bundle.plan, where)}. Rice gives credit once; move it from there instead.`,
+        `${formatCourseCode(course)} is already in ${where === 'incoming' ? 'incoming credit' : termName(bundle.plan, where)}. You only get credit once; move it from there instead.`,
       );
     },
     [bundle.plan],

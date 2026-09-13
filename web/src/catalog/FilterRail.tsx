@@ -185,7 +185,6 @@ export function FilterRail({
               <ToggleButton key={d} value={d} label={d} />
             ))}
           </ToggleButtonGroup>
-          <Text type="supporting">Rice writes Thursday R and Sunday U.</Text>
         </Stack>
       </Collapsible>
 

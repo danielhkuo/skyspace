@@ -187,7 +187,6 @@ export function SectionDetailBody({
       <Stack width="100%" gap={1} align="start">
         {heading('Prerequisites')}
         <PrereqTokens fact={prereq} fallbackText={detail?.prerequisitesText} />
-        <Text type="supporting">Rice checks these at registration.</Text>
       </Stack>
 
       {detail?.restrictions !== undefined && (
