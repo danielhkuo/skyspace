@@ -30,7 +30,13 @@ export type RequirementBody =
   | {kind: 'course'; filter: CourseFilter; semesters: number}
   | {kind: 'credits'; minimum: Credits; scope: CreditScope; from: CourseFilter}
   | {kind: 'nonCourse'; nonCourseKind: NonCourseKind; description: string}
-  | {kind: 'unverifiable'; text: string};
+  | {kind: 'unverifiable'; text: string}
+  /**
+   * A constraint across the sibling course slots: their cards must come from
+   * at least `minimum` departments. Checked when every card's department is
+   * known; a self-check otherwise. Proposed for `03-requirements.md`.
+   */
+  | {kind: 'distinctDepartments'; minimum: number; text: string};
 
 export type SourceRef = {
   url: string;

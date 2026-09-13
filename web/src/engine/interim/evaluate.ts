@@ -323,6 +323,20 @@ function evaluateRequirement(
     claimedIn: claims.get(requirement.id),
   };
 
+  if (body.kind === 'distinctDepartments') {
+    // Placeholder: the parent group re-evaluates this against its sibling slots.
+    const progress = emptyProgress();
+    progress.selfChecks = 1;
+    return {
+      ...base,
+      outcome: {outcome: 'needsStudentCheck'},
+      progress,
+      filledBy: [],
+      claimedBy: [],
+      children: [],
+    };
+  }
+
   if (body.kind === 'nonCourse' || body.kind === 'unverifiable') {
     const reason = confirmed.get(requirement.id);
     const progress = emptyProgress();
@@ -438,6 +452,55 @@ function evaluateRequirement(
       claims,
     ),
   );
+  // Constraints across the sibling course slots, now that those are known.
+  body.of.forEach((child, i) => {
+    if (child.body.kind !== 'distinctDepartments') {
+      return;
+    }
+    const siblingEntries = body.of
+      .filter(sib => sib.body.kind === 'course')
+      .flatMap(sib => assigned.get(sib.id) ?? [])
+      .map(c => c.entry);
+    const slotCount = body.of
+      .filter(sib => sib.body.kind === 'course')
+      .reduce(
+        (n, sib) => n + (sib.body.kind === 'course' ? sib.body.semesters : 0),
+        0,
+      );
+    const departments = siblingEntries.map(entry => {
+      const card = cards.find(c => c.entry === entry);
+      return card?.code === undefined
+        ? undefined
+        : courseInfo(facts, card.code)?.department;
+    });
+    const progress = emptyProgress();
+    let outcome: Outcome;
+    const reason = confirmed.get(child.id);
+    if (departments.some(d => d === undefined)) {
+      // A card we hold no department for: the student's word, as before.
+      progress.selfChecks = 1;
+      progress.selfChecksConfirmed = reason === undefined ? 0 : 1;
+      outcome =
+        reason === undefined
+          ? {outcome: 'needsStudentCheck'}
+          : {outcome: 'needsStudentCheck', confirmed: reason};
+    } else {
+      progress.requirementsCheckable = 1;
+      const distinct = new Set(departments).size;
+      const met =
+        siblingEntries.length >= slotCount && distinct >= child.body.minimum;
+      progress.requirementsMet = met ? 1 : 0;
+      outcome = met
+        ? {outcome: 'met'}
+        : siblingEntries.length > 0
+          ? {outcome: 'partial'}
+          : {outcome: 'unmet'};
+    }
+    const previous = children[i];
+    if (previous !== undefined) {
+      children[i] = {...previous, outcome, progress, filledBy: siblingEntries};
+    }
+  });
   let progress = emptyProgress();
   let metChildren = 0;
   let checkableChildren = 0;

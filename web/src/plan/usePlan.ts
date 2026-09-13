@@ -458,8 +458,8 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
       ) {
         return plan;
       }
-      const label =
-        action.label?.trim() === '' ? undefined : action.label?.trim();
+      const trimmed = action.label?.trim().slice(0, 40);
+      const label = trimmed === '' ? undefined : trimmed;
       return {
         ...plan,
         terms: plan.terms.map(t =>

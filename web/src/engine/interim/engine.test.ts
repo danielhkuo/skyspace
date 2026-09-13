@@ -228,6 +228,36 @@ describe('evaluate (interim)', () => {
     ).toHaveLength(0);
   });
 
+  it('checks the two-department constraint from department data, and asks only when a department is unknown', () => {
+    // With the transfer card in a Group I slot (no department on record) the
+    // constraint is a self-check; without it, three departments are known
+    // and the constraint is simply met.
+    const label = 'From at least two departments';
+    const withTransfer = flattenRequirementReports(report).find(
+      r => r.label === label,
+    );
+    expect(withTransfer?.outcome.outcome).toBe('needsStudentCheck');
+    const noTransfer = engine.evaluate({
+      ...bundle,
+      plan: {
+        ...bundle.plan,
+        incomingCredit: bundle.plan.incomingCredit.filter(
+          c => c.code !== 'TRAN 100',
+        ),
+      },
+    });
+    const checked = flattenRequirementReports(noTransfer).find(
+      r => r.label === label,
+    );
+    expect(checked?.outcome.outcome).toBe('met');
+    expect(checked?.progress.requirementsCheckable).toBe(1);
+    expect(
+      noTransfer.warnings.some(
+        w => w.kind === 'selfCheck' && w.value.label === label,
+      ),
+    ).toBe(false);
+  });
+
   it('never counts a self-check toward requirements met', () => {
     const bscs = report.programs.find(p => p.program === BSCS_ID);
     expect(bscs?.progress.selfChecks).toBeGreaterThan(0);

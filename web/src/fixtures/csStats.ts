@@ -193,7 +193,8 @@ export const universityProgram: Program = {
                 label: 'From at least two departments',
                 source: universitySource,
                 body: {
-                  kind: 'unverifiable',
+                  kind: 'distinctDepartments',
+                  minimum: 2,
                   text: 'The 3 courses in each group must include courses in at least two departments in that group.',
                 },
               },
@@ -459,9 +460,30 @@ type InfoSpec = {
   offeredNow?: boolean;
 };
 
+/** Rice's "Department:" line, keyed by subject. Two subjects can share one department. */
+const DEPARTMENT: Record<string, string> = {
+  COMP: 'Computer Science',
+  MATH: 'Mathematics',
+  STAT: 'Statistics',
+  ELEC: 'Electrical & Computer Eng',
+  ECON: 'Economics',
+  FWIS: 'First Year Writing Intensive',
+  CHEM: 'Chemistry',
+  PHYS: 'Physics & Astronomy',
+  LPAP: 'Lifetime Physical Activity',
+  HIST: 'History',
+  ENGL: 'English',
+  MUSI: 'Music',
+  PHIL: 'Philosophy',
+  HART: 'Art History',
+  ANTH: 'Anthropology',
+  SOCI: 'Sociology',
+};
+
 const info = (spec: InfoSpec): CourseInfo => ({
   code: code(spec.raw),
   title: spec.title,
+  department: DEPARTMENT[code(spec.raw).subject],
   credits:
     typeof spec.credits === 'number' ? fixed(spec.credits) : spec.credits,
   attributes: spec.attributes ?? [],

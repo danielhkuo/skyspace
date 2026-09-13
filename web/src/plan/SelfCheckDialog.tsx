@@ -54,7 +54,8 @@ export function SelfCheckDialog({
   const [reporting, setReporting] = useState(false);
   const source = findRequirement(program, requirement.requirement);
   const text =
-    source?.body.kind === 'unverifiable'
+    source?.body.kind === 'unverifiable' ||
+    source?.body.kind === 'distinctDepartments'
       ? source.body.text
       : source?.body.kind === 'nonCourse'
         ? source.body.description

@@ -4,7 +4,7 @@ import {Dialog, DialogHeader} from '@astryxdesign/core/Dialog';
 import {Layout, LayoutContent, LayoutFooter} from '@astryxdesign/core/Layout';
 import {Selector, SelectorOption} from '@astryxdesign/core/Selector';
 import type {SelectorOptionType} from '@astryxdesign/core/Selector';
-import {Stack} from '@astryxdesign/core/Stack';
+import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
 import {useMemo, useState} from 'react';
@@ -50,7 +50,13 @@ const ORIGINS: {value: CreditOrigin; label: string}[] = [
   {value: 'other', label: 'Other'},
 ];
 
-type Option = {requirement: RequirementId; label: string; matches: boolean};
+type Option = {
+  requirement: RequirementId;
+  label: string;
+  matches: boolean;
+  /** The one course the requirement names, when it names exactly one. */
+  singleCode?: CourseCode;
+};
 
 type Choice = {
   program: Program;
@@ -156,9 +162,15 @@ export function EditCourseDialog({
             return;
           }
           seen.add(path);
+          const only = req.body.filter.include;
+          const singleCode =
+            only.length === 1 && only[0]?.kind === 'code'
+              ? only[0].code
+              : undefined;
           options.push({
             requirement: req.id,
             label: path,
+            ...(singleCode === undefined ? {} : {singleCode}),
             matches:
               course !== undefined &&
               engine.requirementMatches(program, req.id, [course], bundle.facts)
@@ -347,7 +359,12 @@ export function EditCourseDialog({
         }
         content={
           <LayoutContent>
-            <Stack width="100%" gap={3} align="start">
+            <Stack
+              width="100%"
+              gap={3}
+              align="start"
+              style={{overflowX: 'hidden'}}
+            >
               {!planned && (
                 <Stack width="100%" gap={2} align="start">
                   <Stack
@@ -362,29 +379,31 @@ export function EditCourseDialog({
                       value={origin}
                       options={ORIGINS}
                       onChange={v => setOrigin(v as CreditOrigin)}
-                      width={132}
+                      width={160}
                     />
-                    <TextInput
-                      label="Their code"
-                      size="sm"
-                      value={code}
-                      onChange={setCode}
-                      placeholder="INF 3221"
-                      width={132}
-                      status={
-                        code.trim() === ''
-                          ? {type: 'error', message: 'Required'}
-                          : undefined
-                      }
-                    />
-                    <TextInput
-                      label="Title"
-                      size="sm"
-                      value={title}
-                      onChange={setTitle}
-                      width="100%"
-                    />
+                    <StackItem size="fill">
+                      <TextInput
+                        label="Their code"
+                        size="sm"
+                        value={code}
+                        onChange={setCode}
+                        placeholder="INF 3221"
+                        width="100%"
+                        status={
+                          code.trim() === ''
+                            ? {type: 'error', message: 'Required'}
+                            : undefined
+                        }
+                      />
+                    </StackItem>
                   </Stack>
+                  <TextInput
+                    label="Title"
+                    size="sm"
+                    value={title}
+                    onChange={setTitle}
+                    width="100%"
+                  />
                   <TextInput
                     label="Institution"
                     isOptional
@@ -423,21 +442,23 @@ export function EditCourseDialog({
                   }
                 />
                 {!planned && (
-                  <TextInput
-                    label="Rice equivalent"
-                    isOptional
-                    description="What the registrar posts it as"
-                    size="sm"
-                    value={equivalent}
-                    onChange={setEquivalent}
-                    placeholder="COMP 321"
-                    width="100%"
-                    status={
-                      equivalentBad
-                        ? {type: 'error', message: 'Not a Rice code'}
-                        : undefined
-                    }
-                  />
+                  <StackItem size="fill">
+                    <TextInput
+                      label="Rice equivalent"
+                      isOptional
+                      description="What the registrar posts it as"
+                      size="sm"
+                      value={equivalent}
+                      onChange={setEquivalent}
+                      placeholder="COMP 321"
+                      width="100%"
+                      status={
+                        equivalentBad
+                          ? {type: 'error', message: 'Not a Rice code'}
+                          : undefined
+                      }
+                    />
+                  </StackItem>
                 )}
               </Stack>
               {!planned && hoursFromEquivalent !== undefined && (
@@ -457,9 +478,9 @@ export function EditCourseDialog({
                     Requirement override
                   </Text>
                   <Text type="supporting">
-                    Skyspace picks the requirement this course fills. Choose one
-                    here to pin it there instead; a pick it doesn&apos;t match
-                    counts on your say-so.
+                    {canAuto
+                      ? "Skyspace picks the requirement this course fills. Pin it elsewhere here; a pick it doesn't match counts on your say-so."
+                      : 'Without a Rice equivalent nothing matches, so any pick here counts on your say-so. Picking a requirement that names one course fills the equivalent for you.'}
                   </Text>
                 </Stack>
               )}
@@ -472,20 +493,27 @@ export function EditCourseDialog({
                 >
                   <Selector
                     label={choice.program.name}
-                    description={
-                      canAuto
-                        ? undefined
-                        : 'No Rice code, so nothing matches; pick where it should count'
-                    }
                     size="sm"
                     width="100%"
                     placeholder="Pick a requirement"
                     hasSearch={choice.options.length > 8}
                     value={pickOf(choice) === '' ? undefined : pickOf(choice)}
                     options={requirementOptions(choice)}
-                    onChange={v =>
-                      setPicked(prev => ({...prev, [choice.program.id]: v}))
-                    }
+                    onChange={v => {
+                      setPicked(prev => ({...prev, [choice.program.id]: v}));
+                      // "Counts as COMP 318" for a card with no Rice code means
+                      // it posts as COMP 318: fill the equivalent, so it matches.
+                      const picked = choice.options.find(
+                        o => o.requirement === v,
+                      );
+                      if (
+                        !planned &&
+                        equivalent.trim() === '' &&
+                        picked?.singleCode !== undefined
+                      ) {
+                        setEquivalent(formatCourseCode(picked.singleCode));
+                      }
+                    }}
                     renderOption={o => (
                       <SelectorOption
                         label={o.label ?? o.value}
@@ -498,7 +526,7 @@ export function EditCourseDialog({
                       rejected(choice)
                         ? {
                             type: 'warning',
-                            message: 'Counts on your say-so, never as met',
+                            message: 'On your say-so, not counted as met',
                           }
                         : undefined
                     }

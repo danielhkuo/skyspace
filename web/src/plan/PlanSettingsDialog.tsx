@@ -48,7 +48,7 @@ type PlanSettingsDialogProps = {
 
 const LABEL_PLACEHOLDER: Record<TermKindName, string> = {
   rice: 'Shown under the term name',
-  away: 'Study abroad — Madrid',
+  away: 'Study abroad, exchange, visiting',
   off: 'Gap semester, co-op, leave',
 };
 
@@ -62,6 +62,9 @@ function termCount(term: PlanTerm): string {
         : 0;
   return n === 0 ? 'empty' : `${n} course${n === 1 ? '' : 's'}`;
 }
+
+/** The label sits in a term header; past this it wraps. Enforced in the reducer too. */
+export const TERM_LABEL_MAX = 40;
 
 const encode = (p: TermPosition): string => `${p.academicYear}-${p.season}`;
 const decode = (v: string): TermPosition => {
@@ -98,21 +101,32 @@ export function PlanSettingsDialog({
     plan.terms[plan.terms.length - 1]?.position ?? plan.matriculation;
   // Catalog years Rice allows: from matriculation to the last term's year.
   // Spring 2029 is academic year 2029 and the 2028-29 announcements.
+  // Rice allows any year from matriculation to graduation (one General
+  // Announcements edition per academic year). Skyspace can only offer the
+  // years it holds reviewed requirements for: there is no historical data.
   const years = useMemo(() => {
+    const held = new Set(available.map(p => p.catalogYear));
     const out: CatalogYear[] = [];
     for (
       let y = plan.matriculation.academicYear - 1;
       y <= last.academicYear - 1;
       y += 1
     ) {
-      out.push(y);
+      if (held.has(y)) {
+        out.push(y);
+      }
     }
     if (!out.includes(plan.catalogYear)) {
       out.push(plan.catalogYear);
       out.sort();
     }
     return out;
-  }, [plan.matriculation.academicYear, last.academicYear, plan.catalogYear]);
+  }, [
+    available,
+    plan.matriculation.academicYear,
+    last.academicYear,
+    plan.catalogYear,
+  ]);
 
   // Every fall, spring and summer from the first term to a year past the last, minus what exists.
   const openPositions = useMemo(() => {
@@ -271,7 +285,7 @@ export function PlanSettingsDialog({
                   />
                   <Selector
                     label="Catalog year"
-                    description="Requirements follow this year's General Announcements. Any year from matriculation to graduation is allowed."
+                    description={`Requirements follow this year's General Announcements. Rice allows any year from matriculation to graduation; Skyspace holds reviewed requirements for ${years.length === 1 ? 'one year' : `${years.length} years`} so far.`}
                     size="sm"
                     value={String(plan.catalogYear)}
                     options={years.map(y => ({
@@ -333,7 +347,7 @@ export function PlanSettingsDialog({
                                     type: 'setTerm',
                                     term: term.id,
                                     kind,
-                                    label,
+                                    label: label.slice(0, TERM_LABEL_MAX),
                                     facts: bundle.facts,
                                   })
                                 }

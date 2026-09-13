@@ -95,7 +95,7 @@ function EditTermForm({
           onChange={setLabel}
           placeholder={
             kind === 'away'
-              ? 'Study abroad — Madrid'
+              ? 'Study abroad, exchange, visiting'
               : kind === 'off'
                 ? 'Co-op — Chevron'
                 : 'Shown under the term name'

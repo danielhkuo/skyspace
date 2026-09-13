@@ -423,7 +423,12 @@ function RequirementChildren({
     }
     const source = findRequirement(program, child.requirement);
     const kind = source?.body.kind;
-    if (kind === 'nonCourse' || kind === 'unverifiable') {
+    if (
+      kind === 'nonCourse' ||
+      kind === 'unverifiable' ||
+      (kind === 'distinctDepartments' &&
+        child.outcome.outcome === 'needsStudentCheck')
+    ) {
       out.push(
         <SelfCheckRow
           key={child.requirement}
@@ -498,7 +503,9 @@ function RequirementChildren({
       child.children.every(
         c =>
           c.label === child.label ||
-          findRequirement(program, c.requirement)?.body.kind === 'unverifiable',
+          ['unverifiable', 'distinctDepartments'].includes(
+            findRequirement(program, c.requirement)?.body.kind ?? '',
+          ),
       )
     ) {
       // Distribution Group I: three slots plus a self-check under one label.
@@ -517,14 +524,35 @@ function RequirementChildren({
             renderSuggestions={renderSuggestions}
             wrapRequirement={wrapRequirement}
           />
-          {checks.map(check => (
-            <SelfCheckRow
-              key={check.requirement}
-              requirement={check}
-              program={program}
-              dispatch={dispatch}
-            />
-          ))}
+          {checks.map(check =>
+            check.outcome.outcome === 'needsStudentCheck' ? (
+              <SelfCheckRow
+                key={check.requirement}
+                requirement={check}
+                program={program}
+                dispatch={dispatch}
+              />
+            ) : (
+              <Stack
+                key={check.requirement}
+                direction="horizontal"
+                width="100%"
+                gap={1.5}
+                vAlign="center"
+                paddingInline={1.5}
+                paddingBlock={1}
+                style={requirementRow}
+              >
+                <StatusMark report={check} />
+                <Text size="sm" maxLines={1}>
+                  {check.label}
+                </Text>
+                <Text type="supporting" textWrap="nowrap">
+                  checked from Rice&apos;s department data
+                </Text>
+              </Stack>
+            ),
+          )}
         </Stack>,
       );
     } else {

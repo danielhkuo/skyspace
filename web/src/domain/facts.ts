@@ -19,6 +19,8 @@ export type CourseInfo = {
   title: string;
   credits: CreditRange;
   attributes: Attribute[];
+  /** Rice's "Department:" line on the course page. Not the subject code: FREN and ITAL share one department. */
+  department?: string;
   /** From Rice's "Repeatable for Credit." sentence. */
   repeatable: boolean;
   seasonsOffered: Season[];
