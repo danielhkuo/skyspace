@@ -48,6 +48,7 @@ import {sectionIdentity} from './labels';
 import {OtherSections} from './OtherSections';
 import {SectionDetailBody} from './SectionDetailBody';
 import {useAddToPlan} from './useAddToPlan';
+import {useAddToSchedule} from '../schedule/useAddToSchedule';
 import {useCatalogData} from './useCatalogData';
 import {useFavorites} from './useFavorites';
 
@@ -71,6 +72,7 @@ type Results = {key: string; rows: CourseSection[]; page: SectionPage};
 export function CatalogPage() {
   const {data, failed, retry, setPlan} = useCatalogData();
   const addToPlan = useAddToPlan(data?.bundle, setPlan);
+  const addToSchedule = useAddToSchedule(data?.term.code);
   const favorites = useFavorites();
   const [params, setParams] = useSearchParams();
   const desktop = useViewportWidth() >= DESKTOP_WIDTH;
@@ -333,7 +335,14 @@ export function CatalogPage() {
                     creditRangeMin(selected.listing.credits),
                   )
           }
+          onAddToSchedule={
+            addToSchedule.add === undefined ||
+            selected.listing.term !== data.term.code
+              ? undefined
+              : () => addToSchedule.add?.(selected)
+          }
           placedIn={fills?.placedIn}
+          scheduledIn={addToSchedule.scheduledIn(selected)}
           size={desktop ? 'sm' : 'md'}
         >
           {siblings.length > 1 && (

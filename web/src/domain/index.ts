@@ -7,3 +7,4 @@ export * from './report';
 export * from './term';
 export * from './section';
 export * from './catalog';
+export * from './schedule';

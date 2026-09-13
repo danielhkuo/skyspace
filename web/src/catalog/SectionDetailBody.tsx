@@ -32,8 +32,11 @@ type SectionDetailBodyProps = {
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onAddToPlan: (() => void) | undefined;
+  onAddToSchedule: (() => void) | undefined;
   /** "Fall 2024" when the course is already on the board. */
   placedIn: string | undefined;
+  /** "Schedule A" when the course is a candidate there. */
+  scheduledIn: string | undefined;
   /** Rendered after the description: the course's other sections and the fills card. */
   children?: ReactNode;
   /** Control size; the tablet artboard uses `md`. */
@@ -50,7 +53,9 @@ export function SectionDetailBody({
   isFavorite,
   onToggleFavorite,
   onAddToPlan,
+  onAddToSchedule,
   placedIn,
+  scheduledIn,
   children,
   size,
 }: SectionDetailBodyProps) {
@@ -104,8 +109,13 @@ export function SectionDetailBody({
           label="Add to schedule"
           variant="primary"
           size={size}
-          isDisabled
-          tooltip="The Schedule page is not built yet"
+          isDisabled={onAddToSchedule === undefined}
+          tooltip={
+            scheduledIn === undefined
+              ? undefined
+              : `Picks this section in ${scheduledIn}`
+          }
+          onClick={onAddToSchedule}
         />
         <Button
           label="Add to plan"
@@ -124,6 +134,14 @@ export function SectionDetailBody({
           onClick={onToggleFavorite}
         />
       </Stack>
+      {scheduledIn !== undefined && (
+        <Text type="supporting">
+          In {scheduledIn} ·{' '}
+          <Link href="/schedule" type="inherit">
+            open
+          </Link>
+        </Text>
+      )}
       {placedIn !== undefined && (
         <Text type="supporting">
           In your plan · {placedIn} ·{' '}

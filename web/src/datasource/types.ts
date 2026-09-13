@@ -15,9 +15,11 @@ import type {
   Program,
   ProgramId,
   RequirementId,
+  ScheduleId,
   Section,
   SectionPage,
   TermCode,
+  TermSchedule,
 } from '../domain';
 
 export type DataSource = {
@@ -39,11 +41,24 @@ export type DataSource = {
   /** One page of sections: `GET /api/v1/sections` (`06-api.md`). Never the whole term. */
   searchSections(term: TermCode, query: CatalogQuery): Promise<SectionPage>;
   getSection(term: TermCode, crn: Crn): Promise<Section | undefined>;
+  /** Many at once: the schedule grid always asks for many, and `/seats` is batch-only (`06-api.md`). Unknown CRNs are left out. */
+  getSections(term: TermCode, crns: Crn[]): Promise<Section[]>;
   /** Every section of one course in the term, for the pane's "All sections". */
   courseSections(term: TermCode, code: CourseCode): Promise<Section[]>;
   /** Reference lists the rail offers: Rice's `SUBJECTS` and `SESSIONS`. */
   listSubjects(term: TermCode): Promise<string[]>;
   listPartsOfTerm(term: TermCode): Promise<string[]>;
+  /**
+   * The term's schedules and which one the page opens. A guest's live in this
+   * browser (`06-api.md` "Guest mode"); the demo keeps everyone's there.
+   */
+  loadSchedules(
+    term: TermCode,
+  ): Promise<{schedules: TermSchedule[]; current?: ScheduleId}>;
+  /** One replaced document; a new id creates. */
+  saveSchedule(schedule: TermSchedule): Promise<void>;
+  deleteSchedule(id: ScheduleId): Promise<void>;
+  setCurrentSchedule(term: TermCode, id: ScheduleId): Promise<void>;
   /** "Report this requirement": a person reviews every report (`06-api.md`). */
   reportRequirement(report: RequirementReport): Promise<void>;
   /** Every program a plan may name, for the pickers. The demo has three. */

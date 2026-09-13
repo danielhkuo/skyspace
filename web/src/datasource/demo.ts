@@ -14,9 +14,11 @@ import {
   type PlanBundle,
   type PlanId,
   type Program,
+  type ScheduleId,
   type Section,
   type SectionPage,
   type TermCode,
+  type TermSchedule,
 } from '../domain';
 import {
   bundle as fixtureBundle,
@@ -28,6 +30,7 @@ import {
   FALL_2026_LABEL,
   fallSections,
 } from '../fixtures/fallSections';
+import {fallSchedule} from '../fixtures/fallSchedule';
 import type {DataSource, RequirementReport, Session} from './types';
 
 const PLAN_KEY = 'skyspace.demo.plan.v2.';
@@ -35,6 +38,8 @@ const FAVORITES_KEY = 'skyspace.demo.favorites.v1';
 const REPORTS_KEY = 'skyspace.demo.requirement-reports.v1';
 const CURRENT_PLAN_KEY = 'skyspace.demo.current-plan.v2';
 const SESSION_KEY = 'skyspace.demo.session.v1';
+const SCHEDULES_KEY = 'skyspace.demo.schedules.v1';
+const CURRENT_SCHEDULE_KEY = 'skyspace.demo.current-schedule.v1.';
 
 function read<T>(key: string, isValid: (v: unknown) => v is T): T | undefined {
   try {
@@ -112,6 +117,30 @@ function nameFromEmail(email: string): string {
   return email.split('@')[0] ?? email;
 }
 
+const isCandidate = (v: unknown): boolean =>
+  isRecord(v) &&
+  isRecord(v['course']) &&
+  Array.isArray(v['sections']) &&
+  typeof v['visible'] === 'boolean' &&
+  typeof v['colour'] === 'number';
+
+const isSchedule = (v: unknown): v is TermSchedule =>
+  isRecord(v) &&
+  typeof v['id'] === 'string' &&
+  typeof v['name'] === 'string' &&
+  typeof v['term'] === 'string' &&
+  Array.isArray(v['candidates']) &&
+  v['candidates'].every(isCandidate) &&
+  Array.isArray(v['busy']);
+
+const isSchedules = (v: unknown): v is TermSchedule[] =>
+  Array.isArray(v) && v.every(isSchedule);
+
+/** Every stored schedule, or the fixture's one when nothing was ever saved. */
+function readSchedules(): TermSchedule[] {
+  return read(SCHEDULES_KEY, isSchedules) ?? [fallSchedule];
+}
+
 const isCourseCodes = (v: unknown): v is CourseCode[] =>
   Array.isArray(v) &&
   v.every(c => typeof c === 'object' && c !== null && 'subject' in c);
@@ -144,6 +173,8 @@ export const demoDataSource: DataSource = {
     }
     remove(CURRENT_PLAN_KEY);
     remove(FAVORITES_KEY);
+    remove(SCHEDULES_KEY);
+    remove(CURRENT_SCHEDULE_KEY + FALL_2026);
     // The key an earlier build used; harmless to clear.
     remove(`skyspace.plan.v1.${id}`);
   },
@@ -196,6 +227,48 @@ export const demoDataSource: DataSource = {
       : undefined;
   },
 
+  async getSections(term: TermCode, crns: Crn[]): Promise<Section[]> {
+    if (term !== FALL_2026) {
+      return [];
+    }
+    const wanted = new Set(crns);
+    return fallSections.filter(s => wanted.has(s.listing.crn));
+  },
+
+  async loadSchedules(term: TermCode) {
+    const schedules = readSchedules().filter(s => s.term === term);
+    const current = read(
+      CURRENT_SCHEDULE_KEY + term,
+      (v): v is ScheduleId => typeof v === 'string',
+    );
+    return {
+      schedules,
+      current: schedules.some(s => s.id === current) ? current : undefined,
+    };
+  },
+
+  async saveSchedule(schedule: TermSchedule): Promise<void> {
+    const all = readSchedules();
+    const at = all.findIndex(s => s.id === schedule.id);
+    write(
+      SCHEDULES_KEY,
+      at === -1
+        ? [...all, schedule]
+        : all.map(s => (s.id === schedule.id ? schedule : s)),
+    );
+  },
+
+  async deleteSchedule(id: ScheduleId): Promise<void> {
+    write(
+      SCHEDULES_KEY,
+      readSchedules().filter(s => s.id !== id),
+    );
+  },
+
+  async setCurrentSchedule(term: TermCode, id: ScheduleId): Promise<void> {
+    write(CURRENT_SCHEDULE_KEY + term, id);
+  },
+
   async courseSections(term: TermCode, code: CourseCode): Promise<Section[]> {
     return term === FALL_2026
       ? fallSections.filter(s => sameCourse(s.listing.code, code))
@@ -231,6 +304,7 @@ export const demoDataSource: DataSource = {
   async deleteAccount(): Promise<void> {
     await demoDataSource.resetPlan(fixtureBundle.plan.id);
     remove(REPORTS_KEY);
+    remove(SCHEDULES_KEY);
     remove(SESSION_KEY);
   },
 

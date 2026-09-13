@@ -11,6 +11,8 @@ export type EntryId = Branded<string, 'EntryId'>;
 export type RequirementId = Branded<string, 'RequirementId'>;
 export type ProgramId = Branded<string, 'ProgramId'>;
 export type CollectionId = Branded<string, 'CollectionId'>;
+export type ScheduleId = Branded<string, 'ScheduleId'>;
+export type BusyId = Branded<string, 'BusyId'>;
 
 /** The browser mints ids for unsaved cards (`04-planning.md`); the store mints the rest. */
 export function newEntryId(): EntryId {
@@ -19,4 +21,13 @@ export function newEntryId(): EntryId {
 
 export function newTermId(): TermId {
   return crypto.randomUUID() as TermId;
+}
+
+/** A schedule is minted in the browser too: guests build them before any sign-in. */
+export function newScheduleId(): ScheduleId {
+  return crypto.randomUUID() as ScheduleId;
+}
+
+export function newBusyId(): BusyId {
+  return crypto.randomUUID() as BusyId;
 }

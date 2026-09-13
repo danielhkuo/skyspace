@@ -29,11 +29,18 @@ export function SignInPage() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [schedulesHeld, setSchedulesHeld] = useState<
+    {count: number; term: string} | undefined
+  >(undefined);
   const [keepFavorites, setKeepFavorites] = useState(true);
   const [resendIn, setResendIn] = useState(0);
 
   useEffect(() => {
     void dataSource.loadFavorites().then(f => setFavoritesCount(f.length));
+    void dataSource.currentTerm().then(async term => {
+      const {schedules} = await dataSource.loadSchedules(term.code);
+      setSchedulesHeld({count: schedules.length, term: term.label});
+    });
   }, []);
   useEffect(() => {
     if (resendIn <= 0) {
@@ -196,6 +203,25 @@ export function SignInPage() {
                       </Text>
                       <Text type="supporting">
                         {favoritesCount} course{favoritesCount === 1 ? '' : 's'}
+                      </Text>
+                    </Stack>
+                  </Stack>
+                  <Stack
+                    direction="horizontal"
+                    width="100%"
+                    padding={2}
+                    gap={1.5}
+                    vAlign="start"
+                    style={rowDivider}
+                  >
+                    <Stack gap={0} align="start">
+                      <Text size="sm" weight="medium">
+                        Schedules
+                      </Text>
+                      <Text type="supporting">
+                        {schedulesHeld === undefined
+                          ? 'Counting…'
+                          : `${schedulesHeld.count} for ${schedulesHeld.term}, kept as they are`}
                       </Text>
                     </Stack>
                   </Stack>
