@@ -4,7 +4,7 @@ import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Icon} from '@astryxdesign/core/Icon';
 import {IconButton} from '@astryxdesign/core/IconButton';
-import {Link} from '@astryxdesign/core/Link';
+
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Switch} from '@astryxdesign/core/Switch';
 import {Text} from '@astryxdesign/core/Text';
@@ -71,6 +71,25 @@ export function FilterRail({
 
   return (
     <Stack width="100%" gap={3} padding={3} align="stretch">
+      <Stack
+        direction="horizontal"
+        width="100%"
+        hAlign={showSearch ? 'between' : 'end'}
+        vAlign="center"
+      >
+        {showSearch && (
+          <Text as="h2" weight="semibold" size="lg">
+            Filters
+          </Text>
+        )}
+        <Button
+          label="Clear all"
+          variant="ghost"
+          size="sm"
+          isDisabled={activeFilterCount(query) === 0 && query.q === ''}
+          onClick={() => onChange({...DEFAULT_QUERY})}
+        />
+      </Stack>
       {showSearch && (
         <>
           <SearchBox query={query} onChange={onChange} size={size} />
@@ -295,29 +314,9 @@ export function FilterRail({
         {hiddenUnscheduled > 0 && (
           <Text type="supporting">
             Hidden: {hiddenUnscheduled} section
-            {hiddenUnscheduled === 1 ? '' : 's'} with no meeting time ·{' '}
-            <Link
-              href="#"
-              type="inherit"
-              onClick={e => {
-                e.preventDefault();
-                onChange({scheduledOnly: false});
-              }}
-            >
-              show
-            </Link>
+            {hiddenUnscheduled === 1 ? '' : 's'} with no meeting time.
           </Text>
         )}
-      </Stack>
-
-      <Stack direction="horizontal" width="100%" hAlign="start">
-        <Button
-          label="Clear all"
-          variant="ghost"
-          size="sm"
-          isDisabled={activeFilterCount(query) === 0 && query.q === ''}
-          onClick={() => onChange({...DEFAULT_QUERY})}
-        />
       </Stack>
     </Stack>
   );

@@ -76,7 +76,7 @@ export function CatalogPage() {
   const filtersResizable = useResizable({
     defaultSize: 320,
     minSize: 320,
-    maxSize: 480,
+    maxSize: 320,
     collapsible: true,
   });
 
@@ -88,11 +88,15 @@ export function CatalogPage() {
 
   const [filtersOpenMobile, setFiltersOpenMobile] = useState(false);
   const {
-    query,
+    query: rawQuery,
     crn,
     term: urlTerm,
   } = useMemo(() => parseCatalogUrl(params), [params]);
-  const queryKey = serializeCatalogUrl({query}).toString();
+  const queryKey = serializeCatalogUrl({query: rawQuery}).toString();
+  // Stabilize the query object reference so that changing the CRN (which does not affect queryKey)
+  // does not cause the search effect to fire again and issue redundant network requests.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const query = useMemo(() => rawQuery, [queryKey]);
 
   const patch = useCallback(
     (change: UrlPatch, mode: 'replace' | 'push' = 'replace') => {
@@ -336,7 +340,16 @@ export function CatalogPage() {
     ) : null;
 
   const detail =
-    selected === undefined || data === undefined ? undefined : (
+    crn === undefined || data === undefined ? undefined : selected ===
+      undefined ? (
+      <Stack width="100%" gap={3} padding={3} align="start">
+        <Stack gap={1} width="100%">
+          <Skeleton width="30%" height={20} />
+          <Skeleton width="80%" height={32} />
+        </Stack>
+        <Skeleton width="100%" height={200} />
+      </Stack>
+    ) : (
       <Stack width="100%" gap={3} padding={3} align="start">
         <Stack
           direction="horizontal"
@@ -483,17 +496,11 @@ export function CatalogPage() {
           <>
             <LayoutPanel
               resizable={filtersResizable.props}
-              hasDivider={false}
+              hasDivider
               padding={0}
             >
               {!filtersResizable.isCollapsed && rail}
             </LayoutPanel>
-            <ResizeHandle
-              direction="horizontal"
-              hasDivider
-              resizable={filtersResizable.props}
-              label="Resize filters"
-            />
           </>
         }
         content={
