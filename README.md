@@ -17,7 +17,21 @@ engine, also compiled to WebAssembly by `skyspace-wasm`), `skyspace-parse`
 `skyspace-cli` (the `skyspace` operator binary). The design is in the local
 `Docs/tech/` files.
 
-Run the stack:
+## Running it
+
+One command runs everything (Postgres, migrations, API, pull jobs, Caddy):
+
+```bash
+cp deploy/.env.template deploy/.env   # fill in domain, password, contact email
+docker compose -f deploy/compose.yml up -d --build
+```
+
+What that starts, and the day-two commands, are under "Deploying" below.
+
+## Developing the backend
+
+Working on a crate is faster outside the image: only Postgres runs in
+Docker, and `cargo run` recompiles just what changed.
 
 ```bash
 docker run -d --name skyspace-pg -e POSTGRES_PASSWORD=skyspace -p 55432:5432 postgres:16-alpine
