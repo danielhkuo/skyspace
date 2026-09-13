@@ -151,6 +151,7 @@ pub struct PlanBundle {
     /// picks by catalog year.
     pub programs: Vec<Program>,
     /// Facts for the plan's courses.
+    #[cfg_attr(feature = "ts", ts(as = "CourseFactsWire"))]
     pub facts: CourseFacts,
     /// One row per course in the plan.
     pub prerequisites: Vec<Prerequisite>,
