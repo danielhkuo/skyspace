@@ -2,6 +2,7 @@ import {Banner} from '@astryxdesign/core/Banner';
 import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
+import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
 import {MoreMenu} from '@astryxdesign/core/MoreMenu';
 import {Text} from '@astryxdesign/core/Text';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
@@ -429,58 +430,64 @@ function PlanBoardPage({
   );
 
   return (
-    <Stack width="100%" height="100%" gap={0}>
+    <>
       <VisuallyHidden as="div" aria-live="polite">
         {announcement}
       </VisuallyHidden>
-      <PlanHeader
-        plan={bundle.plan}
-        programs={bundle.programs}
-        report={report}
-        warningCount={report.warnings.filter(w => !isRecordedClaim(w)).length}
-        onToggleWarnings={() => setShowWarnings(v => !v)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        extraActions={
-          desktop ? undefined : (
-            <>
-              <Button
-                label="Favorites"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSheet('saved')}
-              />
-              <Button
-                label="Requirements"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSheet('requirements')}
-              />
-            </>
-          )
+      <Layout
+        header={
+          <PlanHeader
+            plan={bundle.plan}
+            programs={bundle.programs}
+            report={report}
+            warningCount={
+              report.warnings.filter(w => !isRecordedClaim(w)).length
+            }
+            onToggleWarnings={() => setShowWarnings(v => !v)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            extraActions={
+              desktop ? undefined : (
+                <>
+                  <Button
+                    label="Favorites"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setSheet('saved')}
+                  />
+                  <Button
+                    label="Requirements"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setSheet('requirements')}
+                  />
+                </>
+              )
+            }
+          />
         }
-      />
-      <StackItem size="fill">
-        <Stack
-          direction={desktop ? 'horizontal' : 'vertical'}
-          width="100%"
-          height="100%"
-          gap={0}
-          align="stretch"
-        >
-          {desktop && (
-            <FavoritesTray
-              bundle={bundle}
-              favorites={favorites}
-              isOpen={trayOpen}
-              onToggle={() => setTrayOpen(v => !v)}
-              isDropHovered={hovered?.kind === 'tray'}
-              isDragging={dragging && drag.state?.payload.kind === 'card'}
-              onCoursePointerDown={drag.onCoursePointerDown}
-              registerTarget={drag.registerTarget}
-              onAddTo={addTo}
-            />
-          )}
-          <StackItem size="fill">
+        start={
+          desktop ? (
+            <LayoutPanel
+              width={trayOpen ? 280 : 40}
+              hasDivider
+              isScrollable={false}
+            >
+              <FavoritesTray
+                bundle={bundle}
+                favorites={favorites}
+                isOpen={trayOpen}
+                onToggle={() => setTrayOpen(v => !v)}
+                isDropHovered={hovered?.kind === 'tray'}
+                isDragging={dragging && drag.state?.payload.kind === 'card'}
+                onCoursePointerDown={drag.onCoursePointerDown}
+                registerTarget={drag.registerTarget}
+                onAddTo={addTo}
+              />
+            </LayoutPanel>
+          ) : undefined
+        }
+        content={
+          <LayoutContent padding={0} isScrollable={false}>
             <Stack width="100%" height="100%" gap={0}>
               <StackItem size="fill" isScrollable>
                 <Board
@@ -537,9 +544,11 @@ function PlanBoardPage({
                 />
               </StackItem>
             </Stack>
-          </StackItem>
-          {desktop && (
-            <Stack width={SIDEBAR_WIDTH} height="100%">
+          </LayoutContent>
+        }
+        end={
+          desktop ? (
+            <LayoutPanel width={SIDEBAR_WIDTH} hasDivider isScrollable={false}>
               <RequirementsSidebar
                 plan={bundle.plan}
                 programs={bundle.programs}
@@ -553,157 +562,158 @@ function PlanBoardPage({
                 }
                 onEditCourse={setEditingCourse}
               />
-            </Stack>
-          )}
-        </Stack>
-      </StackItem>
-      {!desktop && (
-        <BottomSheet
-          isOpen={sheet === 'saved'}
-          onOpenChange={open => setSheet(open ? 'saved' : undefined)}
-          label="Favorites"
-          height="tall"
-        >
-          <FavoritesTray
-            bundle={bundle}
-            favorites={favorites}
-            isOpen
-            onToggle={() => setSheet(undefined)}
-            isDropHovered={false}
-            isDragging={false}
-            onCoursePointerDown={drag.onCoursePointerDown}
-            registerTarget={() => undefined}
-            onAddTo={course => {
-              addTo(course);
-              setSheet(undefined);
-            }}
-          />
-        </BottomSheet>
-      )}
-      {!desktop && (
-        <BottomSheet
-          isOpen={sheet === 'requirements'}
-          onOpenChange={open => setSheet(open ? 'requirements' : undefined)}
-          label="Requirements"
-          height="tall"
-        >
-          <RequirementsSidebar
-            plan={bundle.plan}
-            programs={bundle.programs}
-            report={report}
-            dispatch={dispatch}
-            renderSuggestions={renderSuggestions}
-            onOpenSelfCheck={(program, requirement) =>
-              setSelfCheck({program, requirement})
-            }
-            onEditCourse={setEditingCourse}
-          />
-        </BottomSheet>
-      )}
-      <AddCourseDialog
-        isOpen={addingTo !== undefined}
-        bundle={bundle}
-        termLabel={
-          addingToTerm === undefined
-            ? ''
-            : shortTermLabel(addingToTerm.position)
+            </LayoutPanel>
+          ) : undefined
         }
-        onClose={() => setAddingTo(undefined)}
-        onPick={(course, credits) => {
-          if (addingTo !== undefined) {
-            drag.dropOn(
-              {kind: 'course', course, credits},
-              {kind: 'term', term: addingTo, slot: Number.MAX_SAFE_INTEGER},
-            );
-          }
-        }}
-      />
-      <EditTermDialog
-        term={editing}
-        onClose={() => setEditingTerm(undefined)}
-        onSave={(kind, label) => {
-          if (editing !== undefined) {
-            dispatch({
-              type: 'setTerm',
-              term: editing.id,
-              kind,
-              label,
-              facts: bundle.facts,
-            });
-          }
-          setEditingTerm(undefined);
-        }}
-      />
-      {(() => {
-        if (editingCourse === undefined) {
-          return null;
-        }
-        const located = locateEntry(bundle.plan, editingCourse);
-        if (located === undefined) {
-          return null;
-        }
-        return (
-          <EditCourseDialog
-            entry={editingCourse}
-            card={located.where === 'rice' ? located.course : located.card}
-            bundle={bundle}
-            dispatch={dispatch}
-            onClose={() => setEditingCourse(undefined)}
-          />
-        );
-      })()}
-      {settingsOpen && (
-        <PlanSettingsDialog
+      >
+        {!desktop && (
+          <BottomSheet
+            isOpen={sheet === 'saved'}
+            onOpenChange={open => setSheet(open ? 'saved' : undefined)}
+            label="Favorites"
+            height="tall"
+          >
+            <FavoritesTray
+              bundle={bundle}
+              favorites={favorites}
+              isOpen
+              onToggle={() => setSheet(undefined)}
+              isDropHovered={false}
+              isDragging={false}
+              onCoursePointerDown={drag.onCoursePointerDown}
+              registerTarget={() => undefined}
+              onAddTo={course => {
+                addTo(course);
+                setSheet(undefined);
+              }}
+            />
+          </BottomSheet>
+        )}
+        {!desktop && (
+          <BottomSheet
+            isOpen={sheet === 'requirements'}
+            onOpenChange={open => setSheet(open ? 'requirements' : undefined)}
+            label="Requirements"
+            height="tall"
+          >
+            <RequirementsSidebar
+              plan={bundle.plan}
+              programs={bundle.programs}
+              report={report}
+              dispatch={dispatch}
+              renderSuggestions={renderSuggestions}
+              onOpenSelfCheck={(program, requirement) =>
+                setSelfCheck({program, requirement})
+              }
+              onEditCourse={setEditingCourse}
+            />
+          </BottomSheet>
+        )}
+        <AddCourseDialog
+          isOpen={addingTo !== undefined}
           bundle={bundle}
-          available={available}
-          dispatch={dispatch}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
-      {selfCheck !== undefined && (
-        <SelfCheckDialog
-          program={selfCheck.program}
-          requirement={selfCheck.requirement}
-          existing={bundle.plan.selfChecks.find(
-            s => s.requirement === selfCheck.requirement.requirement,
-          )}
-          dispatch={dispatch}
-          onClose={() => setSelfCheck(undefined)}
-        />
-      )}
-      <TermPickerDialog
-        isOpen={picking !== undefined}
-        course={picking?.course}
-        credits={picking?.credits ?? 0}
-        bundle={bundle}
-        report={report}
-        onClose={() => setPicking(undefined)}
-        onPick={term => {
-          if (picking !== undefined) {
-            drag.dropOn(
-              {
-                kind: 'course',
-                course: picking.course,
-                credits: picking.credits,
-              },
-              {kind: 'term', term, slot: Number.MAX_SAFE_INTEGER},
-            );
+          termLabel={
+            addingToTerm === undefined
+              ? ''
+              : shortTermLabel(addingToTerm.position)
           }
-        }}
-      />
-      {drag.state !== undefined && (
-        <DragGhost
-          drag={drag.state}
-          note={
-            liftedFrom === undefined
-              ? drag.state.payload.kind === 'course' &&
-                drag.state.payload.fills !== undefined
-                ? 'fills this requirement'
-                : 'from Saved'
-              : `lifted from ${shortTermLabel(liftedFrom.position)}`
-          }
+          onClose={() => setAddingTo(undefined)}
+          onPick={(course, credits) => {
+            if (addingTo !== undefined) {
+              drag.dropOn(
+                {kind: 'course', course, credits},
+                {kind: 'term', term: addingTo, slot: Number.MAX_SAFE_INTEGER},
+              );
+            }
+          }}
         />
-      )}
-    </Stack>
+        <EditTermDialog
+          term={editing}
+          onClose={() => setEditingTerm(undefined)}
+          onSave={(kind, label) => {
+            if (editing !== undefined) {
+              dispatch({
+                type: 'setTerm',
+                term: editing.id,
+                kind,
+                label,
+                facts: bundle.facts,
+              });
+            }
+            setEditingTerm(undefined);
+          }}
+        />
+        {(() => {
+          if (editingCourse === undefined) {
+            return null;
+          }
+          const located = locateEntry(bundle.plan, editingCourse);
+          if (located === undefined) {
+            return null;
+          }
+          return (
+            <EditCourseDialog
+              entry={editingCourse}
+              card={located.where === 'rice' ? located.course : located.card}
+              bundle={bundle}
+              dispatch={dispatch}
+              onClose={() => setEditingCourse(undefined)}
+            />
+          );
+        })()}
+        {settingsOpen && (
+          <PlanSettingsDialog
+            bundle={bundle}
+            available={available}
+            dispatch={dispatch}
+            onClose={() => setSettingsOpen(false)}
+          />
+        )}
+        {selfCheck !== undefined && (
+          <SelfCheckDialog
+            program={selfCheck.program}
+            requirement={selfCheck.requirement}
+            existing={bundle.plan.selfChecks.find(
+              s => s.requirement === selfCheck.requirement.requirement,
+            )}
+            dispatch={dispatch}
+            onClose={() => setSelfCheck(undefined)}
+          />
+        )}
+        <TermPickerDialog
+          isOpen={picking !== undefined}
+          course={picking?.course}
+          credits={picking?.credits ?? 0}
+          bundle={bundle}
+          report={report}
+          onClose={() => setPicking(undefined)}
+          onPick={term => {
+            if (picking !== undefined) {
+              drag.dropOn(
+                {
+                  kind: 'course',
+                  course: picking.course,
+                  credits: picking.credits,
+                },
+                {kind: 'term', term, slot: Number.MAX_SAFE_INTEGER},
+              );
+            }
+          }}
+        />
+        {drag.state !== undefined && (
+          <DragGhost
+            drag={drag.state}
+            note={
+              liftedFrom === undefined
+                ? drag.state.payload.kind === 'course' &&
+                  drag.state.payload.fills !== undefined
+                  ? 'fills this requirement'
+                  : 'from Saved'
+                : `lifted from ${shortTermLabel(liftedFrom.position)}`
+            }
+          />
+        )}
+      </Layout>
+    </>
   );
 }

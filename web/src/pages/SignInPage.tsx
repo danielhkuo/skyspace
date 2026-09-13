@@ -1,5 +1,4 @@
 import {Button} from '@astryxdesign/core/Button';
-import {Card} from '@astryxdesign/core/Card';
 import {CheckboxInput} from '@astryxdesign/core/CheckboxInput';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Link} from '@astryxdesign/core/Link';
@@ -181,7 +180,7 @@ export function SignInPage() {
               <Text as="h1" size="xl" weight="semibold">
                 You built these before signing in
               </Text>
-              <Card padding={0} width="100%">
+              <Section variant="section" padding={0} width="100%">
                 <Stack width="100%" gap={0}>
                   <Stack
                     direction="horizontal"
@@ -243,7 +242,7 @@ export function SignInPage() {
                     </Stack>
                   </Stack>
                 </Stack>
-              </Card>
+              </Section>
               <Button
                 label="Keep them on my account"
                 variant="primary"

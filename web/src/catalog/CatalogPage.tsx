@@ -6,6 +6,8 @@ import {EmptyState} from '@astryxdesign/core/EmptyState';
 import {Icon} from '@astryxdesign/core/Icon';
 import {Link} from '@astryxdesign/core/Link';
 import {Section} from '@astryxdesign/core/Section';
+import {Layout, LayoutContent, LayoutPanel} from '@astryxdesign/core/Layout';
+import {useResizable, ResizeHandle} from '@astryxdesign/core/Resizable';
 import {Skeleton} from '@astryxdesign/core/Skeleton';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
@@ -52,13 +54,7 @@ import {useAddToSchedule} from '../schedule/useAddToSchedule';
 import {useCatalogData} from './useCatalogData';
 import {useFavorites} from './useFavorites';
 
-const RAIL_WIDTH = 240;
-const PANE_WIDTH = 480;
-/** The pane scrolls down only; anything wider than it is a bug, not a scrollbar. */
 const clipX: CSSProperties = {overflowX: 'hidden'};
-/** Rail and pane keep their width; the results column is what gives. */
-const fixedColumn: CSSProperties = {flexShrink: 0};
-const givingColumn: CSSProperties = {minWidth: 0};
 const SORTS: SortKey[] = ['relevance', 'courseNumber', 'credits', 'openSeats'];
 
 type UrlPatch = Partial<CatalogQuery> & {
@@ -76,7 +72,21 @@ export function CatalogPage() {
   const favorites = useFavorites();
   const [params, setParams] = useSearchParams();
   const desktop = useViewportWidth() >= DESKTOP_WIDTH;
-  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const filtersResizable = useResizable({
+    defaultSize: 320,
+    minSize: 320,
+    maxSize: 480,
+    collapsible: true,
+  });
+
+  const detailResizable = useResizable({
+    defaultSize: 480,
+    minSize: 400,
+    maxSize: 640,
+  });
+
+  const [filtersOpenMobile, setFiltersOpenMobile] = useState(false);
   const {
     query,
     crn,
@@ -194,7 +204,7 @@ export function CatalogPage() {
       subjects={subjects}
       partsOfTerm={partsOfTerm}
       hiddenUnscheduled={result?.page.unscheduledHidden ?? 0}
-      showSearch={desktop}
+      showSearch={false}
       size={desktop ? 'sm' : 'md'}
     />
   );
@@ -207,21 +217,48 @@ export function CatalogPage() {
       hAlign="between"
       paddingInline={3}
       paddingBlock={1.5}
+      gap={2}
     >
-      <Stack direction="horizontal" gap={1} vAlign="center">
-        {result === undefined ? (
-          <Skeleton width={120} height={20} />
-        ) : (
-          <>
-            <Text weight="medium" size="sm">
-              {result.page.total} section{result.page.total === 1 ? '' : 's'}
-            </Text>
-            <Text type="supporting">
-              · {result.page.courseCount} course
-              {result.page.courseCount === 1 ? '' : 's'}
-            </Text>
-          </>
+      <Stack direction="horizontal" gap={2} vAlign="center">
+        {desktop && (
+          <Stack direction="horizontal" gap={1} vAlign="center">
+            <Button
+              label={
+                activeFilterCount(query) === 0
+                  ? 'Filters'
+                  : `Filters (${activeFilterCount(query)})`
+              }
+              variant={filtersResizable.isCollapsed ? 'secondary' : 'secondary'}
+              size="sm"
+              icon={<Icon icon="funnel" size="sm" />}
+              onClick={() => {
+                if (filtersResizable.isCollapsed) {
+                  filtersResizable.expand();
+                } else {
+                  filtersResizable.collapse();
+                }
+              }}
+            />
+            <div style={{width: 240}}>
+              <SearchBox query={query} onChange={patch} size="sm" />
+            </div>
+          </Stack>
         )}
+        <Stack direction="horizontal" gap={1} vAlign="center">
+          {result === undefined ? (
+            <Skeleton width={120} height={20} />
+          ) : (
+            <>
+              <Text weight="medium" size="sm">
+                {result.page.total} section{result.page.total === 1 ? '' : 's'}
+              </Text>
+              <Text type="supporting">
+                · {result.page.courseCount} course
+                {result.page.courseCount === 1 ? '' : 's'}
+              </Text>
+            </>
+          )}
+        </Stack>
       </Stack>
       <Stack direction="horizontal" gap={1} vAlign="center">
         <Text type="supporting">Sort</Text>
@@ -386,7 +423,7 @@ export function CatalogPage() {
               variant="secondary"
               size="md"
               icon={<Icon icon="funnel" size="sm" />}
-              onClick={() => setFiltersOpen(true)}
+              onClick={() => setFiltersOpenMobile(true)}
             />
           </Stack>
         </Section>
@@ -401,8 +438,8 @@ export function CatalogPage() {
           onRemove={favorites.remove}
         />
         <BottomSheet
-          isOpen={filtersOpen}
-          onOpenChange={setFiltersOpen}
+          isOpen={filtersOpenMobile}
+          onOpenChange={setFiltersOpenMobile}
           label="Filters"
           height="tall"
         >
@@ -440,62 +477,64 @@ export function CatalogPage() {
   }
 
   return (
-    <Stack
-      direction="horizontal"
-      width="100%"
-      height="100%"
-      gap={0}
-      align="stretch"
-    >
-      <Section
-        variant="section"
-        dividers={['end']}
-        padding={0}
-        width={RAIL_WIDTH}
-        height="100%"
-        style={fixedColumn}
-      >
-        <Stack width="100%" height="100%" isScrollable>
-          {rail}
-        </Stack>
-      </Section>
-
-      <StackItem size="fill" style={givingColumn}>
-        <Stack width="100%" height="100%" gap={0}>
-          {countsRow}
-          <Divider />
-          <StackItem size="fill" isScrollable>
-            {resultsView}
-            {loadMoreRow}
-          </StackItem>
-          <FavoritesFooter
-            favorites={favorites.favorites ?? []}
-            onRemove={favorites.remove}
-          />
-        </Stack>
-      </StackItem>
-
-      <Section
-        variant="section"
-        dividers={['start']}
-        padding={0}
-        width={PANE_WIDTH}
-        height="100%"
-        style={fixedColumn}
-      >
-        <Stack width="100%" height="100%" isScrollable style={clipX}>
-          {detail ?? (
-            <Stack width="100%" height="100%" vAlign="center" padding={3}>
-              <EmptyState
-                title="Pick a section"
-                description="Its seats, prerequisites and description open here."
-                isCompact
+    <>
+      <Layout
+        start={
+          <>
+            <LayoutPanel
+              resizable={filtersResizable.props}
+              hasDivider={false}
+              padding={0}
+            >
+              {!filtersResizable.isCollapsed && rail}
+            </LayoutPanel>
+            <ResizeHandle
+              direction="horizontal"
+              hasDivider
+              resizable={filtersResizable.props}
+              label="Resize filters"
+            />
+          </>
+        }
+        content={
+          <LayoutContent isScrollable={false} padding={0}>
+            <Stack width="100%" height="100%" gap={0}>
+              {countsRow}
+              <Divider />
+              <StackItem size="fill" isScrollable>
+                {resultsView}
+                {loadMoreRow}
+              </StackItem>
+              <FavoritesFooter
+                favorites={favorites.favorites ?? []}
+                onRemove={favorites.remove}
               />
             </Stack>
-          )}
-        </Stack>
-      </Section>
+          </LayoutContent>
+        }
+        end={
+          detail !== undefined ? (
+            <>
+              <ResizeHandle
+                direction="horizontal"
+                hasDivider
+                resizable={detailResizable.props}
+                label="Resize details"
+                isReversed
+              />
+              <LayoutPanel
+                resizable={detailResizable.props}
+                hasDivider={false}
+                padding={0}
+                style={clipX}
+              >
+                {detail}
+              </LayoutPanel>
+            </>
+          ) : undefined
+        }
+      />
       {addToPlan.dialog}
-    </Stack>
+    </>
   );
 }

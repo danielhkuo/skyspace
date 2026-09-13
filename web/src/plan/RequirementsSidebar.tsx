@@ -5,7 +5,6 @@ import {Button} from '@astryxdesign/core/Button';
 import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Link} from '@astryxdesign/core/Link';
 import {ProgressBar} from '@astryxdesign/core/ProgressBar';
-import {Section} from '@astryxdesign/core/Section';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
@@ -691,78 +690,70 @@ export function RequirementsSidebar({
 }: SidebarProps) {
   return (
     <Actions.Provider value={{onOpenSelfCheck, onEditCourse}}>
-      <Section
-        variant="section"
-        dividers={['start']}
-        padding={0}
+      <Stack
         width="100%"
         height="100%"
+        gap={2}
+        padding={3}
+        isScrollable
+        style={{overflowX: 'hidden'}}
       >
-        <Stack
-          width="100%"
-          height="100%"
-          gap={2}
-          padding={3}
-          isScrollable
-          style={{overflowX: 'hidden'}}
-        >
-          <Stack width="100%" gap={0.5}>
-            <Text as="p" size="lg" weight="semibold">
-              Requirements
-            </Text>
-            <Text type="supporting">
-              Confirm with your advisor. Requirements link to the General
-              Announcements.
-            </Text>
-          </Stack>
-          {plan.programs
-            .filter(id => !report.programs.some(r => r.program === id))
-            .map(id => {
-              const program = programs.find(p => p.id === id);
-              return (
-                <Stack key={id} width="100%" gap={2}>
-                  <Divider />
-                  <Stack width="100%" gap={1.5} align="start" paddingInline={2}>
-                    <Text as="h3" type="label" weight="semibold">
-                      {program?.name ?? 'Program'}
-                    </Text>
-                    <Text size="sm">
-                      No reviewed requirements for this program yet. Your
-                      courses still count toward University requirements.
-                    </Text>
-                    <Link
-                      href="mailto:sugarlanddevs@gmail.com?subject=Skyspace%3A%20request%20a%20program"
-                      size="sm"
-                    >
-                      Request this program
-                    </Link>
-                  </Stack>
-                </Stack>
-              );
-            })}
-          {report.programs.map((programReport, i) => {
-            const program = programs.find(p => p.id === programReport.program);
-            if (program === undefined) {
-              return null;
-            }
+        <Stack width="100%" gap={0.5}>
+          <Text as="p" size="lg" weight="semibold">
+            Requirements
+          </Text>
+          <Text type="supporting">
+            Confirm with your advisor. Requirements link to the General
+            Announcements.
+          </Text>
+        </Stack>
+        {plan.programs
+          .filter(id => !report.programs.some(r => r.program === id))
+          .map(id => {
+            const program = programs.find(p => p.id === id);
             return (
-              <Stack key={program.id} width="100%" gap={2}>
+              <Stack key={id} width="100%" gap={2}>
                 <Divider />
-                <ProgramGroup
-                  plan={plan}
-                  program={program}
-                  report={programReport}
-                  dispatch={dispatch}
-                  raisedRequirements={raisedRequirements}
-                  renderSuggestions={renderSuggestions}
-                  wrapRequirement={wrapRequirement}
-                  defaultOpen={i < 2}
-                />
+                <Stack width="100%" gap={1.5} align="start" paddingInline={2}>
+                  <Text as="h3" type="label" weight="semibold">
+                    {program?.name ?? 'Program'}
+                  </Text>
+                  <Text size="sm">
+                    No reviewed requirements for this program yet. Your courses
+                    still count toward University requirements.
+                  </Text>
+                  <Link
+                    href="mailto:sugarlanddevs@gmail.com?subject=Skyspace%3A%20request%20a%20program"
+                    size="sm"
+                  >
+                    Request this program
+                  </Link>
+                </Stack>
               </Stack>
             );
           })}
-        </Stack>
-      </Section>
+        {report.programs.map((programReport, i) => {
+          const program = programs.find(p => p.id === programReport.program);
+          if (program === undefined) {
+            return null;
+          }
+          return (
+            <Stack key={program.id} width="100%" gap={2}>
+              <Divider />
+              <ProgramGroup
+                plan={plan}
+                program={program}
+                report={programReport}
+                dispatch={dispatch}
+                raisedRequirements={raisedRequirements}
+                renderSuggestions={renderSuggestions}
+                wrapRequirement={wrapRequirement}
+                defaultOpen={i < 2}
+              />
+            </Stack>
+          );
+        })}
+      </Stack>
     </Actions.Provider>
   );
 }

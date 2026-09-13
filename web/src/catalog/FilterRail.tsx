@@ -9,7 +9,7 @@ import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Switch} from '@astryxdesign/core/Switch';
 import {Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
-import {ToggleButton} from '@astryxdesign/core/ToggleButton';
+import {ToggleButton, ToggleButtonGroup} from '@astryxdesign/core/ToggleButton';
 import {Token} from '@astryxdesign/core/Token';
 import {useState} from 'react';
 
@@ -145,38 +145,46 @@ export function FilterRail({
       </Collapsible>
 
       <Collapsible trigger="Level" defaultIsOpen>
-        <Stack direction="horizontal" gap={1} paddingBlock={1.5} wrap="wrap">
-          {LEVELS.map(level => (
-            <ToggleButton
-              key={level}
-              label={level === 500 ? '500+' : String(level)}
-              size="sm"
-              isPressed={query.level.includes(level)}
-              onPressedChange={() =>
-                onChange({level: toggleIn(query.level, level)})
-              }
-            />
-          ))}
+        <Stack gap={1} paddingBlock={1.5} align="start" width="100%">
+          <ToggleButtonGroup
+            type="multiple"
+            size="sm"
+            value={query.level.map(String)}
+            onChange={selected =>
+              onChange({
+                level: LEVELS.filter(x => selected.includes(String(x))),
+              })
+            }
+            label="Level"
+          >
+            {LEVELS.map(level => (
+              <ToggleButton
+                key={level}
+                value={String(level)}
+                label={level === 500 ? '500+' : String(level)}
+              />
+            ))}
+          </ToggleButtonGroup>
         </Stack>
       </Collapsible>
 
       <Collapsible trigger="Days" defaultIsOpen>
-        <Stack gap={1} paddingBlock={1.5} align="start">
-          <Stack direction="horizontal" gap={0.5} wrap="wrap">
+        <Stack gap={1} paddingBlock={1.5} align="start" width="100%">
+          <ToggleButtonGroup
+            type="multiple"
+            size="sm"
+            value={query.days}
+            onChange={selected =>
+              onChange({
+                days: DAYS.filter(x => selected.includes(x)),
+              })
+            }
+            label="Days"
+          >
             {DAYS.map(d => (
-              <ToggleButton
-                key={d}
-                label={d}
-                size="sm"
-                isPressed={query.days.includes(d)}
-                onPressedChange={() =>
-                  onChange({
-                    days: DAYS.filter(x => toggleIn(query.days, d).includes(x)),
-                  })
-                }
-              />
+              <ToggleButton key={d} value={d} label={d} />
             ))}
-          </Stack>
+          </ToggleButtonGroup>
           <Text type="supporting">Rice writes Thursday R and Sunday U.</Text>
         </Stack>
       </Collapsible>
@@ -211,24 +219,36 @@ export function FilterRail({
           query.creditsMin !== undefined || query.creditsMax !== undefined
         }
       >
-        <Stack direction="horizontal" gap={1} paddingBlock={1.5} wrap="wrap">
-          {[1, 2, 3, 4].map(hours => (
-            <ToggleButton
-              key={hours}
-              label={String(hours)}
-              size="sm"
-              isPressed={
-                query.creditsMin === hours * 100 &&
-                query.creditsMax === hours * 100
-              }
-              onPressedChange={pressed =>
+        <Stack gap={1} paddingBlock={1.5} align="start" width="100%">
+          <ToggleButtonGroup
+            size="sm"
+            value={
+              query.creditsMin !== undefined &&
+              query.creditsMin === query.creditsMax &&
+              [100, 200, 300, 400].includes(query.creditsMin)
+                ? String(query.creditsMin / 100)
+                : null
+            }
+            onChange={val => {
+              if (val === null) {
+                onChange({creditsMin: undefined, creditsMax: undefined});
+              } else {
                 onChange({
-                  creditsMin: pressed ? hours * 100 : undefined,
-                  creditsMax: pressed ? hours * 100 : undefined,
-                })
+                  creditsMin: Number(val) * 100,
+                  creditsMax: Number(val) * 100,
+                });
               }
-            />
-          ))}
+            }}
+            label="Credits"
+          >
+            {[1, 2, 3, 4].map(hours => (
+              <ToggleButton
+                key={hours}
+                value={String(hours)}
+                label={String(hours)}
+              />
+            ))}
+          </ToggleButtonGroup>
         </Stack>
       </Collapsible>
 

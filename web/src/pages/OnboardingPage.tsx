@@ -1,5 +1,5 @@
 import {Button} from '@astryxdesign/core/Button';
-import {Card} from '@astryxdesign/core/Card';
+import {Section} from '@astryxdesign/core/Section';
 import {Selector} from '@astryxdesign/core/Selector';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
@@ -224,7 +224,7 @@ export function OnboardingPage() {
   return (
     <Stack width="100%" height="100%" align="center" isScrollable>
       <Stack width={640} maxWidth="100%" paddingBlock={4} paddingInline={3}>
-        <Card padding={0} width="100%">
+        <Section variant="section" padding={0} width="100%">
           <Stack width="100%" gap={0}>
             <Stack
               width="100%"
@@ -472,7 +472,7 @@ export function OnboardingPage() {
               )}
             </Stack>
           </Stack>
-        </Card>
+        </Section>
       </Stack>
       <AlertDialog
         isOpen={confirming}
