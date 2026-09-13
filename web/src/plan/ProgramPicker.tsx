@@ -15,6 +15,9 @@ type ProgramPickerProps = {
   available: Program[];
   chosen: ProgramId[];
   onChange: (next: ProgramId[]) => void;
+  /** Fewer than this many is refused, with the reason on the remove button. */
+  minimum?: number;
+  minimumReason?: string;
 };
 
 /** Search-and-token picker for majors or minors (`Plan 7 Settings and Onboarding`). */
@@ -26,7 +29,10 @@ export function ProgramPicker({
   available,
   chosen,
   onChange,
+  minimum = 0,
+  minimumReason,
 }: ProgramPickerProps) {
+  const atMinimum = chosen.length <= minimum;
   const [query, setQuery] = useState('');
   const pool = available.filter(p => kinds.includes(p.kind));
   const q = query.trim().toLowerCase();
@@ -81,6 +87,9 @@ export function ProgramPicker({
           351.
         </Text>
       )}
+      {atMinimum && minimumReason !== undefined && chosen.length > 0 && (
+        <Text type="supporting">{minimumReason}</Text>
+      )}
       <Stack direction="horizontal" gap={1} wrap="wrap">
         {chosen
           .map(id => pool.find(p => p.id === id))
@@ -91,7 +100,12 @@ export function ProgramPicker({
               label={`${p.name} (${p.credential})`}
               size="sm"
               color="blue"
-              onRemove={() => onChange(chosen.filter(id => id !== p.id))}
+              description={atMinimum ? minimumReason : undefined}
+              onRemove={
+                atMinimum
+                  ? undefined
+                  : () => onChange(chosen.filter(id => id !== p.id))
+              }
             />
           ))}
       </Stack>

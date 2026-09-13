@@ -1,7 +1,9 @@
+import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 import {Button} from '@astryxdesign/core/Button';
-import {Dialog} from '@astryxdesign/core/Dialog';
+import {Dialog, DialogHeader} from '@astryxdesign/core/Dialog';
 import {Icon} from '@astryxdesign/core/Icon';
 import {IconButton} from '@astryxdesign/core/IconButton';
+import {Layout, LayoutContent, LayoutFooter} from '@astryxdesign/core/Layout';
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -10,22 +12,25 @@ import {Selector} from '@astryxdesign/core/Selector';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import {useNavigate} from 'react-router';
 
 import {
+  compareTermPosition,
   formatCatalogYear,
-  isOffTerm,
+  nextTermPosition,
   shortTermLabel,
   termKindName,
+  walkRequirements,
   type CatalogYear,
   type PlanBundle,
   type PlanTerm,
   type Program,
   type ProgramId,
+  type RequirementId,
   type TermKindName,
+  type TermPosition,
 } from '../domain';
-import {islandHead, rowDivider} from './paint';
 import {ProgramPicker} from './ProgramPicker';
 import {
   termKindChangeBlocker,
@@ -41,7 +46,28 @@ type PlanSettingsDialogProps = {
   onClose: () => void;
 };
 
-/** Plan settings: name, programs, catalog year, and the terms list (`Plan 7`). Every change applies at once. */
+const LABEL_PLACEHOLDER: Record<TermKindName, string> = {
+  rice: 'Shown under the term name',
+  away: 'Study abroad — Madrid',
+  off: 'Gap semester, co-op, leave',
+};
+
+const encode = (p: TermPosition): string => `${p.academicYear}-${p.season}`;
+const decode = (v: string): TermPosition => {
+  const [year, season] = v.split('-');
+  return {
+    academicYear: Number(year),
+    season:
+      season === 'spring' ? 'spring' : season === 'summer' ? 'summer' : 'fall',
+  };
+};
+
+/**
+ * Plan settings (`Plan 7`): name, programs, catalog year, the terms list.
+ * Every change applies as it is made, and the body says so; only dropping
+ * a program that has pins or self-checks on it asks first, because that
+ * clears them.
+ */
 export function PlanSettingsDialog({
   bundle,
   available,
@@ -51,39 +77,104 @@ export function PlanSettingsDialog({
   const {plan} = bundle;
   const navigate = useNavigate();
   const [name, setName] = useState(plan.name);
-  const [blocked, setBlocked] = useState<Record<string, string>>({});
-  const lastYear =
-    plan.terms[plan.terms.length - 1]?.position.academicYear ??
-    plan.matriculation.academicYear;
-  const years: CatalogYear[] = [];
-  for (let y = plan.matriculation.academicYear - 1; y <= lastYear; y += 1) {
-    years.push(y);
-  }
+  const [refusal, setRefusal] = useState<Record<string, string>>({});
+  const [pendingDrop, setPendingDrop] = useState<
+    {programs: ProgramId[]; dropped: Program; affected: number} | undefined
+  >(undefined);
+
+  const first = plan.terms[0]?.position ?? plan.matriculation;
+  const last =
+    plan.terms[plan.terms.length - 1]?.position ?? plan.matriculation;
+  // Catalog years Rice allows: from matriculation to the last term's year.
+  // Spring 2029 is academic year 2029 and the 2028-29 announcements.
+  const years = useMemo(() => {
+    const out: CatalogYear[] = [];
+    for (
+      let y = plan.matriculation.academicYear - 1;
+      y <= last.academicYear - 1;
+      y += 1
+    ) {
+      out.push(y);
+    }
+    if (!out.includes(plan.catalogYear)) {
+      out.push(plan.catalogYear);
+      out.sort();
+    }
+    return out;
+  }, [plan.matriculation.academicYear, last.academicYear, plan.catalogYear]);
+
+  // Every fall, spring and summer from the first term to a year past the last, minus what exists.
+  const openPositions = useMemo(() => {
+    const out: TermPosition[] = [];
+    let p: TermPosition = {academicYear: first.academicYear, season: 'fall'};
+    const end: TermPosition = {
+      academicYear: last.academicYear + 1,
+      season: 'summer',
+    };
+    let guard = 0;
+    while (compareTermPosition(p, end) <= 0 && guard < 60) {
+      if (!plan.terms.some(t => compareTermPosition(t.position, p) === 0)) {
+        out.push(p);
+      }
+      p = nextTermPosition(p);
+      guard += 1;
+    }
+    return out;
+  }, [plan.terms, first.academicYear, last.academicYear]);
+
   const university = available
     .filter(p => p.kind === 'university')
     .map(p => p.id);
-  const majors = plan.programs.filter(
-    id => available.find(p => p.id === id)?.kind === 'major',
-  );
+  const kindOf = (id: ProgramId): Program['kind'] | undefined =>
+    available.find(p => p.id === id)?.kind;
+  const majors = plan.programs.filter(id => kindOf(id) === 'major');
   const minors = plan.programs.filter(id => {
-    const kind = available.find(p => p.id === id)?.kind;
+    const kind = kindOf(id);
     return (
       kind === 'minor' || kind === 'certificate' || kind === 'concentration'
     );
   });
+
+  /** Pins, claims and self-checks that point at a program's requirements. */
+  const affectedBy = (program: Program): number => {
+    const ids = new Set<RequirementId>();
+    walkRequirements(program.root, r => ids.add(r.id));
+    let n = plan.selfChecks.filter(s => ids.has(s.requirement)).length;
+    const count = (fills: RequirementId[]): void => {
+      n += fills.filter(f => ids.has(f)).length;
+    };
+    plan.incomingCredit.forEach(c => count(c.fills));
+    for (const term of plan.terms) {
+      if (typeof term.kind === 'object' && 'rice' in term.kind) {
+        term.kind.rice.courses.forEach(c => count(c.fills));
+      } else if (typeof term.kind === 'object' && 'away' in term.kind) {
+        term.kind.away.cards.forEach(c => count(c.fills));
+      }
+    }
+    return n;
+  };
+
   const setPrograms = (
     nextMajors: ProgramId[],
     nextMinors: ProgramId[],
-  ): void =>
-    dispatch({
-      type: 'setPrograms',
-      programs: [...university, ...nextMajors, ...nextMinors],
-      available,
-    });
+  ): void => {
+    const programs = [...university, ...nextMajors, ...nextMinors];
+    const droppedId = plan.programs.find(id => !programs.includes(id));
+    const dropped =
+      droppedId === undefined
+        ? undefined
+        : available.find(p => p.id === droppedId);
+    const affected = dropped === undefined ? 0 : affectedBy(dropped);
+    if (dropped !== undefined && affected > 0) {
+      setPendingDrop({programs, dropped, affected});
+      return;
+    }
+    dispatch({type: 'setPrograms', programs, available});
+  };
 
   const changeKind = (term: PlanTerm, kind: TermKindName): void => {
     const reason = termKindChangeBlocker(term, kind);
-    setBlocked(prev => ({...prev, [term.id]: reason ?? ''}));
+    setRefusal(prev => ({...prev, [term.id]: reason ?? ''}));
     if (reason === undefined) {
       dispatch({
         type: 'setTerm',
@@ -95,219 +186,265 @@ export function PlanSettingsDialog({
     }
   };
 
+  const close = (): void => {
+    if (name.trim() !== '' && name.trim() !== plan.name) {
+      dispatch({type: 'renamePlan', name});
+    }
+    onClose();
+  };
+
   return (
-    <Dialog
-      isOpen
-      onOpenChange={open => {
-        if (!open) {
-          onClose();
-        }
-      }}
-      width={440}
-      padding={0}
-      maxHeight="90vh"
-    >
-      <Stack width="100%" gap={0}>
-        <Stack
-          direction="horizontal"
-          width="100%"
-          padding={2}
-          hAlign="between"
-          vAlign="center"
-          style={islandHead}
-        >
-          <Text as="h3" size="sm" weight="semibold">
-            Plan settings
-          </Text>
-          <IconButton
-            label="Close"
-            variant="ghost"
-            size="sm"
-            icon={<Icon icon="close" size="sm" />}
-            onClick={onClose}
-          />
-        </Stack>
-
-        <Stack width="100%" padding={2} gap={2} align="start">
-          <TextInput
-            label="Plan name"
-            size="sm"
-            value={name}
-            onChange={setName}
-            onBlur={() => dispatch({type: 'renamePlan', name})}
-            onEnter={() => dispatch({type: 'renamePlan', name})}
-            width="100%"
-          />
-          <ProgramPicker
-            label="Majors"
-            placeholder="Search programs"
-            kinds={['major']}
-            available={available}
-            chosen={majors}
-            onChange={next => setPrograms(next, minors)}
-          />
-          <ProgramPicker
-            label="Minors"
-            isOptional
-            placeholder="Search minors"
-            kinds={['minor', 'certificate', 'concentration']}
-            available={available}
-            chosen={minors}
-            onChange={next => setPrograms(majors, next)}
-          />
-          <Selector
-            label="Catalog year"
-            description="Rice lets you follow any year between when you matriculated and when you graduate"
-            size="sm"
-            value={String(plan.catalogYear)}
-            options={years.map(y => ({
-              value: String(y),
-              label: formatCatalogYear(y),
-            }))}
-            onChange={v => dispatch({type: 'setCatalogYear', year: Number(v)})}
-            width="100%"
-          />
-        </Stack>
-
-        <Stack
-          width="100%"
-          padding={2}
-          gap={1.5}
-          align="start"
-          style={rowDivider}
-        >
-          <Text type="label" weight="semibold">
-            Terms
-          </Text>
-          {plan.terms.map(term => {
-            const removeReason = termRemoveBlocker(term);
-            const kind = termKindName(term.kind);
-            return (
-              <Stack key={term.id} width="100%" gap={1} align="start">
-                <Stack
-                  direction="horizontal"
-                  width="100%"
-                  gap={1}
-                  vAlign="center"
-                  wrap="wrap"
-                >
-                  <Stack width={96}>
-                    <Text size="sm" textWrap="nowrap">
-                      {shortTermLabel(term.position)}
-                    </Text>
-                  </Stack>
-                  <SegmentedControl
-                    label={`Kind of ${shortTermLabel(term.position)}`}
-                    value={kind}
-                    onChange={v => changeKind(term, v as TermKindName)}
+    <>
+      <Dialog
+        isOpen
+        onOpenChange={open => {
+          if (!open) {
+            close();
+          }
+        }}
+        purpose="form"
+        width={480}
+        padding={0}
+        maxHeight="85dvh"
+      >
+        <Layout
+          height="fill"
+          header={
+            <DialogHeader
+              title="Plan settings"
+              subtitle="Changes save as you make them."
+              onOpenChange={open => {
+                if (!open) {
+                  close();
+                }
+              }}
+              hasDivider
+            />
+          }
+          content={
+            <LayoutContent padding={2}>
+              <Stack width="100%" gap={3} align="start">
+                <Stack width="100%" gap={2} align="start">
+                  <TextInput
+                    label="Plan name"
                     size="sm"
-                  >
-                    <SegmentedControlItem value="rice" label="Rice" />
-                    <SegmentedControlItem value="away" label="Away" />
-                    <SegmentedControlItem value="off" label="Off" />
-                  </SegmentedControl>
-                  <IconButton
-                    label={`Remove ${shortTermLabel(term.position)}`}
-                    tooltip={removeReason}
-                    variant="ghost"
-                    size="sm"
-                    icon={<Icon icon="close" size="sm" />}
-                    isDisabled={removeReason !== undefined}
-                    onClick={() =>
-                      dispatch({type: 'removeTerm', term: term.id})
+                    value={name}
+                    onChange={v => {
+                      setName(v);
+                      if (v.trim() !== '') {
+                        dispatch({type: 'renamePlan', name: v});
+                      }
+                    }}
+                    width="100%"
+                    status={
+                      name.trim() === ''
+                        ? {type: 'error', message: 'A plan needs a name'}
+                        : undefined
                     }
+                  />
+                  <ProgramPicker
+                    label="Majors"
+                    placeholder="Search programs"
+                    kinds={['major']}
+                    available={available}
+                    chosen={majors}
+                    onChange={next => setPrograms(next, minors)}
+                    minimum={1}
+                    minimumReason="A plan always has at least one major. Add another before removing this one."
+                  />
+                  <ProgramPicker
+                    label="Minors"
+                    isOptional
+                    placeholder="Search minors"
+                    kinds={['minor', 'certificate', 'concentration']}
+                    available={available}
+                    chosen={minors}
+                    onChange={next => setPrograms(majors, next)}
+                  />
+                  <Selector
+                    label="Catalog year"
+                    description="Requirements are checked against this year's General Announcements. Rice lets you follow any year from matriculation to graduation."
+                    size="sm"
+                    value={String(plan.catalogYear)}
+                    options={years.map(y => ({
+                      value: String(y),
+                      label: formatCatalogYear(y),
+                    }))}
+                    onChange={v =>
+                      dispatch({type: 'setCatalogYear', year: Number(v)})
+                    }
+                    width="100%"
                   />
                 </Stack>
-                {(blocked[term.id] ?? '') !== '' && (
-                  <Text type="supporting">{blocked[term.id]}</Text>
-                )}
-                {!isOffTerm(term.kind) && kind !== 'rice' && (
-                  <TextInput
-                    label="Label"
-                    isLabelHidden
-                    size="sm"
-                    value={term.label ?? ''}
-                    onChange={label =>
-                      dispatch({
-                        type: 'setTerm',
-                        term: term.id,
-                        kind,
-                        label,
-                        facts: bundle.facts,
-                      })
-                    }
-                    placeholder="Study abroad — Madrid"
-                    width="100%"
-                  />
-                )}
-                {isOffTerm(term.kind) && (
-                  <TextInput
-                    label="Label"
-                    isLabelHidden
-                    size="sm"
-                    value={term.label ?? ''}
-                    onChange={label =>
-                      dispatch({
-                        type: 'setTerm',
-                        term: term.id,
-                        kind,
-                        label,
-                        facts: bundle.facts,
-                      })
-                    }
-                    placeholder="Gap semester, co-op, leave"
-                    width="100%"
-                  />
-                )}
-              </Stack>
-            );
-          })}
-          <Button
-            label="Add term"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const last = plan.terms[plan.terms.length - 1];
-              if (last !== undefined) {
-                dispatch({type: 'addTermAfter', after: last.id});
-              }
-            }}
-          />
-        </Stack>
 
-        <Stack
-          width="100%"
-          padding={2}
-          gap={1.5}
-          align="start"
-          style={rowDivider}
-        >
-          <Button
-            label="Start a new plan"
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              onClose();
-              void navigate('/plan/new');
-            }}
-          />
-          <Button
-            label="Duplicate this plan"
-            variant="secondary"
-            size="sm"
-            isDisabled
-            tooltip="The demo holds one plan at a time"
-          />
-          <Button
-            label="Delete this plan"
-            variant="destructive"
-            size="sm"
-            isDisabled
-            tooltip="You can't delete your only plan"
-          />
-          <Text type="supporting">You can&apos;t delete your only plan.</Text>
-        </Stack>
-      </Stack>
-    </Dialog>
+                <Stack width="100%" gap={1.5} align="start">
+                  <Text type="label" weight="semibold">
+                    Terms
+                  </Text>
+                  {plan.terms.map(term => {
+                    const removeReason = termRemoveBlocker(term);
+                    const kind = termKindName(term.kind);
+                    const termLabel = shortTermLabel(term.position);
+                    return (
+                      <Stack key={term.id} width="100%" gap={1} align="start">
+                        <Stack
+                          direction="horizontal"
+                          width="100%"
+                          gap={1}
+                          vAlign="center"
+                          wrap="wrap"
+                        >
+                          <Stack width={96}>
+                            <Text size="sm" textWrap="nowrap">
+                              {termLabel}
+                            </Text>
+                          </Stack>
+                          <SegmentedControl
+                            label={`Kind of ${termLabel}`}
+                            value={kind}
+                            onChange={v => changeKind(term, v as TermKindName)}
+                            size="sm"
+                          >
+                            <SegmentedControlItem
+                              value="rice"
+                              label="At Rice"
+                            />
+                            <SegmentedControlItem value="away" label="Away" />
+                            <SegmentedControlItem value="off" label="Off" />
+                          </SegmentedControl>
+                          <IconButton
+                            label={`Remove ${termLabel}`}
+                            tooltip={
+                              removeReason === undefined
+                                ? undefined
+                                : 'Holds courses or claims'
+                            }
+                            variant="ghost"
+                            size="sm"
+                            icon={<Icon icon="close" size="sm" />}
+                            isDisabled={removeReason !== undefined}
+                            onClick={() => {
+                              if (removeReason !== undefined) {
+                                setRefusal(prev => ({
+                                  ...prev,
+                                  [term.id]: removeReason,
+                                }));
+                              } else {
+                                dispatch({type: 'removeTerm', term: term.id});
+                              }
+                            }}
+                          />
+                        </Stack>
+                        {(refusal[term.id] ?? '') !== '' && (
+                          <Text
+                            size="sm"
+                            role="status"
+                            aria-live="polite"
+                            style={{color: 'var(--color-text-red)'}}
+                          >
+                            {refusal[term.id]}
+                          </Text>
+                        )}
+                        {removeReason !== undefined && (
+                          <Text type="supporting">{removeReason}</Text>
+                        )}
+                        <TextInput
+                          label={`Label for ${termLabel}`}
+                          isLabelHidden
+                          isOptional
+                          size="sm"
+                          value={term.label ?? ''}
+                          onChange={label =>
+                            dispatch({
+                              type: 'setTerm',
+                              term: term.id,
+                              kind,
+                              label,
+                              facts: bundle.facts,
+                            })
+                          }
+                          placeholder={LABEL_PLACEHOLDER[kind]}
+                          width="100%"
+                        />
+                      </Stack>
+                    );
+                  })}
+                  <Selector
+                    label="Add a term"
+                    description="Summers included. Pick a position that is not on the board yet."
+                    size="sm"
+                    width="100%"
+                    placeholder="Fall, spring or summer…"
+                    hasClear
+                    value={null}
+                    options={openPositions.map(p => ({
+                      value: encode(p),
+                      label: shortTermLabel(p),
+                    }))}
+                    onChange={v => {
+                      if (v !== null) {
+                        dispatch({type: 'addTermAt', position: decode(v)});
+                      }
+                    }}
+                  />
+                </Stack>
+
+                <Stack width="100%" gap={1} align="start">
+                  <Button
+                    label="Start over with a new plan…"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      close();
+                      void navigate('/plan/new');
+                    }}
+                  />
+                  <Text type="supporting">
+                    Programs, timeline and incoming credit from scratch. The
+                    demo holds one plan, so it replaces this one; duplicating
+                    and deleting plans arrive with accounts.
+                  </Text>
+                </Stack>
+              </Stack>
+            </LayoutContent>
+          }
+          footer={
+            <LayoutFooter hasDivider padding={2}>
+              <Stack direction="horizontal" width="100%" hAlign="end">
+                <Button
+                  label="Done"
+                  variant="primary"
+                  size="sm"
+                  onClick={close}
+                />
+              </Stack>
+            </LayoutFooter>
+          }
+        />
+      </Dialog>
+      <AlertDialog
+        isOpen={pendingDrop !== undefined}
+        onOpenChange={open => {
+          if (!open) {
+            setPendingDrop(undefined);
+          }
+        }}
+        title={`Drop ${pendingDrop?.dropped.name ?? 'this program'}?`}
+        description={`${pendingDrop?.affected ?? 0} course pin${pendingDrop?.affected === 1 ? '' : 's'} or self-check${pendingDrop?.affected === 1 ? '' : 's'} on its requirements will be cleared. Adding the program back later does not restore them.`}
+        cancelLabel="Keep it"
+        actionLabel="Drop program"
+        actionVariant="destructive"
+        onAction={() => {
+          if (pendingDrop !== undefined) {
+            dispatch({
+              type: 'setPrograms',
+              programs: pendingDrop.programs,
+              available,
+            });
+          }
+          setPendingDrop(undefined);
+        }}
+      />
+    </>
   );
 }

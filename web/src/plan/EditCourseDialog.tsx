@@ -1,9 +1,9 @@
 import {Button} from '@astryxdesign/core/Button';
 import {CheckboxInput} from '@astryxdesign/core/CheckboxInput';
-import {Dialog} from '@astryxdesign/core/Dialog';
-import {Link} from '@astryxdesign/core/Link';
-import {RadioList, RadioListItem} from '@astryxdesign/core/RadioList';
-import {Selector} from '@astryxdesign/core/Selector';
+import {Dialog, DialogHeader} from '@astryxdesign/core/Dialog';
+import {Layout, LayoutContent, LayoutFooter} from '@astryxdesign/core/Layout';
+import {Selector, SelectorOption} from '@astryxdesign/core/Selector';
+import type {SelectorOptionType} from '@astryxdesign/core/Selector';
 import {Stack} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
@@ -29,7 +29,6 @@ import {
 } from '../domain';
 import {engine} from '../engine';
 import {FILL_BASIS_LABEL, requirementPaths} from './labels';
-import {islandHead, rowDivider} from './paint';
 import type {PlanAction} from './usePlan';
 
 type EditCourseDialogProps = {
@@ -41,6 +40,7 @@ type EditCourseDialogProps = {
 };
 
 const AUTO = 'auto';
+const MAX_HOURS = 20;
 
 const ORIGINS: {value: CreditOrigin; label: string}[] = [
   {value: 'transfer', label: 'Transfer'},
@@ -50,10 +50,12 @@ const ORIGINS: {value: CreditOrigin; label: string}[] = [
   {value: 'other', label: 'Other'},
 ];
 
+type Option = {requirement: RequirementId; label: string; matches: boolean};
+
 type Choice = {
   program: Program;
-  /** Every course requirement; `matches` says whether the filter accepts the card. */
-  options: {requirement: RequirementId; label: string; matches: boolean}[];
+  /** Every course requirement, sibling slots collapsed to one; `matches` is the filter's verdict. */
+  options: Option[];
   current: string;
 };
 
@@ -63,11 +65,23 @@ function isPlanned(
   return 'course' in card;
 }
 
+/** "3", "1.5", "" -> hundredths, or an error string. Empty is an error, never zero. */
+function parseHours(raw: string): {credits?: number; error?: string} {
+  const t = raw.trim();
+  if (t === '' || !/^\d+(\.\d{1,2})?$/.test(t)) {
+    return {error: 'Enter a number of hours, like 3 or 1.5'};
+  }
+  const n = Number(t);
+  if (n > MAX_HOURS) {
+    return {error: `No more than ${MAX_HOURS} hours`};
+  }
+  return {credits: creditsFromHours(n)};
+}
+
 /**
- * The one place a card is edited (`Plan 6 Requirement Choice`, folded with
- * card details): what it is, how many hours, and which requirement it
- * fills in each program. Reached from the card's ⋯ menu, the sidebar's
- * "change" link, and every warning that names a card.
+ * The one place a card is edited: what it is, how many hours, and which
+ * requirement it fills in each program. Reached from the card's ⋯ menu, the
+ * sidebar's "change" link, and every warning that names a card.
  *
  * A pick the filter rejects asks for a basis. The engine keeps such a card
  * in the slot as a claim, never counts it as met, and repeats the basis on
@@ -82,8 +96,7 @@ export function EditCourseDialog({
   onClose,
 }: EditCourseDialogProps) {
   const planned = isPlanned(card);
-  // Details, edited locally and written on Save.
-  const [hours, setHours] = useState(String(card.credits / 100));
+  const [hours, setHours] = useState(formatCredits(card.credits));
   const [origin, setOrigin] = useState<CreditOrigin>(
     planned ? 'other' : card.origin,
   );
@@ -93,19 +106,19 @@ export function EditCourseDialog({
     planned ? '' : (card.institution ?? ''),
   );
   const [equivalent, setEquivalent] = useState(
-    planned
+    planned || card.riceEquivalent === undefined
       ? ''
-      : card.riceEquivalent === undefined
-        ? ''
-        : formatCourseCode(card.riceEquivalent),
+      : formatCourseCode(card.riceEquivalent),
   );
-  const equivalentCode = planned
-    ? card.course
-    : (parseCourseCode(equivalent) ?? undefined);
   const [byHand, setByHand] = useState(
     !planned && card.creditsSource === 'manual',
   );
-  // The Rice equivalent's published hours, when we hold them.
+
+  const equivalentCode: CourseCode | undefined = planned
+    ? card.course
+    : (parseCourseCode(equivalent) ?? undefined);
+  const equivalentBad =
+    !planned && equivalent.trim() !== '' && equivalentCode === undefined;
   const equivalentInfo =
     planned || equivalentCode === undefined
       ? undefined
@@ -115,14 +128,14 @@ export function EditCourseDialog({
       ? undefined
       : creditRangeMin(equivalentInfo.credits);
   const hoursLocked = !planned && !byHand && hoursFromEquivalent !== undefined;
-  const equivalentBad =
-    !planned && equivalent.trim() !== '' && equivalentCode === undefined;
+  const hoursParsed = hoursLocked
+    ? {credits: hoursFromEquivalent}
+    : parseHours(hours);
   const label = planned ? formatCourseCode(card.course) : card.code;
   const fills = card.fills;
   const claims = card.claims ?? [];
+  const course = equivalentCode;
 
-  // The matcher's view uses the Rice code as it will be after Save.
-  const course: CourseCode | undefined = equivalentCode;
   const choices = useMemo<Choice[]>(
     () =>
       bundle.plan.programs.flatMap(id => {
@@ -132,26 +145,29 @@ export function EditCourseDialog({
         }
         const paths = requirementPaths(program);
         const pinned = fills.find(r => paths.has(r));
-        // Sibling slots share a label (three "Distribution Group III" rows);
-        // one option per label, the first id standing for the run.
         const seen = new Set<string>();
-        const options: Choice['options'] = [];
+        const options: Option[] = [];
         walkRequirements(program.root, req => {
           if (req.body.kind !== 'course') {
             return;
           }
           const path = paths.get(req.id) ?? req.label;
-          const matches =
-            course !== undefined &&
-            engine.requirementMatches(program, req.id, [course], bundle.facts)
-              .length > 0;
           if (seen.has(path) && req.id !== pinned) {
             return;
           }
           seen.add(path);
-          options.push({requirement: req.id, label: path, matches});
+          options.push({
+            requirement: req.id,
+            label: path,
+            matches:
+              course !== undefined &&
+              engine.requirementMatches(program, req.id, [course], bundle.facts)
+                .length > 0,
+          });
         });
-        return [{program, options, current: pinned ?? AUTO}];
+        return options.length === 0
+          ? []
+          : [{program, options, current: pinned ?? AUTO}];
       }),
     [bundle, course, fills],
   );
@@ -174,30 +190,50 @@ export function EditCourseDialog({
       ]),
     ),
   );
-  const [showAll, setShowAll] = useState<Record<string, boolean>>({});
-  const visible = (choice: Choice): Choice['options'] =>
-    showAll[choice.program.id]
-      ? choice.options
-      : choice.options.filter(
-          o => o.matches || o.requirement === choice.current,
-        );
-  const rejected = (choice: Choice): boolean => {
-    const req = picked[choice.program.id];
-    const option = choice.options.find(o => o.requirement === req);
-    return option !== undefined && !option.matches;
-  };
   // With no Rice code there is nothing for Skyspace to decide: every pin is a claim.
   const canAuto = course !== undefined;
+  const pickOf = (choice: Choice): string =>
+    picked[choice.program.id] ?? (canAuto ? AUTO : '');
+  const rejected = (choice: Choice): boolean => {
+    const option = choice.options.find(o => o.requirement === pickOf(choice));
+    return option !== undefined && !option.matches;
+  };
+  const anyRejected = choices.some(rejected);
+
+  const dirty =
+    hoursParsed.credits !== card.credits ||
+    (!planned &&
+      (origin !== card.origin ||
+        code.trim() !== card.code ||
+        title.trim() !== card.title ||
+        institution.trim() !== (card.institution ?? '') ||
+        equivalent.trim() !==
+          (card.riceEquivalent === undefined
+            ? ''
+            : formatCourseCode(card.riceEquivalent)) ||
+        byHand !== (card.creditsSource === 'manual'))) ||
+    choices.some(c => {
+      const next = pickOf(c);
+      const claim = claims.find(k => k.requirement === next);
+      return (
+        next !== c.current ||
+        (rejected(c) &&
+          ((bases[c.program.id] ?? 'unsure') !==
+            (claim?.basis.kind ?? 'unsure') ||
+            (notes[c.program.id] ?? '').trim() !== (claim?.note ?? '')))
+      );
+    });
+  const valid =
+    hoursParsed.credits !== undefined &&
+    !equivalentBad &&
+    (planned || code.trim() !== '');
 
   const save = (): void => {
-    const parsedHours = Number(hours);
-    const credits = hoursLocked
-      ? hoursFromEquivalent
-      : Number.isNaN(parsedHours)
-        ? undefined
-        : creditsFromHours(parsedHours);
-    if (credits !== undefined && credits !== card.credits) {
-      dispatch({type: 'setCredits', entry, credits});
+    if (hoursParsed.credits === undefined) {
+      return;
+    }
+    if (hoursParsed.credits !== card.credits) {
+      dispatch({type: 'setCredits', entry, credits: hoursParsed.credits});
     }
     if (!planned) {
       dispatch({
@@ -205,7 +241,7 @@ export function EditCourseDialog({
         entry,
         patch: {
           origin,
-          code: code.trim() === '' ? card.code : code.trim(),
+          code: code.trim(),
           title: title.trim(),
           institution:
             institution.trim() === '' ? undefined : institution.trim(),
@@ -215,7 +251,10 @@ export function EditCourseDialog({
       });
     }
     for (const choice of choices) {
-      const next = picked[choice.program.id] ?? AUTO;
+      const next = pickOf(choice);
+      if (next === '') {
+        continue;
+      }
       if (next !== choice.current) {
         if (next === AUTO) {
           dispatch({type: 'clearFill', entry, program: choice.program});
@@ -244,6 +283,48 @@ export function EditCourseDialog({
     onClose();
   };
 
+  const requirementOptions = (choice: Choice): SelectorOptionType[] => {
+    const matching = choice.options.filter(o => o.matches);
+    const rest = choice.options.filter(o => !o.matches);
+    const toOption = (o: Option) => ({
+      value: o.requirement,
+      label: o.label,
+      description: o.matches
+        ? undefined
+        : 'Not as published; counts on your say-so',
+      icon: o.matches ? ('check' as const) : ('warning' as const),
+    });
+    return [
+      ...(canAuto
+        ? [
+            {
+              value: AUTO,
+              label: 'Let Skyspace decide',
+              description: 'Whichever open requirement it fits',
+            },
+          ]
+        : []),
+      ...(matching.length > 0
+        ? [
+            {
+              type: 'section' as const,
+              title: 'Matches',
+              options: matching.map(toOption),
+            },
+          ]
+        : []),
+      ...(rest.length > 0
+        ? [
+            {
+              type: 'section' as const,
+              title: 'Every requirement',
+              options: rest.map(toOption),
+            },
+          ]
+        : []),
+    ];
+  };
+
   return (
     <Dialog
       isOpen
@@ -252,268 +333,268 @@ export function EditCourseDialog({
           onClose();
         }
       }}
-      width={480}
+      purpose="form"
+      width={520}
       padding={0}
-      maxHeight="90vh"
+      maxHeight="85dvh"
     >
-      <Stack width="100%" gap={0}>
-        <Stack
-          width="100%"
-          padding={2}
-          gap={0.5}
-          align="start"
-          style={islandHead}
-        >
-          <Text as="h3" weight="semibold">
-            {label}
-          </Text>
-          <Text type="supporting">
-            {planned
-              ? 'Hours, and the requirement it fills in each program.'
-              : 'A course from outside Rice: what it was, its hours, and where it counts.'}
-          </Text>
-        </Stack>
+      <Layout
+        height="fill"
+        header={
+          <DialogHeader
+            title={label}
+            subtitle={
+              planned ? 'Hours and requirements' : 'A course from outside Rice'
+            }
+            onOpenChange={open => {
+              if (!open) {
+                onClose();
+              }
+            }}
+            hasDivider
+          />
+        }
+        content={
+          <LayoutContent padding={2}>
+            <Stack width="100%" gap={3} align="start">
+              <Stack width="100%" gap={1.5} align="start">
+                <Text type="label" weight="semibold">
+                  Details
+                </Text>
+                {!planned && (
+                  <Stack
+                    direction="horizontal"
+                    width="100%"
+                    gap={1.5}
+                    align="start"
+                    wrap="wrap"
+                  >
+                    <Selector
+                      label="Origin"
+                      size="sm"
+                      value={origin}
+                      options={ORIGINS}
+                      onChange={v => setOrigin(v as CreditOrigin)}
+                      width={140}
+                    />
+                    <TextInput
+                      label="Their code"
+                      size="sm"
+                      value={code}
+                      onChange={setCode}
+                      placeholder="INF 3221"
+                      width={140}
+                      status={
+                        code.trim() === ''
+                          ? {type: 'error', message: 'Required'}
+                          : undefined
+                      }
+                    />
+                    <TextInput
+                      label="Title"
+                      size="sm"
+                      value={title}
+                      onChange={setTitle}
+                      width={172}
+                    />
+                    <TextInput
+                      label="Institution"
+                      isOptional
+                      size="sm"
+                      value={institution}
+                      onChange={setInstitution}
+                      placeholder="Universidad Politécnica de Madrid"
+                      width="100%"
+                    />
+                  </Stack>
+                )}
+                <Stack
+                  direction="horizontal"
+                  width="100%"
+                  gap={1.5}
+                  align="start"
+                  wrap="wrap"
+                >
+                  <TextInput
+                    label="Credit hours"
+                    description={
+                      hoursLocked
+                        ? `From ${equivalent.trim()}; credit posts as that course.`
+                        : planned
+                          ? 'Rice publishes a range for some courses.'
+                          : 'Typed by hand: counts as hours, not as a course.'
+                    }
+                    size="sm"
+                    value={
+                      hoursLocked
+                        ? formatCredits(hoursFromEquivalent ?? 0)
+                        : hours
+                    }
+                    onChange={setHours}
+                    isReadOnly={hoursLocked}
+                    width={200}
+                    status={
+                      !hoursLocked && hoursParsed.error !== undefined
+                        ? {type: 'error', message: hoursParsed.error}
+                        : undefined
+                    }
+                  />
+                  {!planned && (
+                    <TextInput
+                      label="Rice equivalent"
+                      isOptional
+                      description="The Rice course the registrar posts it as."
+                      size="sm"
+                      value={equivalent}
+                      onChange={setEquivalent}
+                      placeholder="COMP 321"
+                      width={200}
+                      status={
+                        equivalentBad
+                          ? {type: 'error', message: 'Not a Rice code'}
+                          : undefined
+                      }
+                    />
+                  )}
+                </Stack>
+                {!planned && hoursFromEquivalent !== undefined && (
+                  <CheckboxInput
+                    label="Set the hours by hand"
+                    description="Only if the registrar posted different hours. Flagged as unverified."
+                    size="sm"
+                    value={byHand}
+                    onChange={setByHand}
+                    width="100%"
+                  />
+                )}
+              </Stack>
 
-        <Stack width="100%" padding={2} gap={1.5} align="start">
-          <Text type="label" weight="semibold">
-            Details
-          </Text>
-          {!planned && (
+              {choices.map(choice => (
+                <Stack
+                  key={choice.program.id}
+                  width="100%"
+                  gap={1.5}
+                  align="start"
+                >
+                  <Text type="label" weight="semibold">
+                    {choice.program.name}
+                  </Text>
+                  <Selector
+                    label={`Requirement in ${choice.program.name}`}
+                    isLabelHidden
+                    description={
+                      canAuto
+                        ? undefined
+                        : 'Nothing matches a course without a Rice code; pick where it should count.'
+                    }
+                    size="sm"
+                    width="100%"
+                    placeholder="Pick a requirement"
+                    hasSearch={choice.options.length > 8}
+                    value={pickOf(choice) === '' ? undefined : pickOf(choice)}
+                    options={requirementOptions(choice)}
+                    onChange={v =>
+                      setPicked(prev => ({...prev, [choice.program.id]: v}))
+                    }
+                    renderOption={o => (
+                      <SelectorOption
+                        label={o.label ?? o.value}
+                        description={o.description}
+                        icon={o.icon}
+                        layout="inline"
+                      />
+                    )}
+                    status={
+                      rejected(choice)
+                        ? {
+                            type: 'warning',
+                            message: 'Counts on your say-so, never as met',
+                          }
+                        : undefined
+                    }
+                  />
+                  {rejected(choice) && (
+                    <Stack
+                      direction="horizontal"
+                      width="100%"
+                      gap={1.5}
+                      align="start"
+                      wrap="wrap"
+                    >
+                      <Selector
+                        label="Why it counts"
+                        size="sm"
+                        width={236}
+                        value={bases[choice.program.id] ?? 'unsure'}
+                        options={(
+                          Object.keys(FILL_BASIS_LABEL) as FillBasis['kind'][]
+                        ).map(kind => ({
+                          value: kind,
+                          label: FILL_BASIS_LABEL[kind],
+                        }))}
+                        onChange={v =>
+                          setBases(prev => ({
+                            ...prev,
+                            [choice.program.id]: v as FillBasis['kind'],
+                          }))
+                        }
+                      />
+                      <TextInput
+                        label="Note"
+                        isOptional
+                        size="sm"
+                        value={notes[choice.program.id] ?? ''}
+                        onChange={v =>
+                          setNotes(prev => ({...prev, [choice.program.id]: v}))
+                        }
+                        placeholder="Who approved it, when, or where it is posted"
+                        width={236}
+                      />
+                    </Stack>
+                  )}
+                </Stack>
+              ))}
+              {choices.length === 0 && (
+                <Text type="supporting">
+                  No program in this plan has course requirements.
+                </Text>
+              )}
+            </Stack>
+          </LayoutContent>
+        }
+        footer={
+          <LayoutFooter hasDivider padding={2}>
             <Stack
               direction="horizontal"
               width="100%"
-              gap={1.5}
-              align="end"
-              wrap="wrap"
+              gap={2}
+              hAlign="between"
+              vAlign="center"
             >
-              <Selector
-                label="Origin"
-                size="sm"
-                value={origin}
-                options={ORIGINS}
-                onChange={v => setOrigin(v as CreditOrigin)}
-                width={140}
-              />
-              <TextInput
-                label="Their code"
-                size="sm"
-                value={code}
-                onChange={setCode}
-                placeholder="INF 3221"
-                width={140}
-              />
-              <TextInput
-                label="Title"
-                size="sm"
-                value={title}
-                onChange={setTitle}
-                width={140}
-              />
-            </Stack>
-          )}
-          {!planned && (
-            <TextInput
-              label="Institution"
-              isOptional
-              size="sm"
-              value={institution}
-              onChange={setInstitution}
-              placeholder="Universidad Politécnica de Madrid"
-              width="100%"
-            />
-          )}
-          <Stack
-            direction="horizontal"
-            width="100%"
-            gap={1.5}
-            align="end"
-            wrap="wrap"
-          >
-            <TextInput
-              label="Credit hours"
-              description={
-                planned
-                  ? 'Rice publishes a range for some courses; set what you will take.'
-                  : hoursLocked
-                    ? `${formatCredits(hoursFromEquivalent ?? 0)} hours, from ${equivalent.trim()}: credit posts as that course.`
-                    : 'Typed by hand: counts as hours, not as a course, and is flagged.'
-              }
-              size="sm"
-              value={
-                hoursLocked ? formatCredits(hoursFromEquivalent ?? 0) : hours
-              }
-              onChange={setHours}
-              isReadOnly={hoursLocked}
-              width={200}
-            />
-            {!planned && (
-              <TextInput
-                label="Rice equivalent"
-                isOptional
-                description="The Rice course the registrar posts it as. Without one, Skyspace can match it to nothing."
-                size="sm"
-                value={equivalent}
-                onChange={setEquivalent}
-                placeholder="COMP 321"
-                width={200}
-                status={
-                  equivalentBad
-                    ? {type: 'error', message: 'Not a Rice code'}
-                    : undefined
-                }
-              />
-            )}
-          </Stack>
-          {!planned && hoursFromEquivalent !== undefined && (
-            <CheckboxInput
-              label="Set the hours by hand"
-              description="Only when the registrar posted hours that differ from the course. Flagged as unverified."
-              size="sm"
-              value={byHand}
-              onChange={setByHand}
-              width="100%"
-            />
-          )}
-        </Stack>
-
-        {choices.map(choice => (
-          <Stack
-            key={choice.program.id}
-            width="100%"
-            padding={2}
-            gap={1.5}
-            align="start"
-            style={rowDivider}
-          >
-            <Text type="label" weight="semibold">
-              Fills in {choice.program.name}
-            </Text>
-            {visible(choice).length === 0 && !canAuto && (
               <Text type="supporting">
-                Nothing matches a course without a Rice code. Pick a requirement
-                below and say why it should count.
+                {anyRejected
+                  ? "Skyspace can't verify a pick that doesn't match; it stays out of your met count and is noted on the PDF."
+                  : 'One requirement per program. Your choice never edits a requirement.'}
               </Text>
-            )}
-            {(visible(choice).length > 0 || canAuto) && (
-              <RadioList
-                isLabelHidden
-                label={`Requirement in ${choice.program.name}`}
-                value={picked[choice.program.id] ?? (canAuto ? AUTO : '')}
-                onChange={v =>
-                  setPicked(prev => ({...prev, [choice.program.id]: v}))
-                }
-                size="sm"
-                width="100%"
-              >
-                {visible(choice).map(o => (
-                  <RadioListItem
-                    key={o.requirement}
-                    value={o.requirement}
-                    label={o.label}
-                    description={
-                      o.matches
-                        ? undefined
-                        : "Doesn't match as published; counts on your say-so and is flagged"
-                    }
-                  />
-                ))}
-                {canAuto && (
-                  <RadioListItem
-                    value={AUTO}
-                    label="Let Skyspace decide"
-                    description="Whichever open requirement it fits, recomputed on every change"
-                  />
-                )}
-              </RadioList>
-            )}
-            {!showAll[choice.program.id] &&
-              visible(choice).length < choice.options.length && (
-                <Link
-                  href="#"
+              <Stack direction="horizontal" gap={1.5}>
+                <Button
+                  label="Cancel"
+                  variant="ghost"
                   size="sm"
-                  onClick={e => {
-                    e.preventDefault();
-                    setShowAll(prev => ({...prev, [choice.program.id]: true}));
-                  }}
-                >
-                  Show every requirement in this program
-                </Link>
-              )}
-            {rejected(choice) && (
-              <Stack width="100%" gap={1.5} align="start">
-                <Text size="sm" weight="medium">
-                  Why should it count here? Skyspace can&apos;t verify this, so
-                  the requirement stays out of your met count and the reason
-                  goes on the PDF for your advisor.
-                </Text>
-                <RadioList
-                  isLabelHidden
-                  label={`Basis in ${choice.program.name}`}
-                  value={bases[choice.program.id] ?? 'unsure'}
-                  onChange={v =>
-                    setBases(prev => ({
-                      ...prev,
-                      [choice.program.id]: v as FillBasis['kind'],
-                    }))
-                  }
+                  onClick={onClose}
+                />
+                <Button
+                  label="Save"
+                  variant="primary"
                   size="sm"
-                  width="100%"
-                >
-                  {(Object.keys(FILL_BASIS_LABEL) as FillBasis['kind'][]).map(
-                    kind => (
-                      <RadioListItem
-                        key={kind}
-                        value={kind}
-                        label={FILL_BASIS_LABEL[kind]}
-                      />
-                    ),
-                  )}
-                </RadioList>
-                <TextInput
-                  label="Note"
-                  isOptional
-                  size="sm"
-                  value={notes[choice.program.id] ?? ''}
-                  onChange={v =>
-                    setNotes(prev => ({...prev, [choice.program.id]: v}))
-                  }
-                  placeholder="Who approved it, when, or where it is posted"
-                  width="100%"
+                  isDisabled={!valid || !dirty}
+                  onClick={save}
                 />
               </Stack>
-            )}
-          </Stack>
-        ))}
-
-        <Stack
-          width="100%"
-          padding={2}
-          gap={2}
-          align="start"
-          style={rowDivider}
-        >
-          <Text type="supporting">
-            A course fills at most one requirement per program. Your choice is
-            kept even if the course stops matching; it never edits a
-            requirement.
-          </Text>
-          <Stack direction="horizontal" width="100%" gap={1.5} hAlign="end">
-            <Button
-              label="Cancel"
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-            />
-            <Button
-              label="Save"
-              variant="primary"
-              size="sm"
-              isDisabled={equivalentBad}
-              onClick={save}
-            />
-          </Stack>
-        </Stack>
-      </Stack>
+            </Stack>
+          </LayoutFooter>
+        }
+      />
     </Dialog>
   );
 }

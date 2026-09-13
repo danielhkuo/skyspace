@@ -32,6 +32,7 @@ import {
   type RequirementId,
   type RequirementReport,
   type TermId,
+  type TermPosition,
   type Warning,
 } from '../domain';
 import type {CourseFacts} from '../domain';
@@ -85,6 +86,8 @@ export type PlanAction =
     }
   /** Insert an empty Rice term at the next free board position after `after`. */
   | {type: 'addTermAfter'; after: TermId}
+  /** Insert an empty Rice term at a position, if none is there. Summers included. */
+  | {type: 'addTermAt'; position: TermPosition}
   /** Remove a term that holds no cards. */
   | {type: 'removeTerm'; term: TermId}
   | {type: 'renamePlan'; name: string}
@@ -498,6 +501,14 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
     case 'setCatalogYear':
       return {...plan, catalogYear: action.year};
     case 'setPrograms': {
+      // A plan always has at least one major (`features/plan.md`); a change
+      // that would leave none is refused whole.
+      const majorsLeft = action.programs.filter(
+        id => action.available.find(p => p.id === id)?.kind === 'major',
+      );
+      if (majorsLeft.length === 0) {
+        return plan;
+      }
       const dropped = new Set<RequirementId>();
       for (const program of action.available) {
         if (
@@ -536,6 +547,27 @@ export function reducePlan(plan: Plan, action: PlanAction): Plan {
                   kind: {away: {cards: term.kind.away.cards.map(strip)}},
                 }
               : term,
+        ),
+      };
+    }
+    case 'addTermAt': {
+      if (
+        plan.terms.some(
+          t => compareTermPosition(t.position, action.position) === 0,
+        )
+      ) {
+        return plan;
+      }
+      const term: PlanTerm = {
+        id: newTermId(),
+        position: action.position,
+        kind: {rice: {courses: []}},
+        nonCourse: [],
+      };
+      return {
+        ...plan,
+        terms: [...plan.terms, term].sort((a, b) =>
+          compareTermPosition(a.position, b.position),
         ),
       };
     }

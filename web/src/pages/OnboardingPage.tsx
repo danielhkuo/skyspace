@@ -8,6 +8,8 @@ import {Token} from '@astryxdesign/core/Token';
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate} from 'react-router';
 
+import {AlertDialog} from '@astryxdesign/core/AlertDialog';
+
 import {dataSource} from '../datasource';
 import {setLeaveGuard} from '../shell/leaveGuard';
 import {queuePlanSave} from '../datasource/planSaver';
@@ -110,6 +112,7 @@ export function OnboardingPage() {
     season: 'spring',
   });
   const [incoming, setIncoming] = useState<ManualCourseCard[]>([]);
+  const [confirming, setConfirming] = useState(false);
   const [draft, setDraft] = useState({
     origin: 'advancedPlacement' as CreditOrigin,
     code: '',
@@ -137,7 +140,7 @@ export function OnboardingPage() {
     compareTermPosition(graduation, matriculation) <= 0
       ? 'Graduation must come after matriculation.'
       : catalogYear < matriculation.academicYear - 1 ||
-          catalogYear > graduation.academicYear
+          catalogYear > graduation.academicYear - 1
         ? 'Pick a catalog year between matriculation and graduation.'
         : undefined;
   const semesters = useMemo(() => semesterOptions(), []);
@@ -145,7 +148,8 @@ export function OnboardingPage() {
     const out: CatalogYear[] = [];
     for (
       let y = matriculation.academicYear - 1;
-      y <= graduation.academicYear;
+      y <=
+      Math.max(graduation.academicYear - 1, matriculation.academicYear - 1);
       y += 1
     ) {
       out.push(y);
@@ -461,13 +465,28 @@ export function OnboardingPage() {
                   label="Create plan"
                   variant="primary"
                   size="sm"
-                  onClick={finish}
+                  onClick={() =>
+                    dataSource.kind === 'demo' ? setConfirming(true) : finish()
+                  }
                 />
               )}
             </Stack>
           </Stack>
         </Card>
       </Stack>
+      <AlertDialog
+        isOpen={confirming}
+        onOpenChange={setConfirming}
+        title="Replace the current plan?"
+        description="The demo holds one plan. Creating this one replaces the plan on the board, including its courses and self-checks."
+        cancelLabel="Keep the current plan"
+        actionLabel="Replace it"
+        actionVariant="destructive"
+        onAction={() => {
+          setConfirming(false);
+          finish();
+        }}
+      />
     </Stack>
   );
 }
