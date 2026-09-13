@@ -1,0 +1,30 @@
+[package]
+name = "skyspace-ingest"
+description = "Fetch Rice pages politely, archive the raw bytes, then parse and store."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+skyspace-core = { workspace = true }
+skyspace-parse = { workspace = true }
+skyspace-store = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+url = { workspace = true }
+time = { workspace = true }
+encoding_rs = { workspace = true }
+flate2 = { workspace = true }
+sha2 = { workspace = true }
+bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+sqlx = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread"] }

@@ -1,0 +1,34 @@
+[package]
+name = "skyspace-cli"
+description = "Everything an operator runs by hand or from a timer; the binary is named skyspace."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "skyspace"
+path = "src/main.rs"
+
+[dependencies]
+skyspace-core = { workspace = true }
+skyspace-parse = { workspace = true }
+skyspace-store = { workspace = true }
+skyspace-ingest = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+time = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true, features = ["v4", "v5"] }
+toml = { workspace = true }
+similar = { workspace = true }
+sqlx = { workspace = true }

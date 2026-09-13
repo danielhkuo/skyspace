@@ -3,7 +3,14 @@ resolver = "3"
 members = ["crates/*"]
 # `skyspace-wasm` only makes sense under wasm-pack, so a root `cargo build`,
 # `cargo test` or `cargo clippy --all-targets` skips it.
-default-members = ["crates/skyspace-core"]
+default-members = [
+    "crates/skyspace-core",
+    "crates/skyspace-parse",
+    "crates/skyspace-store",
+    "crates/skyspace-api",
+    "crates/skyspace-ingest",
+    "crates/skyspace-cli",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -65,6 +72,8 @@ http-body-util = "0.1"
 anyhow = "1.0.102"
 dotenvy = "0.15.7"
 clap = { version = "4.6.1", features = ["derive", "env"] }
+toml = "0.9"
+similar = "2.7"
 
 wasm-bindgen = "0.2.128"
 wasm-bindgen-test = "0.3.78"
