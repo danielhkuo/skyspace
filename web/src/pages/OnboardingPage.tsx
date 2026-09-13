@@ -12,7 +12,6 @@ import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 
 import {dataSource} from '../datasource';
 import {setLeaveGuard} from '../shell/leaveGuard';
-import {queuePlanSave} from '../datasource/planSaver';
 import {
   compareTermPosition,
   courseInfo,
@@ -31,8 +30,8 @@ import {
   type Plan,
   type PlanId,
   type PlanTerm,
-  type Program,
   type ProgramId,
+  type ProgramSummary,
   type TermPosition,
 } from '../domain';
 import {islandHead, rowDivider} from '../plan/paint';
@@ -97,7 +96,7 @@ function termsBetween(from: TermPosition, to: TermPosition): PlanTerm[] {
  */
 export function OnboardingPage() {
   const navigate = useNavigate();
-  const [available, setAvailable] = useState<Program[]>([]);
+  const [available, setAvailable] = useState<ProgramSummary[]>([]);
   const [facts, setFacts] = useState<CourseFacts | undefined>(undefined);
   const [step, setStep] = useState<Step>(1);
   const [majors, setMajors] = useState<ProgramId[]>([]);
@@ -113,6 +112,8 @@ export function OnboardingPage() {
   });
   const [incoming, setIncoming] = useState<ManualCourseCard[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState({
     origin: 'advancedPlacement' as CreditOrigin,
     code: '',
@@ -123,7 +124,11 @@ export function OnboardingPage() {
 
   useEffect(() => {
     void dataSource.listPrograms().then(setAvailable);
-    void dataSource.loadBundle().then(b => setFacts(b.facts));
+    // A guest has no bundle; the credit step then takes hours by hand.
+    void dataSource
+      .loadBundle()
+      .then(b => setFacts(b.facts))
+      .catch(() => setFacts(undefined));
   }, []);
   // Anything chosen is worth a question before it is thrown away.
   const dirty =
@@ -157,6 +162,7 @@ export function OnboardingPage() {
     return out;
   }, [matriculation, graduation]);
 
+  /** The store may mint the id; the board loads whatever it kept. */
   const finish = (): void => {
     const university = available
       .filter(p => p.kind === 'university')
@@ -174,9 +180,20 @@ export function OnboardingPage() {
       terms: termsBetween(matriculation, graduation),
       selfChecks: [],
     };
-    queuePlanSave(plan, 0);
-    setLeaveGuard(undefined);
-    void navigate('/plan');
+    setCreating(true);
+    setCreateError(undefined);
+    void dataSource
+      .createPlan(plan)
+      .then(() => {
+        setLeaveGuard(undefined);
+        void navigate('/plan');
+      })
+      .catch(() => {
+        setCreateError(
+          'The plan could not be created. Nothing you chose here was lost; try again.',
+        );
+        setCreating(false);
+      });
   };
 
   const draftEquivalent = parseCourseCode(draft.equivalent);
@@ -460,14 +477,28 @@ export function OnboardingPage() {
                   onClick={() => setStep(s => (s === 1 ? 2 : 3))}
                 />
               ) : (
-                <Button
-                  label="Create plan"
-                  variant="primary"
-                  size="sm"
-                  onClick={() =>
-                    dataSource.kind === 'demo' ? setConfirming(true) : finish()
-                  }
-                />
+                <Stack direction="horizontal" gap={1.5} vAlign="center">
+                  {createError !== undefined && (
+                    <Text
+                      size="sm"
+                      role="alert"
+                      style={{color: 'var(--color-text-red)'}}
+                    >
+                      {createError}
+                    </Text>
+                  )}
+                  <Button
+                    label="Create plan"
+                    variant="primary"
+                    size="sm"
+                    isLoading={creating}
+                    onClick={() =>
+                      dataSource.kind === 'demo'
+                        ? setConfirming(true)
+                        : finish()
+                    }
+                  />
+                </Stack>
               )}
             </Stack>
           </Stack>

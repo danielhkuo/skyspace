@@ -380,13 +380,21 @@ export function subjectsIn(sections: Section[]): string[] {
   ].sort();
 }
 
-/** Distinct part-of-term labels in a term, in first-seen order. The API has `SESSIONS`. */
-export function partsOfTermIn(sections: Section[]): string[] {
-  const out: string[] = [];
+/**
+ * Distinct parts of term in a term, in first-seen order. The API has
+ * `SESSIONS` with a code and a label; the fixture carries only the label, so
+ * here `code` and `label` are the same string.
+ */
+export function partsOfTermIn(
+  sections: Section[],
+): {code: string; label: string}[] {
+  const seen = new Set<string>();
+  const out: {code: string; label: string}[] = [];
   for (const s of sections) {
     const pot = s.listing.partOfTerm;
-    if (pot !== undefined && !out.includes(pot)) {
-      out.push(pot);
+    if (pot !== undefined && !seen.has(pot)) {
+      seen.add(pot);
+      out.push({code: pot, label: pot});
     }
   }
   return out;

@@ -11,12 +11,18 @@ import {courseKey, formatCourseCode, type CourseCode} from '../domain';
 import {catalogSearchHref} from './labels';
 
 type FavoritesFooterProps = {
+  /** Signed in, favorites live on the account; out, in this browser. */
+  signedIn: boolean;
   favorites: CourseCode[];
   onRemove: (code: CourseCode) => void;
 };
 
 /** Under the results: how many courses are starred, and the list on demand. One flat list, no collections. */
-export function FavoritesFooter({favorites, onRemove}: FavoritesFooterProps) {
+export function FavoritesFooter({
+  favorites,
+  onRemove,
+  signedIn,
+}: FavoritesFooterProps) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const n = favorites.length;
@@ -40,7 +46,8 @@ export function FavoritesFooter({favorites, onRemove}: FavoritesFooterProps) {
               Favorites
             </Text>
             <Text type="supporting">
-              · {n} course{n === 1 ? '' : 's'} · saved in this browser
+              · {n} course{n === 1 ? '' : 's'} ·{' '}
+              {signedIn ? 'saved to your account' : 'saved in this browser'}
             </Text>
           </Stack>
           <Button

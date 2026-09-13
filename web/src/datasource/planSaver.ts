@@ -6,8 +6,14 @@
  */
 import type {Plan} from '../domain';
 import {dataSource} from './index';
+import {StaleVersionError} from './types';
 
-export type SaveStatus = 'saved' | 'pending' | 'saving';
+/**
+ * `conflict`: the store refused the write because another tab or device
+ * changed the plan since this one loaded it; only a reload clears it.
+ * `failed`: any other rejection; the plan stays on the board, unsaved.
+ */
+export type SaveStatus = 'saved' | 'pending' | 'saving' | 'conflict' | 'failed';
 
 const DEBOUNCE_MS = 500;
 
@@ -37,12 +43,19 @@ function writeNow(): Promise<void> {
   setStatus('saving');
   const previous = inFlight ?? Promise.resolve();
   // One PUT at a time, in order: a later plan never lands before an earlier one.
+  // A rejected write is never retried on its own: the status says what happened
+  // and the next edit queues a fresh attempt.
   const run = previous
     .then(() => dataSource.savePlan(plan))
-    .finally(() => {
+    .then(
+      (): SaveStatus => 'saved',
+      (error: unknown): SaveStatus =>
+        error instanceof StaleVersionError ? 'conflict' : 'failed',
+    )
+    .then(outcome => {
       if (inFlight === run) {
         inFlight = undefined;
-        setStatus(pending === undefined ? 'saved' : 'pending');
+        setStatus(pending === undefined ? outcome : 'pending');
       }
     });
   inFlight = run;

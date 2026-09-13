@@ -34,7 +34,8 @@ type FilterRailProps = {
   query: CatalogQuery;
   onChange: (patch: QueryPatch) => void;
   subjects: string[];
-  partsOfTerm: string[];
+  /** `code` is what the query matches; `label` is what the rail shows. */
+  partsOfTerm: {code: string; label: string}[];
   hiddenUnscheduled: number;
   /** The tablet sheet has its own search box above the results. */
   showSearch: boolean;
@@ -277,12 +278,12 @@ export function FilterRail({
         <Stack gap={1} paddingBlock={1.5} width="100%">
           {partsOfTerm.map(pot => (
             <CheckboxInput
-              key={pot}
-              label={pot}
+              key={pot.code}
+              label={pot.label}
               size="sm"
-              value={query.partOfTerm.includes(pot)}
+              value={query.partOfTerm.includes(pot.code)}
               onChange={() =>
-                onChange({partOfTerm: toggleIn(query.partOfTerm, pot)})
+                onChange({partOfTerm: toggleIn(query.partOfTerm, pot.code)})
               }
               width="100%"
             />

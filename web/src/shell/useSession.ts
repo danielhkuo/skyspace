@@ -13,7 +13,10 @@ export function announceSessionChange(): void {
 export type SessionState = {
   /** `undefined` while loading, `null` when signed out. */
   session: Session | null | undefined;
-  signIn: (email: string) => Promise<Session>;
+  /** Mails a code; rejects with `RateLimitedError` when asked too often. */
+  requestSignInCode: (email: string) => Promise<void>;
+  /** Trades the code for a session; rejects with `InvalidCodeError`. */
+  verifySignInCode: (email: string, code: string) => Promise<Session>;
   signOut: () => Promise<void>;
 };
 
@@ -35,8 +38,12 @@ export function useSession(): SessionState {
       window.removeEventListener(EVENT, load);
     };
   }, []);
-  const signIn = useCallback(async (email: string) => {
-    const s = await dataSource.signIn(email);
+  const requestSignInCode = useCallback(
+    (email: string) => dataSource.requestSignInCode(email),
+    [],
+  );
+  const verifySignInCode = useCallback(async (email: string, code: string) => {
+    const s = await dataSource.verifySignInCode(email, code);
     announceSessionChange();
     return s;
   }, []);
@@ -44,5 +51,5 @@ export function useSession(): SessionState {
     await dataSource.signOut();
     announceSessionChange();
   }, []);
-  return {session, signIn, signOut};
+  return {session, requestSignInCode, verifySignInCode, signOut};
 }

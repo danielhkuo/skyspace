@@ -13,7 +13,7 @@ import {
   type Plan,
   type PlanBundle,
   type PlanId,
-  type Program,
+  type ProgramSummary,
   type ScheduleId,
   type Section,
   type SectionPage,
@@ -31,7 +31,12 @@ import {
   fallSections,
 } from '../fixtures/fallSections';
 import {fallSchedule} from '../fixtures/fallSchedule';
-import type {DataSource, RequirementReport, Session} from './types';
+import {
+  InvalidCodeError,
+  type DataSource,
+  type RequirementErrorReport,
+  type Session,
+} from './types';
 
 const PLAN_KEY = 'skyspace.demo.plan.v2.';
 const FAVORITES_KEY = 'skyspace.demo.favorites.v1';
@@ -162,6 +167,12 @@ export const demoDataSource: DataSource = {
     write(CURRENT_PLAN_KEY, plan.id);
   },
 
+  async createPlan(plan: Plan): Promise<Plan> {
+    // The browser's id stands: nothing else mints one here.
+    await demoDataSource.savePlan(plan);
+    return plan;
+  },
+
   async resetPlan(id: PlanId): Promise<void> {
     const current = read(
       CURRENT_PLAN_KEY,
@@ -247,7 +258,7 @@ export const demoDataSource: DataSource = {
     };
   },
 
-  async saveSchedule(schedule: TermSchedule): Promise<void> {
+  async saveSchedule(schedule: TermSchedule): Promise<TermSchedule> {
     const all = readSchedules();
     const at = all.findIndex(s => s.id === schedule.id);
     write(
@@ -256,6 +267,7 @@ export const demoDataSource: DataSource = {
         ? [...all, schedule]
         : all.map(s => (s.id === schedule.id ? schedule : s)),
     );
+    return schedule;
   },
 
   async deleteSchedule(id: ScheduleId): Promise<void> {
@@ -279,19 +291,37 @@ export const demoDataSource: DataSource = {
     return term === FALL_2026 ? subjectsIn(fallSections) : [];
   },
 
-  async listPartsOfTerm(term: TermCode): Promise<string[]> {
+  async listPartsOfTerm(
+    term: TermCode,
+  ): Promise<{code: string; label: string}[]> {
     return term === FALL_2026 ? partsOfTermIn(fallSections) : [];
   },
 
-  async listPrograms(): Promise<Program[]> {
-    return fixtureBundle.programs;
+  async listPrograms(): Promise<ProgramSummary[]> {
+    // The fixture holds one reviewed year per program.
+    return fixtureBundle.programs.map(p => ({
+      id: p.id,
+      slug: p.slug,
+      kind: p.kind,
+      name: p.name,
+      credential: p.credential,
+      catalogYears: [p.catalogYear],
+      ...(p.totalCredits === undefined ? {} : {totalCredits: p.totalCredits}),
+    }));
   },
 
   async session(): Promise<Session | undefined> {
     return read(SESSION_KEY, isSession);
   },
 
-  async signIn(email: string): Promise<Session> {
+  async requestSignInCode(): Promise<void> {
+    // No mail is sent: the sign-in page says any six digits work.
+  },
+
+  async verifySignInCode(email: string, code: string): Promise<Session> {
+    if (!/^\d{6}$/.test(code)) {
+      throw new InvalidCodeError();
+    }
     const session = {email, name: nameFromEmail(email)};
     write(SESSION_KEY, session);
     return session;
@@ -299,6 +329,10 @@ export const demoDataSource: DataSource = {
 
   async signOut(): Promise<void> {
     remove(SESSION_KEY);
+  },
+
+  async claimGuestData(): Promise<void> {
+    // Everything already lives in this browser; there is nothing to move.
   },
 
   async deleteAccount(): Promise<void> {
@@ -309,13 +343,12 @@ export const demoDataSource: DataSource = {
   },
 
   async freshness() {
-    return {};
+    return {stale: false};
   },
 
-  async reportRequirement(report: RequirementReport): Promise<void> {
+  async reportRequirement(report: RequirementErrorReport): Promise<void> {
     const existing =
-      read(REPORTS_KEY, (v): v is RequirementReport[] => Array.isArray(v)) ??
-      [];
+      read(REPORTS_KEY, (v): v is unknown[] => Array.isArray(v)) ?? [];
     write(REPORTS_KEY, [
       ...existing,
       {...report, at: new Date().toISOString()},

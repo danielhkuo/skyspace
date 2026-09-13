@@ -8,7 +8,7 @@ compose down -v` plus deleting the VPS ends it.
 
 | Service | Image | Runs |
 |---|---|---|
-| `web` | `deploy/web.Dockerfile` (Node build → Caddy) | Caddy on 80/443: certificate, static app, `/api/*` and `/health` to the API |
+| `web` | `deploy/web.Dockerfile` (Node build → Caddy) | Caddy on 80/443: certificate, static app built with `VITE_DATA_SOURCE=api`, `/api/*` and `/health` to the API |
 | `api` | `deploy/api.Dockerfile` | `skyspace-api` on 8080, unprivileged, behind Caddy only |
 | `migrate` | same image | `skyspace migrate` once per `up`; the API waits for it |
 | `jobs` | same image | cron with `deploy/jobs/crontab`: seats every 15 min, listings nightly, sections and detail weekly, reference weekly, catalog monthly, `doctor` hourly |
@@ -107,10 +107,11 @@ issues its own certificate, which the browser will warn about once.
 
 ## What this deploy does not do yet
 
-- **The browser app runs on demo data.** `web/src/datasource` has only the
-  demo source; `VITE_DATA_SOURCE=api` is refused at build time until the API
-  source exists. The backend is live and reachable at `/api/v1/*` and
-  `/health` regardless, so the two can be finished independently.
+- **Suggestion chips on the plan board are empty.** The demo offered every
+  fixture course; the API has no "courses for this requirement" query yet,
+  so `catalogCandidates()` returns nothing until one exists.
+- **The class pane shows part-of-term codes**, not labels, on sections
+  (the filter rail shows labels): the section carries Rice's code.
 - **One database role.** `docs/tech/05-ingest.md` wants the API on a
   `skyspace_app` role with append-only grants; here everything connects as
   the owner. The grants are a commented block at the end of migration 0008.

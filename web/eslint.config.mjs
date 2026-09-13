@@ -9,7 +9,13 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 export default [
   ...gts,
   {
-    ignores: ['dist/**', 'node_modules/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      // Generated: ts-rs wire types and wasm-pack output (07-wasm-testing.md).
+      'src/api/generated/**',
+      'src/engine/generated/**',
+    ],
   },
   {
     // gts points the TypeScript parser at a tsconfig it does not publish, so we
