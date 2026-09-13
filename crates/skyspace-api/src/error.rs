@@ -80,9 +80,7 @@ impl ApiError {
             Self::Invalid(field) => field.clone(),
             Self::Unauthenticated => "Sign in to continue.".to_owned(),
             Self::NotFound => "Not found.".to_owned(),
-            Self::Conflict(ConflictKind::StaleVersion) => {
-                "This changed in another tab.".to_owned()
-            }
+            Self::Conflict(ConflictKind::StaleVersion) => "This changed in another tab.".to_owned(),
             Self::Conflict(ConflictKind::LastPlan) => {
                 "Create another plan before deleting this one.".to_owned()
             }
@@ -128,7 +126,9 @@ impl IntoResponse for ApiError {
         } = self
             && let Ok(value) = axum::http::HeaderValue::from_str(&retry_after_seconds.to_string())
         {
-            response.headers_mut().insert(axum::http::header::RETRY_AFTER, value);
+            response
+                .headers_mut()
+                .insert(axum::http::header::RETRY_AFTER, value);
         }
         response
     }
@@ -143,13 +143,23 @@ impl From<skyspace_store::StoreError> for ApiError {
     }
 }
 
+impl From<crate::state::MailError> for ApiError {
+    /// A refused message is ours to fix, not the student's: `500`.
+    fn from(error: crate::state::MailError) -> Self {
+        Self::Internal(anyhow::Error::new(error))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn statuses_and_codes_match_the_table() {
-        assert_eq!(ApiError::Invalid("term".into()).status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            ApiError::Invalid("term".into()).status(),
+            StatusCode::BAD_REQUEST
+        );
         assert_eq!(ApiError::Unauthenticated.code(), ErrorCode::Unauthenticated);
         assert_eq!(
             ApiError::Conflict(ConflictKind::LastPlan).code(),

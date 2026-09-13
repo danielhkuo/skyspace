@@ -10,6 +10,18 @@ use sha2::{Digest, Sha256};
 /// The cookie name.
 pub const SESSION_COOKIE: &str = "skyspace_session";
 
+/// Lowercase hex of `bytes`, for log fields and `ETag`s.
+#[must_use]
+pub fn hex(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    bytes
+        .iter()
+        .fold(String::with_capacity(bytes.len() * 2), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
+}
+
 /// A freshly minted session token: the value for the cookie and the hash
 /// for the database.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +104,11 @@ mod tests {
         assert_eq!(hash_cookie_value(&token.cookie_value), Some(token.sha256));
         assert_ne!(mint_session_token().cookie_value, token.cookie_value);
         assert_eq!(hash_cookie_value("short"), None);
+    }
+
+    #[test]
+    fn hex_is_lowercase_and_padded() {
+        assert_eq!(hex(&[0, 15, 255]), "000fff");
     }
 
     #[test]
