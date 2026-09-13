@@ -219,7 +219,12 @@ pub struct MutualExclusion {
 /// The folded fact for one course. `Unknown` and `NoneRequired` are
 /// different variants so "never seen" cannot be read as "no prerequisite".
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
+#[serde(
+    tag = "kind",
+    content = "value",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 pub enum PrereqFact {
     /// No catalog record for this course; build no warning.

@@ -1,0 +1,311 @@
+{
+  "plan": "31aa11bf-2df8-4be4-9a28-9e44cf49d875",
+  "engineVersion": "0.1.0",
+  "programs": [
+    {
+      "program": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
+      "name": "bassoon-performance-bmus",
+      "catalogYear": 2026,
+      "evaluatedWith": 2026,
+      "root": {
+        "requirement": "30f0af34-4105-42b9-930a-b120a41ccd67",
+        "label": "Bassoon Performance, BMus",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/"
+        },
+        "outcome": {
+          "outcome": "partial"
+        },
+        "progress": {
+          "requirementsMet": 3,
+          "requirementsCheckable": 4,
+          "requirementsClaimed": 0,
+          "creditsMet": 2200,
+          "creditsRequired": 2500,
+          "creditsUnknown": 0,
+          "selfChecks": 2,
+          "selfChecksConfirmed": 0
+        },
+        "filledBy": [],
+        "claimedBy": [],
+        "children": [
+          {
+            "requirement": "7cfd7f32-075a-4e7a-9b59-d3b1855b92e2",
+            "label": "Individual and Ensemble Study",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 2,
+              "requirementsClaimed": 0,
+              "creditsMet": 2200,
+              "creditsRequired": 2500,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "f75e4f20-377c-42ea-a100-cbc3c7f87318",
+                "label": "MUSI 457",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "partial"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 2100,
+                  "creditsRequired": 2400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "78b14e8d-f077-4447-b0cb-c385aed02c78",
+                  "78b14d8d-f077-4294-bb87-cca79ceedfd7",
+                  "78b1508d-f077-47ad-a99d-f8013072f086",
+                  "78b14f8d-f077-45fa-88b5-b9da8662200d",
+                  "78b14a8d-f077-4d7b-8175-29fbabdadd6c",
+                  "78b1498d-f077-4bc8-987d-9cba18a28e8b",
+                  "78b14c8d-f077-40e1-b19f-0b838535a76a"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "216994b3-c70f-4035-85dc-de8497fbce9b",
+                "label": "Secondary Lessons",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 100,
+                  "creditsRequired": 100,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "de5a8289-28a3-4ea1-8462-6213ea9812e6"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "3a5a2584-bce2-467a-a12e-1476701497ae",
+            "label": "Recitals",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 2,
+              "requirementsCheckable": 2,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 0,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "ed237282-2a52-433c-ab9c-32078cb33610",
+                "label": "MUSI 341",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "65ddc8c3-367e-4054-aaaf-8f5d05370a0a"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "ba9cfc12-f184-4609-8dc7-5e1d5331f08b",
+                "label": "MUSI 441",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "e7bed90d-c580-4417-b6dd-c7eaaf2c73b2"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "b051f7e9-0cbb-494c-a6b4-38ce4f591543",
+            "label": "Piano Proficiency Exam",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "needs_student_check"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 0,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 0,
+              "creditsUnknown": 0,
+              "selfChecks": 1,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "2379720a-9063-4a72-a58e-e33ab2e45e01",
+                "label": "Students must complete and pass the Piano Proficiency Exam",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "needs_student_check"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 0,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 0,
+                  "selfChecks": 1,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [],
+                "claimedBy": [],
+                "claimedIn": "2ea7f037-ca82-4b87-bc50-bc2bc590fd79",
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "f653c6c3-cdb4-4c1d-9597-740f8c863c79",
+            "label": "Consult the department for jury requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "needs_student_check"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 0,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 0,
+              "creditsUnknown": 0,
+              "selfChecks": 1,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": []
+          }
+        ]
+      },
+      "progress": {
+        "requirementsMet": 3,
+        "requirementsCheckable": 4,
+        "requirementsClaimed": 0,
+        "creditsMet": 2200,
+        "creditsRequired": 12000,
+        "creditsUnknown": 0,
+        "selfChecks": 2,
+        "selfChecksConfirmed": 0
+      },
+      "declaredCredits": 12000
+    }
+  ],
+  "progress": {
+    "requirementsMet": 3,
+    "requirementsCheckable": 4,
+    "requirementsClaimed": 0,
+    "creditsMet": 2200,
+    "creditsRequired": 12000,
+    "creditsUnknown": 0,
+    "selfChecks": 2,
+    "selfChecksConfirmed": 0
+  },
+  "warnings": [
+    {
+      "kind": "self_check",
+      "value": {
+        "program": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
+        "requirement": "b051f7e9-0cbb-494c-a6b4-38ce4f591543",
+        "label": "Piano Proficiency Exam",
+        "text": "Piano Proficiency Exam"
+      }
+    },
+    {
+      "kind": "self_check",
+      "value": {
+        "program": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
+        "requirement": "2379720a-9063-4a72-a58e-e33ab2e45e01",
+        "label": "Students must complete and pass the Piano Proficiency Exam",
+        "text": "Students must complete and pass the Piano Proficiency Exam"
+      }
+    },
+    {
+      "kind": "self_check",
+      "value": {
+        "program": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
+        "requirement": "f653c6c3-cdb4-4c1d-9597-740f8c863c79",
+        "label": "Consult the department for jury requirements",
+        "text": "Consult the department for jury requirements"
+      }
+    }
+  ]
+}

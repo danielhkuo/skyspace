@@ -1,0 +1,514 @@
+{
+  "plan": {
+    "id": "31aa11bf-2df8-4be4-9a28-9e44cf49d875",
+    "name": "bmus",
+    "catalogYear": 2026,
+    "matriculation": {
+      "academicYear": 2027,
+      "season": "fall"
+    },
+    "programs": [
+      "0ab6abd3-3272-4682-94a6-8c1c86255ee6"
+    ],
+    "incomingCredit": [],
+    "terms": [
+      {
+        "id": "2ea7f237-ca82-4eed-b747-f243ff54cb83",
+        "position": {
+          "academicYear": 2027,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b14e8d-f077-4447-b0cb-c385aed02c78",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "de5a8289-28a3-4ea1-8462-6213ea9812e6",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "260"
+                },
+                "credits": 100,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "2ea7f137-ca82-4d3a-a518-1286231452e6",
+        "position": {
+          "academicYear": 2027,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b14d8d-f077-4294-bb87-cca79ceedfd7",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "2ea7f037-ca82-4b87-bc50-bc2bc590fd79",
+        "position": {
+          "academicYear": 2028,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b1508d-f077-47ad-a99d-f8013072f086",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": [
+          {
+            "requirement": "2379720a-9063-4a72-a58e-e33ab2e45e01",
+            "label": "Piano Proficiency Exam"
+          }
+        ]
+      },
+      {
+        "id": "2ea7ef37-ca82-49d4-88d5-f7e4c36b141c",
+        "position": {
+          "academicYear": 2028,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b14f8d-f077-45fa-88b5-b9da8662200d",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "65ddc8c3-367e-4054-aaaf-8f5d05370a0a",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "341"
+                },
+                "credits": 0,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "2ea7ee37-ca82-4821-a3c2-cc5fecfa227f",
+        "position": {
+          "academicYear": 2029,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b14a8d-f077-4d7b-8175-29fbabdadd6c",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "2ea7ed37-ca82-466e-9a15-9b3089ed06c2",
+        "position": {
+          "academicYear": 2029,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b1498d-f077-4bc8-987d-9cba18a28e8b",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "2ea7ec37-ca82-44bb-8217-610f71805725",
+        "position": {
+          "academicYear": 2030,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "78b14c8d-f077-40e1-b19f-0b838535a76a",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "457"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "2ea7eb37-ca82-4308-8f6f-6db82af35868",
+        "position": {
+          "academicYear": 2030,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "e7bed90d-c580-4417-b6dd-c7eaaf2c73b2",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "441"
+                },
+                "credits": 0,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      }
+    ],
+    "selfChecks": []
+  },
+  "programs": [
+    {
+      "id": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
+      "catalogYear": 2026,
+      "slug": "bassoon-performance-bmus",
+      "kind": "major",
+      "name": "bassoon-performance-bmus",
+      "credential": "BMus",
+      "totalCredits": 12000,
+      "source": {
+        "url": "https://ga.rice.edu/programs-study/departments-programs/"
+      },
+      "review": {
+        "reviewedBy": "fixture",
+        "publishedAt": 1757548800
+      },
+      "root": {
+        "id": "30f0af34-4105-42b9-930a-b120a41ccd67",
+        "label": "Bassoon Performance, BMus",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/"
+        },
+        "body": {
+          "kind": "all",
+          "of": [
+            {
+              "id": "7cfd7f32-075a-4e7a-9b59-d3b1855b92e2",
+              "label": "Individual and Ensemble Study",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "f75e4f20-377c-42ea-a100-cbc3c7f87318",
+                    "label": "MUSI 457",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MUSI",
+                              "number": "457"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 8
+                    }
+                  },
+                  {
+                    "id": "216994b3-c70f-4035-85dc-de8497fbce9b",
+                    "label": "Secondary Lessons",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 100
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "number_range",
+                            "subject": "MUSI",
+                            "low": 251,
+                            "high": 297
+                          }
+                        ],
+                        "exclude": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MUSI",
+                              "number": "281"
+                            }
+                          }
+                        ]
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "3a5a2584-bce2-467a-a12e-1476701497ae",
+              "label": "Recitals",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "ed237282-2a52-433c-ab9c-32078cb33610",
+                    "label": "MUSI 341",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 0
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MUSI",
+                              "number": "341"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "ba9cfc12-f184-4609-8dc7-5e1d5331f08b",
+                    "label": "MUSI 441",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 0
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MUSI",
+                              "number": "441"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "b051f7e9-0cbb-494c-a6b4-38ce4f591543",
+              "label": "Piano Proficiency Exam",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "2379720a-9063-4a72-a58e-e33ab2e45e01",
+                    "label": "Students must complete and pass the Piano Proficiency Exam",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "non_course",
+                      "nonCourseKind": "proficiency_exam",
+                      "description": "Students must complete and pass the Piano Proficiency Exam"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "f653c6c3-cdb4-4c1d-9597-740f8c863c79",
+              "label": "Consult the department for jury requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "unverifiable",
+                "text": "Consult the department for jury requirements"
+              }
+            }
+          ]
+        }
+      },
+      "retiredRequirements": []
+    }
+  ],
+  "facts": {
+    "courses": [
+      {
+        "code": {
+          "subject": "MUSI",
+          "number": "260"
+        },
+        "title": "MUSI 260",
+        "credits": {
+          "kind": "fixed",
+          "value": 100
+        },
+        "attributes": [],
+        "department": "MUSI",
+        "repeatable": true,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MUSI",
+          "number": "341"
+        },
+        "title": "MUSI 341",
+        "credits": {
+          "kind": "fixed",
+          "value": 0
+        },
+        "attributes": [],
+        "department": "MUSI",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MUSI",
+          "number": "441"
+        },
+        "title": "MUSI 441",
+        "credits": {
+          "kind": "fixed",
+          "value": 0
+        },
+        "attributes": [],
+        "department": "MUSI",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MUSI",
+          "number": "457"
+        },
+        "title": "MUSI 457",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "MUSI",
+        "repeatable": true,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      }
+    ],
+    "aliases": []
+  },
+  "prerequisites": [],
+  "exclusions": [],
+  "limits": {
+    "fallSpring": 1800,
+    "musicAndArchitecture": 2000
+  },
+  "invalidations": [],
+  "today": {
+    "academicYear": 2027,
+    "season": "fall"
+  }
+}

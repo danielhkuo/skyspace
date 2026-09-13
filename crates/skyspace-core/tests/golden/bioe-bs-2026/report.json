@@ -1,0 +1,306 @@
+{
+  "plan": "560a9fbf-4311-4d04-95e9-3ed8191edefd",
+  "engineVersion": "0.1.0",
+  "programs": [
+    {
+      "program": "d68d3fd6-2fc6-4b78-a8b1-1842cea0197a",
+      "name": "bioengineering-bsbe",
+      "catalogYear": 2026,
+      "evaluatedWith": 2026,
+      "root": {
+        "requirement": "ae117952-d192-4c01-a6bf-4be72de6e153",
+        "label": "Bioengineering, BSBE",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/"
+        },
+        "outcome": {
+          "outcome": "partial"
+        },
+        "progress": {
+          "requirementsMet": 6,
+          "requirementsCheckable": 7,
+          "requirementsClaimed": 0,
+          "creditsMet": 1800,
+          "creditsRequired": 2100,
+          "creditsUnknown": 0,
+          "selfChecks": 1,
+          "selfChecksConfirmed": 0
+        },
+        "filledBy": [],
+        "claimedBy": [],
+        "children": [
+          {
+            "requirement": "2e1158cf-6073-4dc2-993b-3833a0e31809",
+            "label": "Core Requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 6,
+              "requirementsCheckable": 7,
+              "requirementsClaimed": 0,
+              "creditsMet": 1800,
+              "creditsRequired": 2100,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "ef5d8394-4a8d-4bdb-96ac-5cce85f4975d",
+                "label": "CHEM 121",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "47c52d37-0a59-4770-8325-85799aefd2e2"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "ef5d8494-4a8d-4d8e-afdd-f9fc4cf9724c",
+                "label": "CHEM 122",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "47c53037-0a59-4c89-8b39-19468d6e823f"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "8031c897-ea73-4b06-bad6-3ebb47ad7648",
+                "label": "MATH 101",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "1f05d4ab-13f5-4395-9262-d7d6f8061f4e"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "8031c797-ea73-4953-91f8-ae5438c5d929",
+                "label": "MATH 102",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "unmet"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "46e37385-7dc8-4894-b455-8cc6d7cc9df0",
+                "label": "BIOE 252",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "b571d036-4b62-475f-8680-856cccbd94b9"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "3de54285-7898-47a8-a509-37c1d7d3edec",
+                "label": "BIOE 322",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "be700136-5092-484b-8b00-d24f915646d9"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "3dc64d85-787e-49ca-8380-1eca59e52dba",
+                "label": "BIOE 391",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "be587a36-507e-4405-958d-2ec6df6ea673"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "2073f957-0fc8-49b5-8655-12d961bfc1e7",
+            "label": "Students should complete these courses during their freshman year",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "needs_student_check"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 0,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 0,
+              "creditsUnknown": 0,
+              "selfChecks": 1,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": []
+          }
+        ]
+      },
+      "progress": {
+        "requirementsMet": 6,
+        "requirementsCheckable": 7,
+        "requirementsClaimed": 0,
+        "creditsMet": 1800,
+        "creditsRequired": 13100,
+        "creditsUnknown": 0,
+        "selfChecks": 1,
+        "selfChecksConfirmed": 0
+      },
+      "declaredCredits": 13100
+    }
+  ],
+  "progress": {
+    "requirementsMet": 6,
+    "requirementsCheckable": 7,
+    "requirementsClaimed": 0,
+    "creditsMet": 1800,
+    "creditsRequired": 13100,
+    "creditsUnknown": 0,
+    "selfChecks": 1,
+    "selfChecksConfirmed": 0
+  },
+  "warnings": [
+    {
+      "kind": "prerequisite",
+      "value": {
+        "term": "4ef1c597-0d22-48d0-83f1-446c394ad0a8",
+        "course": {
+          "subject": "BIOE",
+          "number": "322"
+        },
+        "prerequisite": {
+          "subject": "MATH",
+          "number": "102"
+        },
+        "problem": {
+          "kind": "not_in_plan"
+        },
+        "publishedFor": 2026
+      }
+    },
+    {
+      "kind": "self_check",
+      "value": {
+        "program": "d68d3fd6-2fc6-4b78-a8b1-1842cea0197a",
+        "requirement": "2073f957-0fc8-49b5-8655-12d961bfc1e7",
+        "label": "Students should complete these courses during their freshman year",
+        "text": "Students should complete these courses during their freshman year"
+      }
+    }
+  ]
+}

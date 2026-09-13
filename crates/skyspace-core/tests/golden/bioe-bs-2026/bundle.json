@@ -1,0 +1,592 @@
+{
+  "plan": {
+    "id": "560a9fbf-4311-4d04-95e9-3ed8191edefd",
+    "name": "bioe",
+    "catalogYear": 2026,
+    "matriculation": {
+      "academicYear": 2027,
+      "season": "fall"
+    },
+    "programs": [
+      "d68d3fd6-2fc6-4b78-a8b1-1842cea0197a"
+    ],
+    "incomingCredit": [],
+    "terms": [
+      {
+        "id": "4ef1c897-0d22-4de9-a29e-fff9fc7ae0a3",
+        "position": {
+          "academicYear": 2027,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "47c52d37-0a59-4770-8325-85799aefd2e2",
+                "course": {
+                  "subject": "CHEM",
+                  "number": "121"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "1f05d4ab-13f5-4395-9262-d7d6f8061f4e",
+                "course": {
+                  "subject": "MATH",
+                  "number": "101"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "9eeb915f-b439-4129-a0ac-ad43d33b5166",
+        "position": {
+          "academicYear": 2027,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "47c53037-0a59-4c89-8b39-19468d6e823f",
+                "course": {
+                  "subject": "CHEM",
+                  "number": "122"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "b571d036-4b62-475f-8680-856cccbd94b9",
+                "course": {
+                  "subject": "BIOE",
+                  "number": "252"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "4ef1c597-0d22-48d0-83f1-446c394ad0a8",
+        "position": {
+          "academicYear": 2028,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "be700136-5092-484b-8b00-d24f915646d9",
+                "course": {
+                  "subject": "BIOE",
+                  "number": "322"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "be587a36-507e-4405-958d-2ec6df6ea673",
+                "course": {
+                  "subject": "BIOE",
+                  "number": "391"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      }
+    ],
+    "selfChecks": []
+  },
+  "programs": [
+    {
+      "id": "d68d3fd6-2fc6-4b78-a8b1-1842cea0197a",
+      "catalogYear": 2026,
+      "slug": "bioengineering-bsbe",
+      "kind": "major",
+      "name": "bioengineering-bsbe",
+      "credential": "BSBE",
+      "totalCredits": 13100,
+      "source": {
+        "url": "https://ga.rice.edu/programs-study/departments-programs/"
+      },
+      "review": {
+        "reviewedBy": "fixture",
+        "publishedAt": 1757548800
+      },
+      "root": {
+        "id": "ae117952-d192-4c01-a6bf-4be72de6e153",
+        "label": "Bioengineering, BSBE",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/"
+        },
+        "body": {
+          "kind": "all",
+          "of": [
+            {
+              "id": "2e1158cf-6073-4dc2-993b-3833a0e31809",
+              "label": "Core Requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "ef5d8394-4a8d-4bdb-96ac-5cce85f4975d",
+                    "label": "CHEM 121",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "CHEM",
+                              "number": "121"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "ef5d8494-4a8d-4d8e-afdd-f9fc4cf9724c",
+                    "label": "CHEM 122",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "CHEM",
+                              "number": "122"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "8031c897-ea73-4b06-bad6-3ebb47ad7648",
+                    "label": "MATH 101",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MATH",
+                              "number": "101"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "8031c797-ea73-4953-91f8-ae5438c5d929",
+                    "label": "MATH 102",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MATH",
+                              "number": "102"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "46e37385-7dc8-4894-b455-8cc6d7cc9df0",
+                    "label": "BIOE 252",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "BIOE",
+                              "number": "252"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "3de54285-7898-47a8-a509-37c1d7d3edec",
+                    "label": "BIOE 322",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "BIOE",
+                              "number": "322"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "3dc64d85-787e-49ca-8380-1eca59e52dba",
+                    "label": "BIOE 391",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "BIOE",
+                              "number": "391"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "2073f957-0fc8-49b5-8655-12d961bfc1e7",
+              "label": "Students should complete these courses during their freshman year",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "unverifiable",
+                "text": "Students should complete these courses during their freshman year"
+              }
+            }
+          ]
+        }
+      },
+      "retiredRequirements": []
+    }
+  ],
+  "facts": {
+    "courses": [
+      {
+        "code": {
+          "subject": "BIOE",
+          "number": "252"
+        },
+        "title": "BIOE 252",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "BIOE",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "BIOE",
+          "number": "322"
+        },
+        "title": "BIOE 322",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "BIOE",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "CHEM",
+          "number": "121"
+        },
+        "title": "CHEM 121",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "CHEM",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "CHEM",
+          "number": "122"
+        },
+        "title": "CHEM 122",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "CHEM",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MATH",
+          "number": "101"
+        },
+        "title": "MATH 101",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "MATH",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MATH",
+          "number": "102"
+        },
+        "title": "MATH 102",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "department": "MATH",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      }
+    ],
+    "aliases": []
+  },
+  "prerequisites": [
+    {
+      "course": {
+        "subject": "CHEM",
+        "number": "122"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "CHEM",
+              "number": "121"
+            }
+          },
+          "published": "CHEM 121"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "MATH",
+        "number": "102"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "MATH",
+              "number": "101"
+            }
+          },
+          "published": "MATH 101"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "BIOE",
+        "number": "322"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "all",
+            "value": [
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "BIOE",
+                  "number": "252"
+                }
+              },
+              {
+                "kind": "any",
+                "value": [
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "MATH",
+                      "number": "102"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "MATH",
+                      "number": "106"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "published": "BIOE 252 AND (MATH 102 OR MATH 106)"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "BIOE",
+        "number": "252"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "all",
+            "value": [
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "CHEM",
+                  "number": "121"
+                }
+              },
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "MATH",
+                  "number": "101"
+                }
+              }
+            ]
+          },
+          "published": "CHEM 121 AND MATH 101"
+        }
+      }
+    }
+  ],
+  "exclusions": [],
+  "limits": {
+    "fallSpring": 1800,
+    "musicAndArchitecture": 2000
+  },
+  "invalidations": [],
+  "today": {
+    "academicYear": 2027,
+    "season": "fall"
+  }
+}

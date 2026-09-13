@@ -1,0 +1,2885 @@
+{
+  "plan": {
+    "id": "8b1ac0e1-929c-4ed0-8d47-3c880d41eefa",
+    "name": "CS + Stats minor",
+    "catalogYear": 2026,
+    "matriculation": {
+      "academicYear": 2025,
+      "season": "fall"
+    },
+    "programs": [
+      "b815cb58-742f-49d5-808a-9ae4549e0e42",
+      "8c577520-48f8-47d1-84ef-faa3009f3a34",
+      "0c048a53-417e-4128-89be-a511408bd1b9"
+    ],
+    "incomingCredit": [
+      {
+        "id": "6dde21b2-597c-478f-896b-b68d0e188ee9",
+        "origin": "advanced_placement",
+        "code": "MATH 105",
+        "title": "AP/OTH Credit in Calculus I",
+        "credits": 300,
+        "riceEquivalent": {
+          "subject": "MATH",
+          "number": "105"
+        },
+        "fills": []
+      },
+      {
+        "id": "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0",
+        "origin": "transfer",
+        "code": "TRAN 100",
+        "title": "Intro Psychology, Houston CC",
+        "credits": 300,
+        "institution": "Houston Community College",
+        "fills": [
+          "69868b30-708c-489e-8f56-6e1c48858d98"
+        ],
+        "claims": [
+          {
+            "requirement": "69868b30-708c-489e-8f56-6e1c48858d98",
+            "basis": {
+              "kind": "registrar_posted"
+            },
+            "note": "Posted on my transfer evaluation"
+          }
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "requirement": "e9790ada-470a-4554-8fba-2a1eb2284e75",
+        "reason": "other",
+        "note": "HIST and PSYC"
+      }
+    ],
+    "terms": [
+      {
+        "id": "3eca5172-9b55-43cb-869c-1603872c1139",
+        "position": {
+          "academicYear": 2025,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "code": "202510",
+            "courses": [
+              {
+                "id": "07eecfa0-8f1f-4650-85f8-8dc14bbdae00",
+                "course": {
+                  "subject": "COMP",
+                  "number": "140"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "9099396f-2eb0-40e2-898f-6a2fa1ada978",
+                "course": {
+                  "subject": "MATH",
+                  "number": "102"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "32754849-cfa8-4df0-84f5-788de186c3e1",
+                "course": {
+                  "subject": "FWIS",
+                  "number": "149"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "fcfe9203-2cac-4f95-80f1-e9e520956921",
+                "course": {
+                  "subject": "CHEM",
+                  "number": "121"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "de6a2377-2edb-49b6-82f2-6ae77dccbf72",
+                "course": {
+                  "subject": "LPAP",
+                  "number": "170"
+                },
+                "credits": 100,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "69ac0c4f-8cbf-4763-8279-ff032f1002bb",
+        "position": {
+          "academicYear": 2025,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "code": "202520",
+            "courses": [
+              {
+                "id": "5f8e3f28-0f20-43d3-8a1b-60a633d97414",
+                "course": {
+                  "subject": "COMP",
+                  "number": "182"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "5655e834-9340-40e7-8619-20d002189e77",
+                "course": {
+                  "subject": "MATH",
+                  "number": "212"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "123e604b-53ef-4325-869a-00c4c88c557b",
+                "course": {
+                  "subject": "PHYS",
+                  "number": "101"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "43df73e2-c03f-45aa-8c23-737f1cc7fda8",
+                "course": {
+                  "subject": "HIST",
+                  "number": "117"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "9d1dc2ca-2ff0-4238-8cf0-11bdc5d0f54b",
+        "position": {
+          "academicYear": 2026,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "code": "202610",
+            "courses": [
+              {
+                "id": "1a127617-cf9b-4460-8682-ce0ffda83a18",
+                "course": {
+                  "subject": "COMP",
+                  "number": "215"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "16f56dc4-a5f9-4597-890a-544b129d6214",
+                "course": {
+                  "subject": "COMP",
+                  "number": "222"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "bd57d4ea-f3ba-4e19-8530-7ccdcb872a99",
+                "course": {
+                  "subject": "STAT",
+                  "number": "310"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "650f59cf-26d1-418e-8123-abbf15190b37",
+                "course": {
+                  "subject": "ENGL",
+                  "number": "200"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "0357bd3e-513c-4475-84ef-f574319dde4d",
+        "position": {
+          "academicYear": 2026,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "code": "202620",
+            "courses": [
+              {
+                "id": "259ae120-2d22-4115-82da-e6da81ff6c67",
+                "course": {
+                  "subject": "COMP",
+                  "number": "312"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "aa0ba1c9-7e37-4466-8ba8-1033cc754de3",
+                "course": {
+                  "subject": "COMP",
+                  "number": "321"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "6d52d972-4b9a-45ae-8c90-15ffa86307b8",
+                "course": {
+                  "subject": "STAT",
+                  "number": "315"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "b6e98dee-c714-44e5-897a-d9b86ab8b0fe",
+                "course": {
+                  "subject": "MUSI",
+                  "number": "117"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "1f1482bb-30ee-4790-8664-e51f228aafeb",
+        "position": {
+          "academicYear": 2027,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "code": "202710",
+            "courses": [
+              {
+                "id": "e235c9a1-480a-48d7-8899-4bfca3b9360c",
+                "course": {
+                  "subject": "COMP",
+                  "number": "382"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "0f2117e8-1bb9-46f6-8314-34726fcc823b",
+                "course": {
+                  "subject": "COMP",
+                  "number": "318"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "befc91aa-3cb9-4c6a-85e9-d7c1334ef711",
+                "course": {
+                  "subject": "STAT",
+                  "number": "410"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "aa9087e1-4005-419c-8a03-a2c53b24b9cd",
+                "course": {
+                  "subject": "PHIL",
+                  "number": "101"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "170b10dc-49f4-4111-839f-7f2bc65c33ce",
+                "course": {
+                  "subject": "COMP",
+                  "number": "415"
+                },
+                "credits": 400,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "8f9ed37b-278d-494d-8f76-f44e8d9a9ea5",
+        "position": {
+          "academicYear": 2027,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "6d2b8acd-80c8-4b3b-8990-79c1d2b0cbae",
+                "course": {
+                  "subject": "COMP",
+                  "number": "421"
+                },
+                "credits": 400,
+                "fills": []
+              },
+              {
+                "id": "8d794775-6f48-46b4-8650-2e20f7c35a1c",
+                "course": {
+                  "subject": "STAT",
+                  "number": "413"
+                },
+                "credits": 300,
+                "fills": []
+              },
+              {
+                "id": "fe8123ce-d9d8-4e94-8933-5da417f8996d",
+                "course": {
+                  "subject": "COMP",
+                  "number": "430"
+                },
+                "credits": 400,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "b37cd25a-dc5b-47f7-80ac-3533d08bb394",
+        "position": {
+          "academicYear": 2028,
+          "season": "fall"
+        },
+        "label": "Study abroad — Madrid",
+        "kind": {
+          "away": {
+            "cards": [
+              {
+                "id": "033cc2fc-b249-436f-8e57-a195162c58e4",
+                "origin": "study_abroad",
+                "code": "Distributed Systems",
+                "title": "Universidad Politécnica",
+                "credits": 400,
+                "institution": "Universidad Politécnica de Madrid",
+                "fills": [
+                  "a4958f46-c92f-4b41-857b-22f0e71ddfba"
+                ],
+                "claims": [
+                  {
+                    "requirement": "a4958f46-c92f-4b41-857b-22f0e71ddfba",
+                    "basis": {
+                      "kind": "advisor_approved",
+                      "who": "Dr. Kavraki"
+                    },
+                    "note": "Approved as a COMP elective before departure"
+                  }
+                ]
+              },
+              {
+                "id": "e3c07a63-d4a0-407e-8501-9ed9dc31d12c",
+                "origin": "study_abroad",
+                "code": "Spanish Literature",
+                "title": "Universidad Politécnica",
+                "credits": 300,
+                "institution": "Universidad Politécnica de Madrid",
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "334234ac-5272-4745-83ab-6a6955401494",
+        "position": {
+          "academicYear": 2028,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": []
+          }
+        },
+        "nonCourse": []
+      }
+    ]
+  },
+  "programs": [
+    {
+      "id": "b815cb58-742f-49d5-808a-9ae4549e0e42",
+      "catalogYear": 2026,
+      "slug": "university",
+      "kind": "university",
+      "name": "University",
+      "credential": "",
+      "totalCredits": 3100,
+      "source": {
+        "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+      },
+      "retiredRequirements": [],
+      "root": {
+        "id": "253f2744-9b2a-4351-8031-76fc3ef68e30",
+        "label": "University graduation requirements",
+        "source": {
+          "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+        },
+        "body": {
+          "kind": "all",
+          "of": [
+            {
+              "id": "401b54a0-9e3c-470b-8cdf-5d4f0aef5ed0",
+              "label": "FWIS",
+              "source": {
+                "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "number_range",
+                      "subject": "FWIS",
+                      "low": 101,
+                      "high": 299
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            },
+            {
+              "id": "ae331d43-fcf0-4943-80c9-291bb1282303",
+              "label": "Distribution Group I",
+              "source": {
+                "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "7d485900-35d3-4d71-8027-f24154307766",
+                    "label": "Distribution Group I",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP1"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "69868b30-708c-489e-8f56-6e1c48858d98",
+                    "label": "Distribution Group I",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP1"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "e941b198-948d-4b59-84c5-bffbe67e2e69",
+                    "label": "Distribution Group I",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP1"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "e9790ada-470a-4554-8fba-2a1eb2284e75",
+                    "label": "From at least two departments",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "distinct_departments",
+                      "minimum": 2,
+                      "text": "The 3 courses in each group must include courses in at least two departments in that group."
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "066f04bb-6ce5-4de5-8f0f-d70e0472cd59",
+              "label": "Distribution Group II",
+              "source": {
+                "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "b9f586f7-5c7c-4dd1-8ca2-95e16bc94b8b",
+                    "label": "Distribution Group II",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP2"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "b1956a9e-c7d3-4881-8874-eacbaaba9797",
+                    "label": "Distribution Group II",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP2"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "44475ca5-1b87-434d-8046-53db8f84b71a",
+                    "label": "Distribution Group II",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP2"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "515ce8d2-dc72-428a-894c-59e955620d8b",
+              "label": "Distribution Group III",
+              "source": {
+                "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "80448895-494a-4b28-8e24-20e4712dd400",
+                    "label": "Distribution Group III",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP3"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "c5b79e93-ec15-4c4c-802b-81514de40cc6",
+                    "label": "Distribution Group III",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP3"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "34b8fcc7-7401-4686-8ae9-d2b3c53d5557",
+                    "label": "Distribution Group III",
+                    "source": {
+                      "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "attribute",
+                            "attribute": "GRP3"
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "45620d85-ec16-4b56-85d9-b8a334685a36",
+              "label": "Analyzing Diversity",
+              "source": {
+                "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+              },
+              "body": {
+                "kind": "credits",
+                "minimum": 100,
+                "scope": "any",
+                "from": {
+                  "include": [
+                    {
+                      "kind": "attribute",
+                      "attribute": "AD"
+                    }
+                  ],
+                  "exclude": []
+                }
+              }
+            },
+            {
+              "id": "c487d86d-4e96-4736-8ffc-160415355a71",
+              "label": "LPAP",
+              "source": {
+                "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "subject",
+                      "subject": "LPAP"
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            }
+          ]
+        }
+      },
+      "review": {
+        "reviewedBy": "fixture",
+        "publishedAt": 1757548800
+      }
+    },
+    {
+      "id": "8c577520-48f8-47d1-84ef-faa3009f3a34",
+      "catalogYear": 2026,
+      "slug": "computer-science-bscs",
+      "kind": "major",
+      "name": "Computer Science, BSCS",
+      "credential": "BSCS",
+      "totalCredits": 12000,
+      "source": {
+        "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+      },
+      "retiredRequirements": [],
+      "root": {
+        "id": "02e000d0-9309-4e5a-88ec-073e806598b4",
+        "label": "Bachelor of Science in Computer Science (BSCS)",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+        },
+        "body": {
+          "kind": "all",
+          "of": [
+            {
+              "id": "299e3f5d-024f-4e08-8d56-9787e954629b",
+              "label": "Core Requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "1821f342-865e-49b1-828a-62cd0626f617",
+                    "label": "MATH 101 or MATH 105",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MATH",
+                              "number": "101"
+                            }
+                          },
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MATH",
+                              "number": "105"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "168cfb12-1f5d-4bad-8f39-d063eb9515d9",
+                    "label": "MATH 102",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MATH",
+                              "number": "102"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "ddb0af1c-ec63-46a6-884f-aa4706af2491",
+                    "label": "MATH 212",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 300
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "MATH",
+                              "number": "212"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "dcad4a00-0efb-42eb-8251-80f77200ec8a",
+                    "label": "COMP 140",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "140"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "5b7d7e0a-8f6c-4899-8c50-620507fea1f3",
+                    "label": "COMP 182",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "182"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "1b79ad2f-f557-4898-85c5-f53487b30bb0",
+                    "label": "COMP 215",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "215"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "6a8b420e-ec12-46f2-8371-d186724f460a",
+                    "label": "COMP 222",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "222"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "d6e6bc51-6f22-479b-8684-fd5f60bb18cc",
+                    "label": "COMP 312",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "312"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "a28c95d5-86c7-4906-840f-1a012e8d845e",
+                    "label": "COMP 321",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "321"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "97241f08-8692-47e0-8620-ca90c417ee70",
+                    "label": "COMP 382",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "382"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "0154bf56-72bd-4e4b-8998-201eed907c07",
+                    "label": "Select 1 course from ELEC 303, STAT 310 / ECON 307, STAT 311, STAT 312, STAT 315 / DSCI 301",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "range",
+                      "value": {
+                        "min": 300,
+                        "max": 400
+                      }
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "ELEC",
+                              "number": "303"
+                            }
+                          },
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "STAT",
+                              "number": "310"
+                            }
+                          },
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "STAT",
+                              "number": "311"
+                            }
+                          },
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "STAT",
+                              "number": "312"
+                            }
+                          },
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "STAT",
+                              "number": "315"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "24d31e94-7dd3-4477-8d96-2d9e388f81a6",
+              "label": "Design Requirement",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 400
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "410"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "413"
+                      }
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            },
+            {
+              "id": "848867d1-9e92-4812-8282-caf7cb37a9e4",
+              "label": "Breadth Requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "bae4abdb-ebbc-467b-8e21-1a8868c28860",
+                    "label": "COMP 318",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "318"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "d85b8384-bec8-4a08-8704-379b1dd88fd0",
+                    "label": "COMP 421",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "421"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "522c0809-abc1-4b66-8c4e-a3f983089e60",
+                    "label": "COMP 411",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "411"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "0e47f94a-78c8-4c87-8c14-2b27d4b7d4d7",
+                    "label": "COMP 412",
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                    },
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 400
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "COMP",
+                              "number": "412"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "a4958f46-c92f-4b41-857b-22f0e71ddfba",
+              "label": "Select 2 courses from COMP at the 300 level or above",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 300
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "number_range",
+                      "subject": "COMP",
+                      "low": 300,
+                      "high": 699
+                    }
+                  ],
+                  "exclude": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "312"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "318"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "321"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "382"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "410"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "411"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "412"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "413"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "COMP",
+                        "number": "421"
+                      }
+                    }
+                  ]
+                },
+                "semesters": 2
+              }
+            },
+            {
+              "id": "b8bb24ae-4197-4d79-8298-bf15054aaa28",
+              "label": "Additional credit hours to complete degree requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+              },
+              "body": {
+                "kind": "credits",
+                "minimum": 1700,
+                "scope": "additional",
+                "from": {
+                  "include": [],
+                  "exclude": []
+                }
+              }
+            },
+            {
+              "id": "01f593d0-8d3a-4b92-81f6-8875644b7cb4",
+              "label": "Footnote 2",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+              },
+              "body": {
+                "kind": "unverifiable",
+                "text": "At most 1 elective may be a research or independent study project (COMP 364, 390, 464, 490, 491). Students may take courses at the 500-level. However, the only 600-level courses that may be used as electives are COMP 631 and COMP 646."
+              }
+            }
+          ]
+        }
+      },
+      "review": {
+        "reviewedBy": "fixture",
+        "publishedAt": 1757548800
+      }
+    },
+    {
+      "id": "0c048a53-417e-4128-89be-a511408bd1b9",
+      "catalogYear": 2026,
+      "slug": "statistics-minor",
+      "kind": "minor",
+      "name": "Statistics minor",
+      "credential": "Minor",
+      "totalCredits": 1800,
+      "source": {
+        "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+      },
+      "retiredRequirements": [],
+      "root": {
+        "id": "90eeea98-f800-46f0-8767-1f8e86ac0301",
+        "label": "Minor in Statistics",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+        },
+        "body": {
+          "kind": "all",
+          "of": [
+            {
+              "id": "9f4a8beb-cfc7-41d3-84e0-02e995c84b1c",
+              "label": "STAT 310",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 300
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "STAT",
+                        "number": "310"
+                      }
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            },
+            {
+              "id": "957ff828-64c2-4b68-8dad-aad32254eaac",
+              "label": "STAT 315",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 300
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "STAT",
+                        "number": "315"
+                      }
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            },
+            {
+              "id": "214d7be0-e329-4c62-8dd9-f2558973720b",
+              "label": "STAT 410",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 300
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "STAT",
+                        "number": "410"
+                      }
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            },
+            {
+              "id": "b1517012-2d35-4a7b-8eb1-9a7283700f5c",
+              "label": "STAT 413",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 300
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "STAT",
+                        "number": "413"
+                      }
+                    }
+                  ],
+                  "exclude": []
+                },
+                "semesters": 1
+              }
+            },
+            {
+              "id": "a852ef43-2a6d-40b7-8c9a-4046edae862c",
+              "label": "STAT elective at the 400 level or above",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+              },
+              "hours": {
+                "kind": "fixed",
+                "value": 300
+              },
+              "body": {
+                "kind": "course",
+                "filter": {
+                  "include": [
+                    {
+                      "kind": "number_range",
+                      "subject": "STAT",
+                      "low": 400,
+                      "high": 599
+                    }
+                  ],
+                  "exclude": [
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "STAT",
+                        "number": "410"
+                      }
+                    },
+                    {
+                      "kind": "code",
+                      "code": {
+                        "subject": "STAT",
+                        "number": "413"
+                      }
+                    }
+                  ]
+                },
+                "semesters": 2
+              }
+            }
+          ]
+        }
+      },
+      "review": {
+        "reviewedBy": "fixture",
+        "publishedAt": 1757548800
+      }
+    }
+  ],
+  "facts": {
+    "courses": [
+      {
+        "code": {
+          "subject": "MATH",
+          "number": "101"
+        },
+        "title": "Single variable calculus I",
+        "department": "Mathematics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MATH",
+          "number": "102"
+        },
+        "title": "Single variable calculus II",
+        "department": "Mathematics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MATH",
+          "number": "105"
+        },
+        "title": "AP/OTH credit in calculus I",
+        "department": "Mathematics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MATH",
+          "number": "212"
+        },
+        "title": "Multivariable calculus",
+        "department": "Mathematics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "140"
+        },
+        "title": "Computational thinking",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [
+          "GRP3"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "182"
+        },
+        "title": "Algorithmic thinking",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [
+          "GRP3"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "215"
+        },
+        "title": "Introduction to program design",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "222"
+        },
+        "title": "Intro to computer organization",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "310"
+        },
+        "title": "Advanced object-oriented programming",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": false
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "312"
+        },
+        "title": "Reasoning about programs",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "318"
+        },
+        "title": "Concurrent programming",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "321"
+        },
+        "title": "Introduction to computer systems",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "382"
+        },
+        "title": "Reasoning about algorithms",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "410"
+        },
+        "title": "Software engineering",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "411"
+        },
+        "title": "Principles of programming languages",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "412"
+        },
+        "title": "Compiler construction",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "413"
+        },
+        "title": "Software design and engineering",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": false
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "415"
+        },
+        "title": "Distributed systems",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": false
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "421"
+        },
+        "title": "Operating systems and concurrent programming",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "430"
+        },
+        "title": "Introduction to database systems",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 400
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "440"
+        },
+        "title": "Artificial intelligence",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "COMP",
+          "number": "490"
+        },
+        "title": "Computer science projects",
+        "department": "Computer Science",
+        "credits": {
+          "kind": "range",
+          "value": {
+            "min": 100,
+            "max": 400
+          }
+        },
+        "attributes": [],
+        "repeatable": true,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "STAT",
+          "number": "310"
+        },
+        "title": "Probability and statistics",
+        "department": "Statistics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP3"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "ECON",
+          "number": "307"
+        },
+        "title": "Probability and statistics",
+        "department": "Economics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP3"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "STAT",
+          "number": "315"
+        },
+        "title": "Statistical inference",
+        "department": "Statistics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "STAT",
+          "number": "410"
+        },
+        "title": "Linear regression",
+        "department": "Statistics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "STAT",
+          "number": "413"
+        },
+        "title": "Generalized linear models",
+        "department": "Statistics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "STAT",
+          "number": "421"
+        },
+        "title": "Applied time series",
+        "department": "Statistics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "ELEC",
+          "number": "303"
+        },
+        "title": "Random signals in electrical engineering systems",
+        "department": "Electrical & Computer Eng",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "FWIS",
+          "number": "149"
+        },
+        "title": "What is college for",
+        "department": "First Year Writing Intensive",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "CHEM",
+          "number": "121"
+        },
+        "title": "General chemistry I",
+        "department": "Chemistry",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP3"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "PHYS",
+          "number": "101"
+        },
+        "title": "Mechanics",
+        "department": "Physics & Astronomy",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP3"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "LPAP",
+          "number": "170"
+        },
+        "title": "Yoga",
+        "department": "Lifetime Physical Activity",
+        "credits": {
+          "kind": "fixed",
+          "value": 100
+        },
+        "attributes": [],
+        "repeatable": true,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "HIST",
+          "number": "117"
+        },
+        "title": "The world since 1492",
+        "department": "History",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP1",
+          "AD"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "HIST",
+          "number": "246"
+        },
+        "title": "Modern Latin America",
+        "department": "History",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP2",
+          "AD"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": false
+      },
+      {
+        "code": {
+          "subject": "ENGL",
+          "number": "200"
+        },
+        "title": "Introduction to literary study",
+        "department": "English",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP1"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "MUSI",
+          "number": "117"
+        },
+        "title": "Fundamentals of music",
+        "department": "Music",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP2"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "PHIL",
+          "number": "101"
+        },
+        "title": "Introduction to philosophy",
+        "department": "Philosophy",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP1"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "HART",
+          "number": "101"
+        },
+        "title": "Introduction to art history",
+        "department": "Art History",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP1"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "ANTH",
+          "number": "201"
+        },
+        "title": "Introduction to cultural anthropology",
+        "department": "Anthropology",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP2",
+          "AD"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "SOCI",
+          "number": "231"
+        },
+        "title": "Race and ethnic relations",
+        "department": "Sociology",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP2",
+          "AD"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "ECON",
+          "number": "100"
+        },
+        "title": "Principles of economics",
+        "department": "Economics",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP2"
+        ],
+        "repeatable": false,
+        "seasonsOffered": [
+          "fall",
+          "spring"
+        ],
+        "termsObserved": 1,
+        "offeredNow": true
+      }
+    ],
+    "aliases": [
+      [
+        {
+          "subject": "ECON",
+          "number": "307"
+        },
+        {
+          "subject": "STAT",
+          "number": "310"
+        }
+      ]
+    ]
+  },
+  "prerequisites": [
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "182"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "140"
+            }
+          },
+          "published": "COMP 140"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "215"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "182"
+            }
+          },
+          "published": "COMP 182"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "222"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "140"
+            }
+          },
+          "published": "COMP 140"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "312"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "215"
+            }
+          },
+          "published": "COMP 215"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "318"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "215"
+            }
+          },
+          "published": "COMP 215"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "321"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "all",
+            "value": [
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "COMP",
+                  "number": "215"
+                }
+              },
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "COMP",
+                  "number": "222"
+                }
+              }
+            ]
+          },
+          "published": "COMP 215 AND COMP 222"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "382"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "all",
+            "value": [
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "COMP",
+                  "number": "182"
+                }
+              },
+              {
+                "kind": "course",
+                "value": {
+                  "subject": "COMP",
+                  "number": "215"
+                }
+              },
+              {
+                "kind": "any",
+                "value": [
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "ELEC",
+                      "number": "303"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "STAT",
+                      "number": "310"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "ECON",
+                      "number": "307"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "STAT",
+                      "number": "311"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "STAT",
+                      "number": "312"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "STAT",
+                      "number": "315"
+                    }
+                  },
+                  {
+                    "kind": "course",
+                    "value": {
+                      "subject": "DSCI",
+                      "number": "301"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "published": "COMP 182 AND COMP 215 AND (ELEC 303 OR STAT 310 OR ECON 307 OR STAT 311 OR STAT 312 OR STAT 315 OR DSCI 301)"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "415"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "382"
+            }
+          },
+          "published": "COMP 382"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "421"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "321"
+            }
+          },
+          "published": "COMP 321"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "430"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "215"
+            }
+          },
+          "published": "COMP 215"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "440"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "COMP",
+              "number": "182"
+            }
+          },
+          "published": "COMP 182"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "STAT",
+        "number": "315"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "STAT",
+              "number": "310"
+            }
+          },
+          "published": "STAT 310"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "STAT",
+        "number": "410"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "STAT",
+              "number": "310"
+            }
+          },
+          "published": "STAT 310"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "STAT",
+        "number": "413"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "STAT",
+              "number": "410"
+            }
+          },
+          "published": "STAT 410"
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "COMP",
+        "number": "140"
+      },
+      "fact": {
+        "kind": "none_required",
+        "value": {
+          "publishedFor": 2026
+        }
+      }
+    },
+    {
+      "course": {
+        "subject": "STAT",
+        "number": "310"
+      },
+      "fact": {
+        "kind": "requires",
+        "value": {
+          "publishedFor": 2026,
+          "expr": {
+            "kind": "course",
+            "value": {
+              "subject": "MATH",
+              "number": "212"
+            }
+          },
+          "published": "MATH 212"
+        }
+      }
+    }
+  ],
+  "exclusions": [
+    {
+      "blocked": {
+        "subject": "COMP",
+        "number": "318"
+      },
+      "blocker": {
+        "subject": "COMP",
+        "number": "310"
+      },
+      "publishedFor": 2026,
+      "published": "Cannot register for COMP 318 if student has credit for COMP 310."
+    }
+  ],
+  "limits": {
+    "fallSpring": 1800,
+    "musicAndArchitecture": 2000
+  },
+  "today": {
+    "academicYear": 2027,
+    "season": "fall"
+  }
+}

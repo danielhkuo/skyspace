@@ -1,0 +1,384 @@
+{
+  "plan": {
+    "id": "efa47f40-55d2-4251-abca-01fda5c989b9",
+    "name": "barch",
+    "catalogYear": 2026,
+    "matriculation": {
+      "academicYear": 2027,
+      "season": "fall"
+    },
+    "programs": [
+      "d6a800eb-77f2-4859-9055-e3e7514996d2"
+    ],
+    "incomingCredit": [],
+    "terms": [
+      {
+        "id": "ba193bf2-ea69-487c-800c-d90132fdce62",
+        "position": {
+          "academicYear": 2027,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "a063445c-56a9-4746-b9e4-fffd4db39b4b",
+                "course": {
+                  "subject": "ARCH",
+                  "number": "101"
+                },
+                "credits": 600,
+                "fills": []
+              },
+              {
+                "id": "36cbfee1-f1f0-4379-bb6b-d5b45d17c8c1",
+                "course": {
+                  "subject": "HIST",
+                  "number": "210"
+                },
+                "credits": 300,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "61076f29-f4d3-4b6c-bd56-78c5a7bddbc3",
+        "position": {
+          "academicYear": 2027,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "a063435c-56a9-4593-823e-586da283ca34",
+                "course": {
+                  "subject": "ARCH",
+                  "number": "102"
+                },
+                "credits": 600,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "ba1938f2-ea69-4363-a064-01577bd07619",
+        "position": {
+          "academicYear": 2030,
+          "season": "fall"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "3bb10839-523a-4d2a-9a02-3ab58d77b2d3",
+                "course": {
+                  "subject": "ARCH",
+                  "number": "500"
+                },
+                "credits": 1500,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      },
+      {
+        "id": "61076c29-f4d3-4653-9c19-bd77616f3f60",
+        "position": {
+          "academicYear": 2030,
+          "season": "spring"
+        },
+        "kind": {
+          "rice": {
+            "courses": [
+              {
+                "id": "3bb10739-523a-4b77-a1cd-759bf4c40b82",
+                "course": {
+                  "subject": "ARCH",
+                  "number": "500"
+                },
+                "credits": 1500,
+                "fills": []
+              }
+            ]
+          }
+        },
+        "nonCourse": []
+      }
+    ],
+    "selfChecks": []
+  },
+  "programs": [
+    {
+      "id": "d6a800eb-77f2-4859-9055-e3e7514996d2",
+      "catalogYear": 2026,
+      "slug": "architecture-barch-direct-entry",
+      "kind": "major",
+      "name": "architecture-barch-direct-entry",
+      "credential": "BArch",
+      "totalCredits": 19200,
+      "source": {
+        "url": "https://ga.rice.edu/programs-study/departments-programs/"
+      },
+      "review": {
+        "reviewedBy": "fixture",
+        "publishedAt": 1757548800
+      },
+      "root": {
+        "id": "1d3647a4-496c-469e-8fc4-0e932956ea38",
+        "label": "Architecture, BArch (direct entry)",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/"
+        },
+        "body": {
+          "kind": "all",
+          "of": [
+            {
+              "id": "872c5827-1cd0-40ad-8300-8392109d0895",
+              "label": "Core Requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "d556af5a-2424-4f27-83d3-59e31cf5496c",
+                    "label": "ARCH 101",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 600
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "ARCH",
+                              "number": "101"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "d556b05a-2424-40da-853d-1eb54a4c23af",
+                    "label": "ARCH 102",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 600
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "ARCH",
+                              "number": "102"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "6803eff1-4d95-400b-8f47-2a6f285ea44d",
+              "label": "Preceptorship and Advanced Requirements",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "all",
+                "of": [
+                  {
+                    "id": "74a8359b-7347-44f9-b9c8-f145528af768",
+                    "label": "ARCH 500",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 1500
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "ARCH",
+                              "number": "500"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  },
+                  {
+                    "id": "74a8329b-7347-4fe0-9a2e-684d4d6f8bf5",
+                    "label": "ARCH 500",
+                    "hours": {
+                      "kind": "fixed",
+                      "value": 1500
+                    },
+                    "source": {
+                      "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                    },
+                    "body": {
+                      "kind": "course",
+                      "filter": {
+                        "include": [
+                          {
+                            "kind": "code",
+                            "code": {
+                              "subject": "ARCH",
+                              "number": "500"
+                            }
+                          }
+                        ],
+                        "exclude": []
+                      },
+                      "semesters": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "e10b3021-4e92-4dde-b8cf-1e988e0c5df2",
+              "label": "Additional Electives",
+              "source": {
+                "url": "https://ga.rice.edu/programs-study/departments-programs/"
+              },
+              "body": {
+                "kind": "credits",
+                "minimum": 600,
+                "scope": "additional",
+                "from": {
+                  "include": [],
+                  "exclude": []
+                }
+              }
+            }
+          ]
+        }
+      },
+      "retiredRequirements": []
+    }
+  ],
+  "facts": {
+    "courses": [
+      {
+        "code": {
+          "subject": "ARCH",
+          "number": "101"
+        },
+        "title": "ARCH 101",
+        "credits": {
+          "kind": "fixed",
+          "value": 600
+        },
+        "attributes": [],
+        "department": "ARCH",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "ARCH",
+          "number": "102"
+        },
+        "title": "ARCH 102",
+        "credits": {
+          "kind": "fixed",
+          "value": 600
+        },
+        "attributes": [],
+        "department": "ARCH",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "ARCH",
+          "number": "500"
+        },
+        "title": "ARCH 500",
+        "credits": {
+          "kind": "fixed",
+          "value": 1500
+        },
+        "attributes": [],
+        "department": "ARCH",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      },
+      {
+        "code": {
+          "subject": "HIST",
+          "number": "210"
+        },
+        "title": "HIST 210",
+        "credits": {
+          "kind": "fixed",
+          "value": 300
+        },
+        "attributes": [
+          "GRP1"
+        ],
+        "department": "HIST",
+        "repeatable": false,
+        "seasonsOffered": [],
+        "termsObserved": 0,
+        "offeredNow": true
+      }
+    ],
+    "aliases": []
+  },
+  "prerequisites": [],
+  "exclusions": [],
+  "limits": {
+    "fallSpring": 1800,
+    "musicAndArchitecture": 2000
+  },
+  "invalidations": [],
+  "today": {
+    "academicYear": 2027,
+    "season": "fall"
+  }
+}

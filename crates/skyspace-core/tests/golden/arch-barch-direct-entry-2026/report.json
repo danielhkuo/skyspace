@@ -1,0 +1,231 @@
+{
+  "plan": "efa47f40-55d2-4251-abca-01fda5c989b9",
+  "engineVersion": "0.1.0",
+  "programs": [
+    {
+      "program": "d6a800eb-77f2-4859-9055-e3e7514996d2",
+      "name": "architecture-barch-direct-entry",
+      "catalogYear": 2026,
+      "evaluatedWith": 2026,
+      "root": {
+        "requirement": "1d3647a4-496c-469e-8fc4-0e932956ea38",
+        "label": "Architecture, BArch (direct entry)",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/"
+        },
+        "outcome": {
+          "outcome": "partial"
+        },
+        "progress": {
+          "requirementsMet": 4,
+          "requirementsCheckable": 5,
+          "requirementsClaimed": 0,
+          "creditsMet": 4500,
+          "creditsRequired": 4800,
+          "creditsUnknown": 0,
+          "selfChecks": 0,
+          "selfChecksConfirmed": 0
+        },
+        "filledBy": [],
+        "claimedBy": [],
+        "children": [
+          {
+            "requirement": "872c5827-1cd0-40ad-8300-8392109d0895",
+            "label": "Core Requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 2,
+              "requirementsCheckable": 2,
+              "requirementsClaimed": 0,
+              "creditsMet": 1200,
+              "creditsRequired": 1200,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "d556af5a-2424-4f27-83d3-59e31cf5496c",
+                "label": "ARCH 101",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 600,
+                  "creditsRequired": 600,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "a063445c-56a9-4746-b9e4-fffd4db39b4b"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "d556b05a-2424-40da-853d-1eb54a4c23af",
+                "label": "ARCH 102",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 600,
+                  "creditsRequired": 600,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "a063435c-56a9-4593-823e-586da283ca34"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "6803eff1-4d95-400b-8f47-2a6f285ea44d",
+            "label": "Preceptorship and Advanced Requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 2,
+              "requirementsCheckable": 2,
+              "requirementsClaimed": 0,
+              "creditsMet": 3000,
+              "creditsRequired": 3000,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "74a8359b-7347-44f9-b9c8-f145528af768",
+                "label": "ARCH 500",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 1500,
+                  "creditsRequired": 1500,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "3bb10739-523a-4b77-a1cd-759bf4c40b82"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "74a8329b-7347-4fe0-9a2e-684d4d6f8bf5",
+                "label": "ARCH 500",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 1500,
+                  "creditsRequired": 1500,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "3bb10839-523a-4d2a-9a02-3ab58d77b2d3"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "e10b3021-4e92-4dde-b8cf-1e988e0c5df2",
+            "label": "Additional Electives",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 600,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "36cbfee1-f1f0-4379-bb6b-d5b45d17c8c1"
+            ],
+            "claimedBy": [],
+            "children": []
+          }
+        ]
+      },
+      "progress": {
+        "requirementsMet": 4,
+        "requirementsCheckable": 5,
+        "requirementsClaimed": 0,
+        "creditsMet": 4500,
+        "creditsRequired": 19200,
+        "creditsUnknown": 0,
+        "selfChecks": 0,
+        "selfChecksConfirmed": 0
+      },
+      "declaredCredits": 19200
+    }
+  ],
+  "progress": {
+    "requirementsMet": 4,
+    "requirementsCheckable": 5,
+    "requirementsClaimed": 0,
+    "creditsMet": 4500,
+    "creditsRequired": 19200,
+    "creditsUnknown": 0,
+    "selfChecks": 0,
+    "selfChecksConfirmed": 0
+  },
+  "warnings": []
+}

@@ -1,0 +1,1282 @@
+{
+  "plan": "8b1ac0e1-929c-4ed0-8d47-3c880d41eefa",
+  "engineVersion": "0.1.0",
+  "programs": [
+    {
+      "program": "b815cb58-742f-49d5-808a-9ae4549e0e42",
+      "name": "University",
+      "catalogYear": 2026,
+      "evaluatedWith": 2026,
+      "root": {
+        "requirement": "253f2744-9b2a-4351-8031-76fc3ef68e30",
+        "label": "University graduation requirements",
+        "source": {
+          "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+        },
+        "outcome": {
+          "outcome": "partial"
+        },
+        "progress": {
+          "requirementsMet": 9,
+          "requirementsCheckable": 12,
+          "requirementsClaimed": 1,
+          "creditsMet": 3000,
+          "creditsRequired": 100,
+          "creditsUnknown": 11,
+          "selfChecks": 1,
+          "selfChecksConfirmed": 1
+        },
+        "filledBy": [],
+        "claimedBy": [],
+        "children": [
+          {
+            "requirement": "401b54a0-9e3c-470b-8cdf-5d4f0aef5ed0",
+            "label": "FWIS",
+            "source": {
+              "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 0,
+              "creditsUnknown": 1,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "32754849-cfa8-4df0-84f5-788de186c3e1"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "ae331d43-fcf0-4943-80c9-291bb1282303",
+            "label": "Distribution Group I",
+            "source": {
+              "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 2,
+              "requirementsCheckable": 3,
+              "requirementsClaimed": 1,
+              "creditsMet": 900,
+              "creditsRequired": 0,
+              "creditsUnknown": 3,
+              "selfChecks": 1,
+              "selfChecksConfirmed": 1
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "7d485900-35d3-4d71-8027-f24154307766",
+                "label": "Distribution Group I",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "650f59cf-26d1-418e-8123-abbf15190b37"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "69868b30-708c-489e-8f56-6e1c48858d98",
+                "label": "Distribution Group I",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "partial"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 1,
+                  "creditsMet": 300,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0"
+                ],
+                "claimedBy": [
+                  "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0"
+                ],
+                "children": []
+              },
+              {
+                "requirement": "e941b198-948d-4b59-84c5-bffbe67e2e69",
+                "label": "Distribution Group I",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "43df73e2-c03f-45aa-8c23-737f1cc7fda8"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "e9790ada-470a-4554-8fba-2a1eb2284e75",
+                "label": "From at least two departments",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "needs_student_check",
+                  "confirmed": "other"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 0,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 0,
+                  "selfChecks": 1,
+                  "selfChecksConfirmed": 1
+                },
+                "filledBy": [
+                  "650f59cf-26d1-418e-8123-abbf15190b37",
+                  "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0",
+                  "43df73e2-c03f-45aa-8c23-737f1cc7fda8"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "066f04bb-6ce5-4de5-8f0f-d70e0472cd59",
+            "label": "Distribution Group II",
+            "source": {
+              "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 3,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 0,
+              "creditsUnknown": 3,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "b9f586f7-5c7c-4dd1-8ca2-95e16bc94b8b",
+                "label": "Distribution Group II",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "b6e98dee-c714-44e5-897a-d9b86ab8b0fe"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "b1956a9e-c7d3-4881-8874-eacbaaba9797",
+                "label": "Distribution Group II",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "unmet"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "44475ca5-1b87-434d-8046-53db8f84b71a",
+                "label": "Distribution Group II",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "unmet"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "515ce8d2-dc72-428a-894c-59e955620d8b",
+            "label": "Distribution Group III",
+            "source": {
+              "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 3,
+              "requirementsCheckable": 3,
+              "requirementsClaimed": 0,
+              "creditsMet": 1100,
+              "creditsRequired": 0,
+              "creditsUnknown": 3,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "80448895-494a-4b28-8e24-20e4712dd400",
+                "label": "Distribution Group III",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "5f8e3f28-0f20-43d3-8a1b-60a633d97414"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "c5b79e93-ec15-4c4c-802b-81514de40cc6",
+                "label": "Distribution Group III",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "fcfe9203-2cac-4f95-80f1-e9e520956921"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "34b8fcc7-7401-4686-8ae9-d2b3c53d5557",
+                "label": "Distribution Group III",
+                "source": {
+                  "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 0,
+                  "creditsUnknown": 1,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "07eecfa0-8f1f-4650-85f8-8dc14bbdae00"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "45620d85-ec16-4b56-85d9-b8a334685a36",
+            "label": "Analyzing Diversity",
+            "source": {
+              "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 100,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "43df73e2-c03f-45aa-8c23-737f1cc7fda8"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "c487d86d-4e96-4736-8ffc-160415355a71",
+            "label": "LPAP",
+            "source": {
+              "url": "https://ga.rice.edu/undergraduate-students/academic-policies-procedures/graduation-requirements/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 100,
+              "creditsRequired": 0,
+              "creditsUnknown": 1,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "de6a2377-2edb-49b6-82f2-6ae77dccbf72"
+            ],
+            "claimedBy": [],
+            "children": []
+          }
+        ]
+      },
+      "progress": {
+        "requirementsMet": 9,
+        "requirementsCheckable": 12,
+        "requirementsClaimed": 1,
+        "creditsMet": 3000,
+        "creditsRequired": 3100,
+        "creditsUnknown": 11,
+        "selfChecks": 1,
+        "selfChecksConfirmed": 1
+      },
+      "declaredCredits": 3100
+    },
+    {
+      "program": "8c577520-48f8-47d1-84ef-faa3009f3a34",
+      "name": "Computer Science, BSCS",
+      "catalogYear": 2026,
+      "evaluatedWith": 2026,
+      "root": {
+        "requirement": "02e000d0-9309-4e5a-88ec-073e806598b4",
+        "label": "Bachelor of Science in Computer Science (BSCS)",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+        },
+        "outcome": {
+          "outcome": "partial"
+        },
+        "progress": {
+          "requirementsMet": 14,
+          "requirementsCheckable": 18,
+          "requirementsClaimed": 1,
+          "creditsMet": 7500,
+          "creditsRequired": 8300,
+          "creditsUnknown": 0,
+          "selfChecks": 1,
+          "selfChecksConfirmed": 0
+        },
+        "filledBy": [],
+        "claimedBy": [],
+        "children": [
+          {
+            "requirement": "299e3f5d-024f-4e08-8d56-9787e954629b",
+            "label": "Core Requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 11,
+              "requirementsCheckable": 11,
+              "requirementsClaimed": 0,
+              "creditsMet": 4000,
+              "creditsRequired": 4000,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "1821f342-865e-49b1-828a-62cd0626f617",
+                "label": "MATH 101 or MATH 105",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "6dde21b2-597c-478f-896b-b68d0e188ee9"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "168cfb12-1f5d-4bad-8f39-d063eb9515d9",
+                "label": "MATH 102",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "9099396f-2eb0-40e2-898f-6a2fa1ada978"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "ddb0af1c-ec63-46a6-884f-aa4706af2491",
+                "label": "MATH 212",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "5655e834-9340-40e7-8619-20d002189e77"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "dcad4a00-0efb-42eb-8251-80f77200ec8a",
+                "label": "COMP 140",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "07eecfa0-8f1f-4650-85f8-8dc14bbdae00"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "5b7d7e0a-8f6c-4899-8c50-620507fea1f3",
+                "label": "COMP 182",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "5f8e3f28-0f20-43d3-8a1b-60a633d97414"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "1b79ad2f-f557-4898-85c5-f53487b30bb0",
+                "label": "COMP 215",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "1a127617-cf9b-4460-8682-ce0ffda83a18"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "6a8b420e-ec12-46f2-8371-d186724f460a",
+                "label": "COMP 222",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "16f56dc4-a5f9-4597-890a-544b129d6214"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "d6e6bc51-6f22-479b-8684-fd5f60bb18cc",
+                "label": "COMP 312",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "259ae120-2d22-4115-82da-e6da81ff6c67"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "a28c95d5-86c7-4906-840f-1a012e8d845e",
+                "label": "COMP 321",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "aa0ba1c9-7e37-4466-8ba8-1033cc754de3"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "97241f08-8692-47e0-8620-ca90c417ee70",
+                "label": "COMP 382",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "e235c9a1-480a-48d7-8899-4bfca3b9360c"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "0154bf56-72bd-4e4b-8998-201eed907c07",
+                "label": "Select 1 course from ELEC 303, STAT 310 / ECON 307, STAT 311, STAT 312, STAT 315 / DSCI 301",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 300,
+                  "creditsRequired": 300,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "bd57d4ea-f3ba-4e19-8530-7ccdcb872a99"
+                ],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "24d31e94-7dd3-4477-8d96-2d9e388f81a6",
+            "label": "Design Requirement",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+            },
+            "outcome": {
+              "outcome": "unmet"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 400,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "848867d1-9e92-4812-8282-caf7cb37a9e4",
+            "label": "Breadth Requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 2,
+              "requirementsCheckable": 4,
+              "requirementsClaimed": 0,
+              "creditsMet": 800,
+              "creditsRequired": 1600,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": [
+              {
+                "requirement": "bae4abdb-ebbc-467b-8e21-1a8868c28860",
+                "label": "COMP 318",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "0f2117e8-1bb9-46f6-8314-34726fcc823b"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "d85b8384-bec8-4a08-8704-379b1dd88fd0",
+                "label": "COMP 421",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "met"
+                },
+                "progress": {
+                  "requirementsMet": 1,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 400,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [
+                  "6d2b8acd-80c8-4b3b-8990-79c1d2b0cbae"
+                ],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "522c0809-abc1-4b66-8c4e-a3f983089e60",
+                "label": "COMP 411",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "unmet"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [],
+                "claimedBy": [],
+                "children": []
+              },
+              {
+                "requirement": "0e47f94a-78c8-4c87-8c14-2b27d4b7d4d7",
+                "label": "COMP 412",
+                "source": {
+                  "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+                },
+                "outcome": {
+                  "outcome": "unmet"
+                },
+                "progress": {
+                  "requirementsMet": 0,
+                  "requirementsCheckable": 1,
+                  "requirementsClaimed": 0,
+                  "creditsMet": 0,
+                  "creditsRequired": 400,
+                  "creditsUnknown": 0,
+                  "selfChecks": 0,
+                  "selfChecksConfirmed": 0
+                },
+                "filledBy": [],
+                "claimedBy": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "requirement": "a4958f46-c92f-4b41-857b-22f0e71ddfba",
+            "label": "Select 2 courses from COMP at the 300 level or above",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+            },
+            "outcome": {
+              "outcome": "partial"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 1,
+              "creditsMet": 800,
+              "creditsRequired": 600,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "033cc2fc-b249-436f-8e57-a195162c58e4",
+              "170b10dc-49f4-4111-839f-7f2bc65c33ce"
+            ],
+            "claimedBy": [
+              "033cc2fc-b249-436f-8e57-a195162c58e4"
+            ],
+            "children": []
+          },
+          {
+            "requirement": "b8bb24ae-4197-4d79-8298-bf15054aaa28",
+            "label": "Additional credit hours to complete degree requirements",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 1900,
+              "creditsRequired": 1700,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0",
+              "32754849-cfa8-4df0-84f5-788de186c3e1",
+              "fcfe9203-2cac-4f95-80f1-e9e520956921",
+              "de6a2377-2edb-49b6-82f2-6ae77dccbf72",
+              "123e604b-53ef-4325-869a-00c4c88c557b",
+              "43df73e2-c03f-45aa-8c23-737f1cc7fda8",
+              "650f59cf-26d1-418e-8123-abbf15190b37"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "01f593d0-8d3a-4b92-81f6-8875644b7cb4",
+            "label": "Footnote 2",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/"
+            },
+            "outcome": {
+              "outcome": "needs_student_check"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 0,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 0,
+              "creditsUnknown": 0,
+              "selfChecks": 1,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": []
+          }
+        ]
+      },
+      "progress": {
+        "requirementsMet": 14,
+        "requirementsCheckable": 18,
+        "requirementsClaimed": 1,
+        "creditsMet": 7500,
+        "creditsRequired": 12000,
+        "creditsUnknown": 0,
+        "selfChecks": 1,
+        "selfChecksConfirmed": 0
+      },
+      "declaredCredits": 12000
+    },
+    {
+      "program": "0c048a53-417e-4128-89be-a511408bd1b9",
+      "name": "Statistics minor",
+      "catalogYear": 2026,
+      "evaluatedWith": 2026,
+      "root": {
+        "requirement": "90eeea98-f800-46f0-8767-1f8e86ac0301",
+        "label": "Minor in Statistics",
+        "source": {
+          "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+        },
+        "outcome": {
+          "outcome": "partial"
+        },
+        "progress": {
+          "requirementsMet": 4,
+          "requirementsCheckable": 5,
+          "requirementsClaimed": 0,
+          "creditsMet": 1200,
+          "creditsRequired": 1800,
+          "creditsUnknown": 0,
+          "selfChecks": 0,
+          "selfChecksConfirmed": 0
+        },
+        "filledBy": [],
+        "claimedBy": [],
+        "children": [
+          {
+            "requirement": "9f4a8beb-cfc7-41d3-84e0-02e995c84b1c",
+            "label": "STAT 310",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 300,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "bd57d4ea-f3ba-4e19-8530-7ccdcb872a99"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "957ff828-64c2-4b68-8dad-aad32254eaac",
+            "label": "STAT 315",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 300,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "6d52d972-4b9a-45ae-8c90-15ffa86307b8"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "214d7be0-e329-4c62-8dd9-f2558973720b",
+            "label": "STAT 410",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 300,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "befc91aa-3cb9-4c6a-85e9-d7c1334ef711"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "b1517012-2d35-4a7b-8eb1-9a7283700f5c",
+            "label": "STAT 413",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+            },
+            "outcome": {
+              "outcome": "met"
+            },
+            "progress": {
+              "requirementsMet": 1,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 300,
+              "creditsRequired": 300,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [
+              "8d794775-6f48-46b4-8650-2e20f7c35a1c"
+            ],
+            "claimedBy": [],
+            "children": []
+          },
+          {
+            "requirement": "a852ef43-2a6d-40b7-8c9a-4046edae862c",
+            "label": "STAT elective at the 400 level or above",
+            "source": {
+              "url": "https://ga.rice.edu/programs-study/departments-programs/engineering/statistics/statistics-minor/"
+            },
+            "outcome": {
+              "outcome": "unmet"
+            },
+            "progress": {
+              "requirementsMet": 0,
+              "requirementsCheckable": 1,
+              "requirementsClaimed": 0,
+              "creditsMet": 0,
+              "creditsRequired": 600,
+              "creditsUnknown": 0,
+              "selfChecks": 0,
+              "selfChecksConfirmed": 0
+            },
+            "filledBy": [],
+            "claimedBy": [],
+            "children": []
+          }
+        ]
+      },
+      "progress": {
+        "requirementsMet": 4,
+        "requirementsCheckable": 5,
+        "requirementsClaimed": 0,
+        "creditsMet": 1200,
+        "creditsRequired": 1800,
+        "creditsUnknown": 0,
+        "selfChecks": 0,
+        "selfChecksConfirmed": 0
+      },
+      "declaredCredits": 1800
+    }
+  ],
+  "progress": {
+    "requirementsMet": 27,
+    "requirementsCheckable": 35,
+    "requirementsClaimed": 2,
+    "creditsMet": 9700,
+    "creditsRequired": 12000,
+    "creditsUnknown": 11,
+    "selfChecks": 2,
+    "selfChecksConfirmed": 1
+  },
+  "warnings": [
+    {
+      "kind": "requirement_choice_unmatched",
+      "value": {
+        "term": "b37cd25a-dc5b-47f7-80ac-3533d08bb394",
+        "entry": "033cc2fc-b249-436f-8e57-a195162c58e4",
+        "requirement": "a4958f46-c92f-4b41-857b-22f0e71ddfba",
+        "basis": {
+          "kind": "advisor_approved",
+          "who": "Dr. Kavraki"
+        }
+      }
+    },
+    {
+      "kind": "fills_no_requirement",
+      "value": {
+        "term": "1f1482bb-30ee-4790-8664-e51f228aafeb",
+        "entry": "aa9087e1-4005-419c-8a03-a2c53b24b9cd",
+        "course": {
+          "subject": "PHIL",
+          "number": "101"
+        }
+      }
+    },
+    {
+      "kind": "fills_no_requirement",
+      "value": {
+        "term": "8f9ed37b-278d-494d-8f76-f44e8d9a9ea5",
+        "entry": "fe8123ce-d9d8-4e94-8933-5da417f8996d",
+        "course": {
+          "subject": "COMP",
+          "number": "430"
+        }
+      }
+    },
+    {
+      "kind": "prerequisite",
+      "value": {
+        "term": "1f1482bb-30ee-4790-8664-e51f228aafeb",
+        "course": {
+          "subject": "COMP",
+          "number": "415"
+        },
+        "prerequisite": {
+          "subject": "COMP",
+          "number": "382"
+        },
+        "problem": {
+          "kind": "same_term"
+        },
+        "publishedFor": 2026
+      }
+    },
+    {
+      "kind": "manual_credits",
+      "value": {
+        "entry": "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0",
+        "credits": 300
+      }
+    },
+    {
+      "kind": "manual_credits",
+      "value": {
+        "entry": "033cc2fc-b249-436f-8e57-a195162c58e4",
+        "credits": 400
+      }
+    },
+    {
+      "kind": "manual_credits",
+      "value": {
+        "entry": "e3c07a63-d4a0-407e-8501-9ed9dc31d12c",
+        "credits": 300
+      }
+    },
+    {
+      "kind": "double_counted",
+      "value": {
+        "entry": "bd57d4ea-f3ba-4e19-8530-7ccdcb872a99",
+        "course": {
+          "subject": "STAT",
+          "number": "310"
+        },
+        "programs": [
+          "8c577520-48f8-47d1-84ef-faa3009f3a34",
+          "0c048a53-417e-4128-89be-a511408bd1b9"
+        ]
+      }
+    },
+    {
+      "kind": "self_check",
+      "value": {
+        "program": "8c577520-48f8-47d1-84ef-faa3009f3a34",
+        "requirement": "01f593d0-8d3a-4b92-81f6-8875644b7cb4",
+        "label": "Footnote 2",
+        "text": "At most 1 elective may be a research or independent study project (COMP 364, 390, 464, 490, 491). Students may take courses at the 500-level. However, the only 600-level courses that may be used as electives are COMP 631 and COMP 646."
+      }
+    }
+  ]
+}
