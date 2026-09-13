@@ -19,7 +19,7 @@ import {
   type PlannedCourse,
   type Warning,
 } from '../domain';
-import {warningChip} from './labels';
+import {isRecordedClaim, warningChip} from './labels';
 import {GripMark, HollowMark} from './marks';
 import {
   grabbable,
@@ -84,7 +84,10 @@ export function CourseRow({
   // A manual card with no Rice equivalent fills a requirement only by the student's word.
   const byChoice =
     !planned && card.riceEquivalent === undefined && card.fills.length > 0;
-  const chip = warnings.map(warningChip).find(c => c !== undefined);
+  const chip = warnings
+    .filter(w => !isRecordedClaim(w))
+    .map(warningChip)
+    .find(c => c !== undefined);
   const hue = planned ? subjectHue(card.course.subject) : 'gray';
   const base = planned
     ? rowStyle(hue)

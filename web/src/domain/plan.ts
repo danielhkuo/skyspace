@@ -2,6 +2,7 @@
  * The plan document, mirroring `skyspace-core::plan`. One plan is one route to
  * a degree. The engine warns about it and never refuses an edit.
  */
+import type {ObservedFacts} from './facts';
 import type {CourseCode, Credits} from './course';
 import type {EntryId, PlanId, ProgramId, RequirementId, TermId} from './ids';
 import type {CatalogYear, TermCode, TermPosition} from './term';
@@ -15,6 +16,8 @@ export type PlannedCourse = {
   fills: RequirementId[];
   /** Why a pin that no longer matches should count. Without one, the pin is "unsure". */
   claims?: FillClaim[];
+  /** The catalog's word on the course when it was placed; compared on every evaluation. */
+  observed?: ObservedFacts;
   /** What this card was as a manual card, kept so Rice → Away → Rice loses nothing. */
   carried?: {
     origin: CreditOrigin;

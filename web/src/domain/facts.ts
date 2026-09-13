@@ -107,3 +107,37 @@ export function courseInfo(
   const key = courseKey(canonical(facts, code));
   return facts.courses.find(c => courseKey(c.code) === key);
 }
+
+/**
+ * What the catalog said about a course when the student placed it. Kept on
+ * the card so a later catalog can be compared against it: the only way to
+ * notice that a designation, hours or title changed after the fact
+ * (`09-cannot-verify.md` A1, A6, A8).
+ */
+export type ObservedFacts = {
+  /** ISO timestamp of the placement. */
+  at: string;
+  /** The plan's catalog year at the time. */
+  catalogYear: CatalogYear;
+  title: string;
+  credits: CreditRange;
+  attributes: Attribute[];
+};
+
+export function observeCourse(
+  facts: CourseFacts,
+  code: CourseCode,
+  catalogYear: CatalogYear,
+): ObservedFacts | undefined {
+  const info = courseInfo(facts, code);
+  if (info === undefined) {
+    return undefined;
+  }
+  return {
+    at: new Date().toISOString(),
+    catalogYear,
+    title: info.title,
+    credits: info.credits,
+    attributes: [...info.attributes].sort(),
+  };
+}

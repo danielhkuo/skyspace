@@ -16,6 +16,7 @@ import {
   courseKey,
   isRiceTerm,
   newEntryId,
+  observeCourse,
   originForLabel,
   type CourseCode,
   type Credits,
@@ -327,6 +328,11 @@ export function useBoardDrag(
               course: payload.course,
               credits: payload.credits,
               fills: payload.fills ?? [],
+              observed: observeCourse(
+                bundle.facts,
+                payload.course,
+                bundle.plan.catalogYear,
+              ),
             },
           });
         }

@@ -59,6 +59,7 @@ function entryOf(warning: Warning): EntryId | undefined {
     case 'incomingCreditIneligible':
     case 'doubleCounted':
     case 'manualCredits':
+    case 'courseFactsChanged':
       return warning.value.entry;
     default:
       return undefined;

@@ -2,6 +2,7 @@
  * What `evaluate` returns, and the drag-time placement preview.
  * Mirrors `skyspace-core::evaluate`, `::warn` and `08-board-interaction.md`.
  */
+import type {Attribute} from './program';
 import type {CourseCode, Credits} from './course';
 import type {EntryId, PlanId, ProgramId, RequirementId, TermId} from './ids';
 import type {SelfCheckReason, CreditOrigin, FillBasis} from './plan';
@@ -88,6 +89,24 @@ export type Warning =
   | {
       kind: 'incomingCreditIneligible';
       value: {entry: EntryId; requirement: RequirementId; origin: CreditOrigin};
+    }
+  /**
+   * The catalog changed under a placed course: a designation it carried when
+   * added is gone (or new), or its hours moved. Rice usually honours the term
+   * taken, but only the degree audit knows.
+   */
+  | {
+      kind: 'courseFactsChanged';
+      value: {
+        term: TermId;
+        entry: EntryId;
+        course: CourseCode;
+        observedYear: CatalogYear;
+        lost: Attribute[];
+        gained: Attribute[];
+        creditsBefore?: Credits;
+        creditsNow?: Credits;
+      };
     }
   /** A manual card whose hours the student typed: hours only, not a Rice course, and unverified. */
   | {kind: 'manualCredits'; value: {entry: EntryId; credits: Credits}}

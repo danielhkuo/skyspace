@@ -6,6 +6,7 @@ import {
   courseInfo,
   isRiceTerm,
   newEntryId,
+  observeCourse,
   originForLabel,
   type CourseCode,
   type Credits,
@@ -79,6 +80,11 @@ export function useAddToPlan(
             course: chosen.course,
             credits: chosen.credits,
             fills: [],
+            observed: observeCourse(
+              fresh.facts,
+              chosen.course,
+              fresh.plan.catalogYear,
+            ),
           },
         })
       : reducePlan(fresh.plan, {

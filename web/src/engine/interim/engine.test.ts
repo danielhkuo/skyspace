@@ -178,6 +178,56 @@ describe('evaluate (interim)', () => {
     expect(later).toHaveLength(1);
   });
 
+  it('flags a course whose catalog designation changed since it was placed', () => {
+    // HIST 117 carries GRP1 and AD today. Pretend it also carried GRP2 when
+    // the student placed it: the snapshot disagrees, so the card is flagged.
+    const plan = bundle.plan;
+    const withSnapshot = {
+      ...plan,
+      terms: plan.terms.map(t =>
+        isRiceTerm(t.kind)
+          ? {
+              ...t,
+              kind: {
+                rice: {
+                  ...t.kind.rice,
+                  courses: t.kind.rice.courses.map(c =>
+                    formatCourseCode(c.course) === 'HIST 117'
+                      ? {
+                          ...c,
+                          observed: {
+                            at: '2024-08-20T00:00:00Z',
+                            catalogYear: 2024,
+                            title: 'The world since 1492',
+                            credits: {kind: 'fixed' as const, value: 300},
+                            attributes: [
+                              'AD' as const,
+                              'GRP1' as const,
+                              'GRP2' as const,
+                            ],
+                          },
+                        }
+                      : c,
+                  ),
+                },
+              },
+            }
+          : t,
+      ),
+    };
+    const changed = engine
+      .evaluate({...bundle, plan: withSnapshot})
+      .warnings.filter(w => w.kind === 'courseFactsChanged');
+    expect(changed).toHaveLength(1);
+    expect(
+      changed[0]?.kind === 'courseFactsChanged' && changed[0].value.lost,
+    ).toEqual(['GRP2']);
+    // An unchanged snapshot is silent.
+    expect(
+      report.warnings.filter(w => w.kind === 'courseFactsChanged'),
+    ).toHaveLength(0);
+  });
+
   it('never counts a self-check toward requirements met', () => {
     const bscs = report.programs.find(p => p.program === BSCS_ID);
     expect(bscs?.progress.selfChecks).toBeGreaterThan(0);

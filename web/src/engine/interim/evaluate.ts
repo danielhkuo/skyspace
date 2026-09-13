@@ -550,6 +550,48 @@ function warningsFor(
   const {plan, facts} = bundle;
   const out: Warning[] = [];
 
+  // The catalog moved under a placed course: compare what it said when the
+  // student added it with what it says now. Matching uses today's facts, so a
+  // lost designation empties the slot and the student pins it with a basis.
+  for (const term of plan.terms) {
+    if (!isRiceTerm(term.kind)) {
+      continue;
+    }
+    for (const c of term.kind.rice.courses) {
+      const was = c.observed;
+      const now = was === undefined ? undefined : courseInfo(facts, c.course);
+      if (was === undefined || now === undefined) {
+        continue;
+      }
+      const nowAttrs = new Set(now.attributes);
+      const wasAttrs = new Set(was.attributes);
+      const lost = was.attributes.filter(a => !nowAttrs.has(a));
+      const gained = now.attributes.filter(a => !wasAttrs.has(a));
+      const creditsBefore = creditRangeMin(was.credits);
+      const creditsNow = creditRangeMin(now.credits);
+      if (
+        lost.length > 0 ||
+        gained.length > 0 ||
+        creditsBefore !== creditsNow
+      ) {
+        out.push({
+          kind: 'courseFactsChanged',
+          value: {
+            term: term.id,
+            entry: c.id,
+            course: c.course,
+            observedYear: was.catalogYear,
+            lost,
+            gained,
+            ...(creditsBefore === creditsNow
+              ? {}
+              : {creditsBefore, creditsNow}),
+          },
+        });
+      }
+    }
+  }
+
   // Hours typed by hand: a card with no Rice equivalent, or one the student
   // overrode. Rice posts what the registrar decides; we cannot check it.
   const manualCards = [
@@ -810,7 +852,13 @@ export function evaluateInterim(bundle: PlanBundle): Report {
   };
 }
 
-/** One card in the slots of two non-university programs: Rice caps the overlap; we cannot check the cap. */
+/**
+ * One card in the slots of two programs, where at least one is a minor,
+ * certificate or concentration. Rice sets no university-wide cap on courses
+ * shared between two departmental majors (GA, "Majors, Minors, Certificates"),
+ * but minors and certificates set their own overlap limits on their program
+ * pages, which the rule tree cannot express. So this is a note, not a fault.
+ */
 function doubleCounted(
   bundle: PlanBundle,
   reports: ProgramReport[],
@@ -833,12 +881,15 @@ function doubleCounted(
     visit(report.root);
   }
   const out: Warning[] = [];
+  const kindOf = (id: ProgramId): Program['kind'] | undefined =>
+    bundle.programs.find(p => p.id === id)?.kind;
   for (const card of cards) {
     const programs = programsOf.get(card.entry);
     if (
       programs !== undefined &&
       programs.size > 1 &&
-      card.code !== undefined
+      card.code !== undefined &&
+      [...programs].some(id => kindOf(id) !== 'major')
     ) {
       out.push({
         kind: 'doubleCounted',

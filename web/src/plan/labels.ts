@@ -3,6 +3,7 @@
  * the PDF say the same thing (`design-prompt-dnd.md` "Copy").
  */
 import {
+  ATTRIBUTE_LABEL,
   formatCredits,
   formatCourseCode,
   type EntryId,
@@ -107,7 +108,28 @@ export function warningText(warning: Warning, plan: Plan): string {
     case 'incomingCreditIneligible':
       return `${ORIGIN_NAME[warning.value.origin]} credit counts toward your total and your major, not toward distribution or Analyzing Diversity. Not counted here; your Esther degree audit shows what the registrar posted.`;
     case 'doubleCounted':
-      return 'Counted toward two programs. Rice limits how many courses may overlap, and Skyspace cannot check that limit; ask your advisor.';
+      return 'Counted toward a major and a minor or certificate. Rice sets no university-wide cap, but the minor or certificate may limit overlap on its General Announcements page; Skyspace cannot read that limit, so check the page.';
+    case 'courseFactsChanged': {
+      const v = warning.value;
+      const year = `${v.observedYear}-${String(v.observedYear + 1).slice(2)}`;
+      const parts: string[] = [];
+      if (v.lost.length > 0) {
+        parts.push(
+          `carried ${v.lost.map(a => ATTRIBUTE_LABEL[a]).join(' and ')} when you added it (${year}) and no longer does`,
+        );
+      }
+      if (v.gained.length > 0) {
+        parts.push(
+          `now carries ${v.gained.map(a => ATTRIBUTE_LABEL[a]).join(' and ')}, which it did not in ${year}`,
+        );
+      }
+      if (v.creditsBefore !== undefined && v.creditsNow !== undefined) {
+        parts.push(
+          `was ${formatCredits(v.creditsBefore)} hours in ${year} and is ${formatCredits(v.creditsNow)} now`,
+        );
+      }
+      return `The catalog changed: it ${parts.join('; ')}. Rice usually honours the term you took it, but Skyspace can't verify that; check your degree audit in Esther, or pin it to the requirement with "counted under the catalog year I took it".`;
+    }
     case 'manualCredits':
       return `${formatCredits(warning.value.credits)} hours entered by hand: it counts as hours, not as a Rice course. Skyspace can't verify what the registrar will post; check your transfer evaluation in Esther.`;
     case 'requirementChoiceMissing':
@@ -164,9 +186,10 @@ function entryCode(plan: Plan, entry: EntryId): string {
 /** A pin the student already explained: kept, but out of the loud count. */
 export function isRecordedClaim(warning: Warning): boolean {
   return (
-    warning.kind === 'requirementChoiceUnmatched' &&
-    warning.value.basis !== undefined &&
-    warning.value.basis.kind !== 'unsure'
+    (warning.kind === 'requirementChoiceUnmatched' &&
+      warning.value.basis !== undefined &&
+      warning.value.basis.kind !== 'unsure') ||
+    warning.kind === 'doubleCounted'
   );
 }
 
@@ -180,6 +203,7 @@ export function warningEntry(warning: Warning): EntryId | undefined {
     case 'incomingCreditIneligible':
     case 'doubleCounted':
     case 'manualCredits':
+    case 'courseFactsChanged':
       return warning.value.entry;
     default:
       return undefined;
@@ -196,6 +220,7 @@ export function warningSubject(warning: Warning, plan: Plan): string {
     case 'seasonUnlikely':
       return formatCourseCode(warning.value.course);
     case 'duplicateCourse':
+    case 'courseFactsChanged':
       return formatCourseCode(warning.value.course);
     case 'mutuallyExclusive':
       return formatCourseCode(warning.value.blocked);
@@ -219,6 +244,7 @@ export function warningSubject(warning: Warning, plan: Plan): string {
 /** Which term a warning belongs to, when it has one. */
 export function warningTerm(warning: Warning): TermId | undefined {
   switch (warning.kind) {
+    case 'courseFactsChanged':
     case 'fillsNoRequirement':
     case 'overSemesterLoad':
     case 'requirementChoiceUnmatched':
@@ -255,9 +281,11 @@ export function warningChip(warning: Warning): string | undefined {
     case 'incomingCreditIneligible':
       return 'AP/IB: not for distribution';
     case 'doubleCounted':
-      return 'Counted in two programs';
+      return 'Also counts toward a minor';
     case 'manualCredits':
       return 'Hours by hand · not verified';
+    case 'courseFactsChanged':
+      return 'Catalog changed since you added it';
     case 'prerequisiteUnparsed':
       return 'Prerequisites could not be read';
     default:

@@ -171,7 +171,8 @@ export function WarningsPanel({
             <Collapsible
               trigger={
                 <Text size="sm" style={violetInk}>
-                  {recorded.length} on your say-so
+                  {recorded.length} note{recorded.length === 1 ? '' : 's'}: on
+                  your say-so, or shared with a minor
                 </Text>
               }
               defaultIsOpen={false}

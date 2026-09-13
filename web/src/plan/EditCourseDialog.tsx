@@ -451,6 +451,18 @@ export function EditCourseDialog({
                 />
               )}
 
+              {choices.length > 0 && (
+                <Stack width="100%" gap={0.5} align="start">
+                  <Text type="label" weight="semibold">
+                    Requirement override
+                  </Text>
+                  <Text type="supporting">
+                    Skyspace picks the requirement this course fills. Choose one
+                    here to pin it there instead; a pick it doesn&apos;t match
+                    counts on your say-so.
+                  </Text>
+                </Stack>
+              )}
               {choices.map(choice => (
                 <Stack
                   key={choice.program.id}
