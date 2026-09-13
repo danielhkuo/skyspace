@@ -29,18 +29,25 @@ pub enum PrereqExpr {
     Unparsed(String),
 }
 
+/// Parentheses deeper than this, and expressions deeper than this, are
+/// beyond anything Rice prints; the bound keeps a hostile string or bundle
+/// from exhausting the stack.
+const MAX_EXPR_DEPTH: usize = 32;
+
 impl PrereqExpr {
     /// Recursive descent over Rice's grammar. Fully parenthesised or
     /// single-operator text parses. A mixed `AND`/`OR` expression without
     /// outer parentheses (CHEM 420) is returned as `Unparsed`, because Rice's
     /// own precedence is unknown and a wrong reading says "met" when it is
-    /// not. Total; never panics.
+    /// not. So is text nested deeper than `MAX_EXPR_DEPTH` parentheses.
+    /// Total; never panics.
     #[must_use]
     pub fn parse(raw: &str) -> Self {
         let tokens = tokenize(raw);
         let mut parser = Parser {
             tokens: &tokens,
             at: 0,
+            depth: 0,
         };
         match parser.expression() {
             Some(expr) if parser.at == tokens.len() => expr,
@@ -48,20 +55,24 @@ impl PrereqExpr {
         }
     }
 
-    /// Every code named anywhere in the expression, in print order.
+    /// Every code named anywhere in the expression, in print order, to
+    /// `MAX_EXPR_DEPTH`.
     #[must_use]
     pub fn codes(&self) -> Vec<CourseCode> {
         let mut out = Vec::new();
-        self.collect_codes(&mut out);
+        self.collect_codes(&mut out, 0);
         out
     }
 
-    fn collect_codes(&self, out: &mut Vec<CourseCode>) {
+    fn collect_codes(&self, out: &mut Vec<CourseCode>, depth: usize) {
         match self {
             Self::Course(code) => out.push(code.clone()),
             Self::All(children) | Self::Any(children) => {
+                if depth >= MAX_EXPR_DEPTH {
+                    return;
+                }
                 for child in children {
-                    child.collect_codes(out);
+                    child.collect_codes(out, depth + 1);
                 }
             }
             Self::Unparsed(_) => {}
@@ -129,6 +140,7 @@ fn tokenize(raw: &str) -> Vec<Token> {
 struct Parser<'a> {
     tokens: &'a [Token],
     at: usize,
+    depth: usize,
 }
 
 impl Parser<'_> {
@@ -169,8 +181,13 @@ impl Parser<'_> {
                 Some(PrereqExpr::Course(code))
             }
             Token::Open => {
+                if self.depth >= MAX_EXPR_DEPTH {
+                    return None;
+                }
+                self.depth += 1;
                 self.at += 1;
                 let inner = self.expression()?;
+                self.depth -= 1;
                 match self.peek() {
                     Some(Token::Close) => {
                         self.at += 1;
@@ -320,14 +337,12 @@ pub fn prereq_fact<'a>(rows: &'a [Prerequisite], course: &CourseCode) -> &'a Pre
 }
 
 /// Where a course sits on the board. `term` is `None` for incoming credit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
+/// Never crosses the wire: the index that holds it is built per call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Placed {
     /// When.
     pub when: Taken,
     /// Which column, or `None` for incoming credit.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub term: Option<TermId>,
     /// Which card.
     pub entry: EntryId,
@@ -350,7 +365,7 @@ impl TakenIndex {
 
     /// Index every card except `skip`, for the drag preview.
     #[must_use]
-    pub fn build_without(plan: &Plan, facts: &CourseFacts, skip: Option<EntryId>) -> Self {
+    pub(crate) fn build_without(plan: &Plan, facts: &CourseFacts, skip: Option<EntryId>) -> Self {
         let mut index = Self::default();
         for card in &plan.incoming_credit {
             if let Some(code) = &card.rice_equivalent
@@ -424,7 +439,7 @@ impl TakenIndex {
 
 /// Three-valued truth for a prerequisite expression.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Truth {
+pub(crate) enum Truth {
     /// Every named course is in place.
     #[default]
     Satisfied,
@@ -454,35 +469,51 @@ impl Truth {
 
 /// The outcome of checking one expression against one target term.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct PrereqResult {
+pub(crate) struct PrereqResult {
     /// The Kleene verdict.
-    pub truth: Truth,
+    pub(crate) truth: Truth,
     /// Named courses absent from the plan.
-    pub missing: Vec<CourseCode>,
+    pub(crate) missing: Vec<CourseCode>,
     /// Named courses placed in the target term itself.
-    pub same_term: Vec<CourseCode>,
+    pub(crate) same_term: Vec<CourseCode>,
     /// Named courses placed later than the target term, with their column.
-    pub later: Vec<(CourseCode, TermId)>,
+    pub(crate) later: Vec<(CourseCode, TermId)>,
 }
 
-/// Evaluate `expr` for a course placed in `target`, against the index.
+/// Evaluate `expr` for a course placed in `target`, against the index. A
+/// node deeper than `MAX_EXPR_DEPTH` is `Unknown`, which can never resolve
+/// to satisfied.
 #[must_use]
-pub fn evaluate_prereq(
+pub(crate) fn evaluate_prereq(
     expr: &PrereqExpr,
     target: TermPosition,
     index: &TakenIndex,
     facts: &CourseFacts,
 ) -> PrereqResult {
+    evaluate_prereq_at(expr, target, index, facts, 0)
+}
+
+fn evaluate_prereq_at(
+    expr: &PrereqExpr,
+    target: TermPosition,
+    index: &TakenIndex,
+    facts: &CourseFacts,
+    depth: usize,
+) -> PrereqResult {
+    let unknown = PrereqResult {
+        truth: Truth::Unknown,
+        ..PrereqResult::default()
+    };
+    if depth > MAX_EXPR_DEPTH {
+        return unknown;
+    }
     match expr {
-        PrereqExpr::Unparsed(_) => PrereqResult {
-            truth: Truth::Unknown,
-            ..PrereqResult::default()
-        },
+        PrereqExpr::Unparsed(_) => unknown,
         PrereqExpr::Course(code) => course_result(code, target, index, facts),
         PrereqExpr::All(children) => {
             let mut out = PrereqResult::default();
             for child in children {
-                let r = evaluate_prereq(child, target, index, facts);
+                let r = evaluate_prereq_at(child, target, index, facts, depth + 1);
                 out.truth = out.truth.all(r.truth);
                 out.missing.extend(r.missing);
                 out.same_term.extend(r.same_term);
@@ -493,7 +524,7 @@ pub fn evaluate_prereq(
         PrereqExpr::Any(children) => {
             let results: Vec<PrereqResult> = children
                 .iter()
-                .map(|child| evaluate_prereq(child, target, index, facts))
+                .map(|child| evaluate_prereq_at(child, target, index, facts, depth + 1))
                 .collect();
             let truth = results
                 .iter()

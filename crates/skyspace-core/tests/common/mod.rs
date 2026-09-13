@@ -153,13 +153,23 @@ pub fn attribute_course(name: &str, label: &str, attribute: Attribute) -> Requir
 }
 
 pub fn credits_rule(name: &str, label: &str, minimum: u16, from: CourseFilter) -> Requirement {
+    credits_rule_scoped(name, label, minimum, CreditScope::Additional, from)
+}
+
+pub fn credits_rule_scoped(
+    name: &str,
+    label: &str,
+    minimum: u16,
+    scope: CreditScope,
+    from: CourseFilter,
+) -> Requirement {
     req(
         name,
         label,
         None,
         RequirementBody::Credits {
             minimum: hours(minimum),
-            scope: CreditScope::Additional,
+            scope,
             from,
         },
     )
@@ -240,6 +250,21 @@ pub fn rice_term(
             code: None,
             courses,
         },
+        non_course: vec![],
+    }
+}
+
+pub fn away_term(
+    name: &str,
+    academic_year: u16,
+    season: Season,
+    cards: Vec<ManualCourseCard>,
+) -> PlanTerm {
+    PlanTerm {
+        id: term_id(name),
+        position: position(academic_year, season),
+        label: Some("Study abroad".to_owned()),
+        kind: TermKind::Away { cards },
         non_course: vec![],
     }
 }

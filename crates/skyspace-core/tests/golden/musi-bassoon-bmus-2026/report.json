@@ -284,15 +284,6 @@
       "kind": "self_check",
       "value": {
         "program": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
-        "requirement": "b051f7e9-0cbb-494c-a6b4-38ce4f591543",
-        "label": "Piano Proficiency Exam",
-        "text": "Piano Proficiency Exam"
-      }
-    },
-    {
-      "kind": "self_check",
-      "value": {
-        "program": "0ab6abd3-3272-4682-94a6-8c1c86255ee6",
         "requirement": "2379720a-9063-4a72-a58e-e33ab2e45e01",
         "label": "Students must complete and pass the Piano Proficiency Exam",
         "text": "Students must complete and pass the Piano Proficiency Exam"

@@ -8,13 +8,16 @@ mod common;
 
 use common::{
     all, attribute_course, barch_bundle, bioe_bundle, bmus_bundle, bscs_bundle, bundle, code,
-    course, entry_id, hours, info, manual, off_term, plan, planned, program, requirement_id,
-    requires, rice_term, self_check, term_id, uuid,
+    course, course_filter, course_n, credits_rule, credits_rule_scoped, entry_id, hours, info,
+    manual, non_course, off_term, plan, planned, program, requirement_id, requires, rice_term,
+    select, self_check, subject, term_id, unverifiable, uuid,
 };
 use skyspace_core::catalog::Attribute;
 use skyspace_core::evaluate::{CourseFacts, Outcome, Report, RequirementReport, evaluate};
 use skyspace_core::plan::{CreditOrigin, EntryId, NonCourseClaim, PlanId, TermId, TermKind};
-use skyspace_core::program::{CatalogYear, ProgramId, ProgramKind, RequirementId};
+use skyspace_core::program::{
+    CatalogYear, CourseFilter, CourseSelector, CreditScope, ProgramId, ProgramKind, RequirementId,
+};
 use skyspace_core::term::{Credits, Season};
 use skyspace_core::warn::{
     PrereqProblem, PrereqVerdict, Warning, preview_placement, requirement_matches,
@@ -817,4 +820,505 @@ fn plan_id_and_engine_version_ride_on_the_report() {
     let report = evaluate(&one_rule_bundle());
     assert_eq!(report.plan, PlanId(uuid("plan-one")));
     assert_eq!(report.engine_version, skyspace_core::ENGINE_VERSION);
+}
+
+// ------------------------------------------------------ review findings
+
+#[test]
+fn rule_naming_an_alias_is_met_through_the_canonical_code() {
+    let major = program(
+        "alias",
+        ProgramKind::Major,
+        "BA",
+        None,
+        all("root", "Root", vec![course("econ", "ECON 307", Some(3))]),
+    );
+    let mut facts = CourseFacts::default();
+    facts.insert(info("STAT 310", 3, &[], false));
+    facts.add_alias(code("ECON 307"), code("STAT 310"));
+    for raw in ["ECON 307", "STAT 310"] {
+        let plan = plan(
+            "alias",
+            &[&major],
+            vec![rice_term(
+                "fall",
+                2027,
+                Season::Fall,
+                vec![planned("card", raw, 3)],
+            )],
+        );
+        let report = evaluate(&bundle(plan, vec![major.clone()], facts.clone(), vec![]));
+        let rule = by_id(&report, requirement_id("econ"));
+        assert_eq!(rule.outcome, Outcome::Met, "{raw}");
+        assert_eq!(rule.progress.credits_required, hours(3), "{raw}");
+        assert!(
+            !report
+                .warnings
+                .iter()
+                .any(|w| matches!(w, Warning::FillsNoRequirement { .. })),
+            "{raw}"
+        );
+        let matched = requirement_matches(&major, requirement_id("econ"), &[code(raw)], &facts);
+        assert_eq!(matched, vec![code(raw)]);
+    }
+}
+
+#[test]
+fn additional_credit_rules_consume_cards_in_document_order() {
+    let root = all(
+        "root",
+        "Root",
+        vec![
+            credits_rule("first", "3 additional hours", 3, CourseFilter::default()),
+            credits_rule("second", "3 more hours", 3, CourseFilter::default()),
+        ],
+    );
+    let major = program("additional", ProgramKind::Major, "BA", None, root);
+    let plan = plan(
+        "additional",
+        &[&major],
+        vec![rice_term(
+            "fall",
+            2027,
+            Season::Fall,
+            vec![planned("comp", "COMP 140", 3)],
+        )],
+    );
+    let report = evaluate(&bundle(plan, vec![major], CourseFacts::default(), vec![]));
+    assert_eq!(
+        by_id(&report, requirement_id("first")).outcome,
+        Outcome::Met
+    );
+    let second = by_id(&report, requirement_id("second"));
+    assert_eq!(second.outcome, Outcome::Unmet);
+    assert!(second.filled_by.is_empty());
+    let progress = report.programs[0].progress;
+    assert_eq!(progress.requirements_met, 1);
+    assert_eq!(progress.credits_met, hours(3));
+}
+
+#[test]
+fn any_scope_counts_cards_that_fill_another_rule() {
+    let comp = CourseFilter {
+        include: vec![CourseSelector::Subject {
+            subject: subject("COMP"),
+        }],
+        exclude: vec![],
+    };
+    let for_scope = |scope: CreditScope| {
+        let root = all(
+            "root",
+            "Root",
+            vec![
+                course("c140", "COMP 140", Some(4)),
+                credits_rule_scoped("comp-hours", "4 hours of COMP", 4, scope, comp.clone()),
+            ],
+        );
+        let major = program("scope", ProgramKind::Major, "BA", None, root);
+        let plan = plan(
+            "scope",
+            &[&major],
+            vec![rice_term(
+                "fall",
+                2027,
+                Season::Fall,
+                vec![planned("comp", "COMP 140", 4)],
+            )],
+        );
+        evaluate(&bundle(plan, vec![major], CourseFacts::default(), vec![]))
+    };
+    let any = for_scope(CreditScope::Any);
+    let hours_rule = by_id(&any, requirement_id("comp-hours"));
+    assert_eq!(hours_rule.outcome, Outcome::Met);
+    assert_eq!(hours_rule.filled_by, vec![entry_id("comp")]);
+    let additional = for_scope(CreditScope::Additional);
+    assert_eq!(
+        by_id(&additional, requirement_id("comp-hours")).outcome,
+        Outcome::Unmet
+    );
+}
+
+#[test]
+fn plan_credits_required_falls_back_to_the_folded_sum() {
+    let folded = program(
+        "folded",
+        ProgramKind::Major,
+        "BA",
+        None,
+        all(
+            "root",
+            "Root",
+            vec![
+                course("a", "COMP 140", Some(4)),
+                course("b", "COMP 182", Some(4)),
+            ],
+        ),
+    );
+    let alone = plan(
+        "folded",
+        &[&folded],
+        vec![rice_term("fall", 2027, Season::Fall, vec![])],
+    );
+    let report = evaluate(&bundle(
+        alone,
+        vec![folded.clone()],
+        CourseFacts::default(),
+        vec![],
+    ));
+    assert_eq!(report.programs[0].progress.credits_required, hours(8));
+    assert_eq!(report.progress.credits_required, hours(8));
+    assert_eq!(report.progress.credits_percent(), 0);
+
+    let declared = program(
+        "declared",
+        ProgramKind::Minor,
+        "",
+        Some(120),
+        all("minor-root", "Root", vec![]),
+    );
+    let both = plan(
+        "both",
+        &[&folded, &declared],
+        vec![rice_term("fall", 2027, Season::Fall, vec![])],
+    );
+    let report = evaluate(&bundle(
+        both,
+        vec![folded, declared],
+        CourseFacts::default(),
+        vec![],
+    ));
+    assert_eq!(report.progress.credits_required, hours(120));
+}
+
+#[test]
+fn select_of_self_checks_is_a_self_check() {
+    let major = program(
+        "select",
+        ProgramKind::Major,
+        "BA",
+        None,
+        all(
+            "root",
+            "Root",
+            vec![select(
+                "either",
+                "Select one",
+                1,
+                vec![
+                    unverifiable("advisor", "See your advisor"),
+                    non_course("exam", "Pass the exam"),
+                ],
+            )],
+        ),
+    );
+    let plan = plan(
+        "select",
+        &[&major],
+        vec![rice_term("fall", 2027, Season::Fall, vec![])],
+    );
+    let report = evaluate(&bundle(plan, vec![major], CourseFacts::default(), vec![]));
+    let either = by_id(&report, requirement_id("either"));
+    assert_eq!(
+        either.outcome,
+        Outcome::NeedsStudentCheck { confirmed: None }
+    );
+    assert_eq!(either.progress.requirements_checkable, 0);
+    assert_eq!(either.progress.self_checks, 2);
+    assert_eq!(report.programs[0].progress.requirements_percent(), 100);
+}
+
+#[test]
+fn select_with_a_self_check_counts_only_checkable_options() {
+    let major = program(
+        "mixed",
+        ProgramKind::Major,
+        "BA",
+        None,
+        all(
+            "root",
+            "Root",
+            vec![select(
+                "two",
+                "Select two",
+                2,
+                vec![
+                    course("c140", "COMP 140", Some(4)),
+                    unverifiable("advisor", "An approved elective"),
+                ],
+            )],
+        ),
+    );
+    let plan = plan(
+        "mixed",
+        &[&major],
+        vec![rice_term(
+            "fall",
+            2027,
+            Season::Fall,
+            vec![planned("comp", "COMP 140", 4)],
+        )],
+    );
+    let report = evaluate(&bundle(plan, vec![major], CourseFacts::default(), vec![]));
+    let two = by_id(&report, requirement_id("two"));
+    assert_eq!(two.outcome, Outcome::Met);
+    assert_eq!(two.progress.requirements_checkable, 1);
+    assert_eq!(two.progress.requirements_met, 1);
+    assert_eq!(two.progress.self_checks, 1);
+    assert!(!two.is_complete());
+}
+
+#[test]
+fn rejected_pin_adds_no_hours_to_the_rule() {
+    let mut bundle = one_rule_bundle();
+    if let TermKind::Rice { courses, .. } = &mut bundle.plan.terms[0].kind {
+        courses[0].course = code("HIST 117");
+        courses[0].credits = hours(3);
+        courses[0].fills = vec![requirement_id("one-comp-140")];
+    }
+    let report = evaluate(&bundle);
+    let rule = by_id(&report, requirement_id("one-comp-140"));
+    assert_eq!(rule.outcome, Outcome::Partial);
+    assert_eq!(rule.progress.credits_met, Credits::ZERO);
+    assert_eq!(rule.progress.requirements_claimed, 1);
+    assert_eq!(report.progress.credits_met, hours(3));
+}
+
+#[test]
+fn select_credits_count_only_the_chosen_options() {
+    let option = |name: &str, raw: &str| {
+        course_filter(
+            name,
+            raw,
+            None,
+            CourseFilter {
+                include: vec![CourseSelector::Subject {
+                    subject: subject(raw),
+                }],
+                exclude: vec![],
+            },
+        )
+    };
+    let for_hours = |h: Option<u16>| {
+        let mut one = select(
+            "one",
+            "Select one",
+            1,
+            vec![option("comp", "COMP"), option("math", "MATH")],
+        );
+        one.hours = h.map(common::fixed);
+        let major = program(
+            "select-credits",
+            ProgramKind::Major,
+            "BA",
+            None,
+            all("root", "Root", vec![one]),
+        );
+        let plan = plan(
+            "select-credits",
+            &[&major],
+            vec![rice_term(
+                "fall",
+                2027,
+                Season::Fall,
+                vec![planned("a", "COMP 140", 3), planned("b", "MATH 101", 4)],
+            )],
+        );
+        evaluate(&bundle(plan, vec![major], CourseFacts::default(), vec![]))
+    };
+    let unknown = for_hours(None);
+    let one = by_id(&unknown, requirement_id("one"));
+    assert_eq!(one.outcome, Outcome::Met);
+    assert_eq!(one.progress.credits_met, hours(4));
+    assert_eq!(one.progress.credits_required, Credits::ZERO);
+    assert_eq!(one.progress.credits_unknown, 1);
+    let known = for_hours(Some(3));
+    let one = by_id(&known, requirement_id("one"));
+    assert_eq!(one.progress.credits_met, hours(4));
+    assert_eq!(one.progress.credits_required, hours(3));
+    assert_eq!(one.progress.credits_unknown, 0);
+}
+
+#[test]
+fn rename_keeps_the_choice() {
+    let mut bundle = one_rule_bundle();
+    if let TermKind::Rice { courses, .. } = &mut bundle.plan.terms[0].kind {
+        courses[0].fills = vec![requirement_id("one-comp-140")];
+    }
+    bundle.programs[0].root = all(
+        "one-root",
+        "One",
+        vec![course("one-comp-140", "COMP 140", Some(4))],
+    );
+    if let skyspace_core::program::RequirementBody::All { of } = &mut bundle.programs[0].root.body {
+        of[0].label = "Introduction to Computational Thinking".to_owned();
+    }
+    let report = evaluate(&bundle);
+    let rule = by_id(&report, requirement_id("one-comp-140"));
+    assert_eq!(rule.label, "Introduction to Computational Thinking");
+    assert_eq!(rule.filled_by, vec![entry_id("one-comp-140")]);
+    assert_eq!(rule.outcome, Outcome::Met);
+    assert!(
+        !report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::RequirementChoiceMissing { .. }))
+    );
+}
+
+#[test]
+fn any_branch_satisfies() {
+    let major = program(
+        "any",
+        ProgramKind::Major,
+        "BA",
+        None,
+        all("root", "Root", vec![]),
+    );
+    let mut facts = CourseFacts::default();
+    facts.insert(info("STAT 310", 3, &[], false));
+    facts.add_alias(code("ECON 307"), code("STAT 310"));
+    let rows = vec![requires(
+        "COMP 382",
+        "COMP 182 AND (ELEC 303 OR STAT 310 OR MATH 355)",
+    )];
+    let through_alias = plan(
+        "any",
+        &[&major],
+        vec![
+            rice_term(
+                "fall",
+                2027,
+                Season::Fall,
+                vec![
+                    planned("comp-182", "COMP 182", 4),
+                    planned("econ", "ECON 307", 3),
+                ],
+            ),
+            rice_term(
+                "spring",
+                2027,
+                Season::Spring,
+                vec![planned("comp-382", "COMP 382", 4)],
+            ),
+        ],
+    );
+    let report = evaluate(&bundle(
+        through_alias,
+        vec![major.clone()],
+        facts.clone(),
+        rows.clone(),
+    ));
+    assert!(
+        !report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Prerequisite { .. }))
+    );
+    let without = plan(
+        "any-missing",
+        &[&major],
+        vec![
+            rice_term(
+                "fall",
+                2027,
+                Season::Fall,
+                vec![planned("comp-182", "COMP 182", 4)],
+            ),
+            rice_term(
+                "spring",
+                2027,
+                Season::Spring,
+                vec![planned("comp-382", "COMP 382", 4)],
+            ),
+        ],
+    );
+    let report = evaluate(&bundle(without, vec![major], facts, rows));
+    assert_eq!(
+        report
+            .warnings
+            .iter()
+            .filter(|w| matches!(w, Warning::Prerequisite { .. }))
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn preview_duplicate_respects_repeatable() {
+    let bmus = bmus_bundle();
+    for preview in preview_placement(&bmus, &code("MUSI 457"), None) {
+        assert_eq!(preview.duplicate_of, None);
+    }
+    let bscs = bscs_bundle();
+    let fall24 = TermId(web_id("term-fall-2024"));
+    for preview in preview_placement(&bscs, &code("COMP 140"), None) {
+        if preview.term == fall24 {
+            assert_eq!(preview.duplicate_of, None);
+        } else {
+            assert_eq!(preview.duplicate_of, Some(fall24));
+        }
+    }
+}
+
+#[test]
+fn preview_duplicate_respects_a_semesters_rule() {
+    let major = program(
+        "lessons",
+        ProgramKind::Major,
+        "BMus",
+        None,
+        all(
+            "root",
+            "Root",
+            vec![course_n("lesson", "MUSI 457", Some(3), 8)],
+        ),
+    );
+    let mut facts = CourseFacts::default();
+    // The reviewer encoded the multiplier; Rice's text lacked "Repeatable".
+    facts.insert(info("MUSI 457", 3, &[], false));
+    let plan = plan(
+        "lessons",
+        &[&major],
+        vec![
+            rice_term(
+                "fall",
+                2027,
+                Season::Fall,
+                vec![planned("first", "MUSI 457", 3)],
+            ),
+            rice_term("spring", 2027, Season::Spring, vec![]),
+        ],
+    );
+    let bundle = bundle(plan, vec![major], facts, vec![]);
+    let previews = preview_placement(&bundle, &code("MUSI 457"), None);
+    let spring = previews
+        .iter()
+        .find(|p| p.term == term_id("spring"))
+        .unwrap();
+    assert_eq!(spring.duplicate_of, None);
+}
+
+#[test]
+fn preview_unknown_without_record() {
+    let bundle = bscs_bundle();
+    for preview in preview_placement(&bundle, &code("XXXX 999"), None) {
+        assert_eq!(preview.prerequisites, PrereqVerdict::Unknown);
+    }
+}
+
+#[test]
+fn preview_ignores_the_moving_card() {
+    let bundle = bscs_bundle();
+    let fall26 = TermId(web_id("term-fall-2026"));
+    let moving = EntryId(web_id("entry-comp-382-21"));
+    for preview in preview_placement(&bundle, &code("COMP 382"), Some(moving)) {
+        assert_eq!(preview.duplicate_of, None);
+    }
+    let from_tray = preview_placement(&bundle, &code("COMP 382"), None);
+    assert!(
+        from_tray
+            .iter()
+            .filter(|p| p.term != fall26)
+            .all(|p| p.duplicate_of == Some(fall26))
+    );
 }

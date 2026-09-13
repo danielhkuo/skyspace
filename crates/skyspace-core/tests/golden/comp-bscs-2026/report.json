@@ -20,7 +20,7 @@
           "requirementsMet": 9,
           "requirementsCheckable": 12,
           "requirementsClaimed": 1,
-          "creditsMet": 3000,
+          "creditsMet": 2700,
           "creditsRequired": 100,
           "creditsUnknown": 11,
           "selfChecks": 1,
@@ -67,7 +67,7 @@
               "requirementsMet": 2,
               "requirementsCheckable": 3,
               "requirementsClaimed": 1,
-              "creditsMet": 900,
+              "creditsMet": 600,
               "creditsRequired": 0,
               "creditsUnknown": 3,
               "selfChecks": 1,
@@ -114,7 +114,7 @@
                   "requirementsMet": 0,
                   "requirementsCheckable": 1,
                   "requirementsClaimed": 1,
-                  "creditsMet": 300,
+                  "creditsMet": 0,
                   "creditsRequired": 0,
                   "creditsUnknown": 1,
                   "selfChecks": 0,
@@ -433,7 +433,7 @@
         "requirementsMet": 9,
         "requirementsCheckable": 12,
         "requirementsClaimed": 1,
-        "creditsMet": 3000,
+        "creditsMet": 2700,
         "creditsRequired": 3100,
         "creditsUnknown": 11,
         "selfChecks": 1,
@@ -459,7 +459,7 @@
           "requirementsMet": 14,
           "requirementsCheckable": 18,
           "requirementsClaimed": 1,
-          "creditsMet": 7500,
+          "creditsMet": 7100,
           "creditsRequired": 8300,
           "creditsUnknown": 0,
           "selfChecks": 1,
@@ -923,7 +923,7 @@
               "requirementsMet": 0,
               "requirementsCheckable": 1,
               "requirementsClaimed": 1,
-              "creditsMet": 800,
+              "creditsMet": 400,
               "creditsRequired": 600,
               "creditsUnknown": 0,
               "selfChecks": 0,
@@ -998,7 +998,7 @@
         "requirementsMet": 14,
         "requirementsCheckable": 18,
         "requirementsClaimed": 1,
-        "creditsMet": 7500,
+        "creditsMet": 7100,
         "creditsRequired": 12000,
         "creditsUnknown": 0,
         "selfChecks": 1,
@@ -1182,6 +1182,16 @@
     "selfChecksConfirmed": 1
   },
   "warnings": [
+    {
+      "kind": "requirement_choice_unmatched",
+      "value": {
+        "entry": "e8ac1e2e-1dfd-47af-8ce9-50301fbc45e0",
+        "requirement": "69868b30-708c-489e-8f56-6e1c48858d98",
+        "basis": {
+          "kind": "registrar_posted"
+        }
+      }
+    },
     {
       "kind": "requirement_choice_unmatched",
       "value": {

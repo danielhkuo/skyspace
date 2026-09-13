@@ -208,10 +208,12 @@ pub enum FilterMatch {
 }
 
 impl CourseSelector {
+    /// `code` is canonical; a reviewer may have typed the alias side of a
+    /// cross-list, so the selector's own code is canonicalised too.
     fn matches(&self, code: &CourseCode, facts: &CourseFacts) -> FilterMatch {
         match self {
             Self::Code { code: wanted } => {
-                if wanted == code {
+                if facts.canonical(wanted) == *code {
                     FilterMatch::Yes
                 } else {
                     FilterMatch::No
@@ -351,14 +353,36 @@ pub struct Program {
     pub retired_requirements: Vec<RequirementId>,
 }
 
+/// How deep a requirement tree is read. A GA page nests four or five
+/// levels; the bound keeps a hostile document from exhausting the stack.
+/// Nodes below it are neither walked nor evaluated, and the node at the
+/// bound is reported as a self-check.
+pub(crate) const MAX_TREE_DEPTH: usize = 64;
+
 impl Requirement {
-    /// Depth-first, document order.
+    /// Depth-first, document order, to `MAX_TREE_DEPTH`.
     pub fn walk<'a>(&'a self, visit: &mut impl FnMut(&'a Requirement)) {
+        self.walk_at(visit, 0);
+    }
+
+    fn walk_at<'a>(&'a self, visit: &mut impl FnMut(&'a Requirement), depth: usize) {
         visit(self);
-        if let RequirementBody::All { of } | RequirementBody::Select { of, .. } = &self.body {
+        if depth >= MAX_TREE_DEPTH {
+            return;
+        }
+        if let Some(of) = self.children() {
             for child in of {
-                child.walk(visit);
+                child.walk_at(visit, depth + 1);
             }
+        }
+    }
+
+    /// The children of a group node; `None` for a leaf.
+    #[must_use]
+    pub(crate) fn children(&self) -> Option<&[Requirement]> {
+        match &self.body {
+            RequirementBody::All { of } | RequirementBody::Select { of, .. } => Some(of),
+            _ => None,
         }
     }
 

@@ -16,7 +16,8 @@ use crate::prereq::{
     Exclusion, PrereqFact, Prerequisite, TakenIndex, Truth, evaluate_prereq, prereq_fact,
 };
 use crate::program::{
-    CatalogYear, FilterMatch, Program, ProgramId, ProgramKind, RequirementBody, RequirementId,
+    CatalogYear, FilterMatch, Program, ProgramId, ProgramKind, Requirement, RequirementBody,
+    RequirementId,
 };
 use crate::term::{Credits, Season, TermCode};
 
@@ -72,10 +73,12 @@ pub enum Warning {
         /// The year used.
         used: CatalogYear,
     },
-    /// A choice points at a rule the course does not match.
+    /// A choice points at a rule the course does not match, or at a slot
+    /// an earlier card already holds.
     RequirementChoiceUnmatched {
-        /// Column.
-        term: TermId,
+        /// Column; none for incoming credit.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        term: Option<TermId>,
         /// Card.
         entry: EntryId,
         /// Rule.
@@ -86,8 +89,9 @@ pub enum Warning {
     },
     /// A choice points at a rule this version lacks.
     RequirementChoiceMissing {
-        /// Column.
-        term: TermId,
+        /// Column; none for incoming credit.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        term: Option<TermId>,
         /// Card.
         entry: EntryId,
         /// Rule.
@@ -126,16 +130,19 @@ pub enum Warning {
         /// Rice's text.
         published: String,
     },
-    /// Both halves of a mutual exclusion are in the plan.
+    /// Both halves of a mutual exclusion are in the plan, incoming credit
+    /// included: "has credit for" is exactly the AP and transfer case.
     MutuallyExclusive {
         /// The later course.
         blocked: CourseCode,
-        /// Its column.
-        blocked_term: TermId,
+        /// Its column; none for incoming credit.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        blocked_term: Option<TermId>,
         /// The earlier course.
         blocker: CourseCode,
-        /// Its column.
-        blocker_term: TermId,
+        /// Its column; none for incoming credit.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        blocker_term: Option<TermId>,
         /// Rice's sentence.
         published: String,
     },
@@ -292,21 +299,28 @@ fn filled_entries(rules: &[&RequirementReport]) -> BTreeSet<EntryId> {
         .collect()
 }
 
-/// A course card in no requirement's `filled_by` across every program.
+/// A card with a Rice code in no requirement's `filled_by` across every
+/// program: a planned course, or an `Away` card with a Rice equivalent.
+/// Incoming credit is outside the plan's terms and stays out.
 #[must_use]
 pub fn fills_no_requirement(plan: &Plan, rules: &[&RequirementReport]) -> Vec<Warning> {
     let filled = filled_entries(rules);
     let mut out = Vec::new();
     for term in &plan.terms {
-        let TermKind::Rice { courses, .. } = &term.kind else {
-            continue;
+        let cards: Vec<(EntryId, &CourseCode)> = match &term.kind {
+            TermKind::Rice { courses, .. } => courses.iter().map(|c| (c.id, &c.course)).collect(),
+            TermKind::Away { cards } => cards
+                .iter()
+                .filter_map(|c| c.rice_equivalent.as_ref().map(|code| (c.id, code)))
+                .collect(),
+            TermKind::Off => continue,
         };
-        for course in courses {
-            if !filled.contains(&course.id) {
+        for (entry, course) in cards {
+            if !filled.contains(&entry) {
                 out.push(Warning::FillsNoRequirement {
                     term: term.id,
-                    entry: course.id,
-                    course: course.course.clone(),
+                    entry,
+                    course: course.clone(),
                 });
             }
         }
@@ -314,15 +328,39 @@ pub fn fills_no_requirement(plan: &Plan, rules: &[&RequirementReport]) -> Vec<Wa
     out
 }
 
+/// The cards in course-rule slots of one program: `filled_by` of its
+/// `Course` leaves only. A `Credits` rule absorbing a card is not a slot.
+fn course_slot_entries(program: &Program, rules: &[&RequirementReport]) -> BTreeSet<EntryId> {
+    let course_rules: BTreeSet<RequirementId> = program
+        .root
+        .flatten()
+        .into_iter()
+        .filter(|r| matches!(r.body, RequirementBody::Course { .. }))
+        .map(|r| r.id)
+        .collect();
+    rules
+        .iter()
+        .filter(|r| course_rules.contains(&r.requirement))
+        .flat_map(|r| r.filled_by.iter().copied())
+        .collect()
+}
+
 /// One canonical code on two or more cards, unless the course is repeatable
-/// or every copy fills its own slot.
+/// or every copy fills its own course slot in one program: a semesters
+/// rule, or ARCH 500's two rows. A copy absorbed by a free-elective
+/// allowance, or filling the same rule of a second program, is still a
+/// repeat.
 #[must_use]
 pub fn duplicate_courses(
     plan: &Plan,
     facts: &CourseFacts,
+    programs: &[Program],
     rules: &[&RequirementReport],
 ) -> Vec<Warning> {
-    let filled = filled_entries(rules);
+    let slotted: Vec<BTreeSet<EntryId>> = programs
+        .iter()
+        .map(|p| course_slot_entries(p, rules))
+        .collect();
     let mut seen: BTreeMap<CourseCode, (Vec<TermId>, Vec<EntryId>)> = BTreeMap::new();
     for card in collect_cards(plan, facts) {
         let Some(code) = card.code else {
@@ -336,9 +374,11 @@ pub fn duplicate_courses(
     }
     seen.into_iter()
         .filter(|(code, (_, entries))| {
-            entries.len() >= 2
-                && !facts.get(code).is_some_and(|info| info.repeatable)
-                && !entries.iter().all(|e| filled.contains(e))
+            let intended_repeat = facts.get(code).is_some_and(|info| info.repeatable)
+                || slotted
+                    .iter()
+                    .any(|slots| entries.iter().all(|e| slots.contains(e)));
+            entries.len() >= 2 && !intended_repeat
         })
         .map(|(course, (terms, _))| Warning::DuplicateCourse { course, terms })
         .collect()
@@ -424,9 +464,6 @@ pub fn exclusion_problems(plan: &Plan, rows: &[Exclusion], facts: &CourseFacts) 
         let (Some(first), Some(second)) = (index.earliest(&a), index.earliest(&b)) else {
             continue;
         };
-        let (Some(first_term), Some(second_term)) = (first.term, second.term) else {
-            continue;
-        };
         let pair = if a <= b { (a, b) } else { (b, a) };
         if !warned.insert(pair) {
             continue;
@@ -435,16 +472,16 @@ pub fn exclusion_problems(plan: &Plan, rows: &[Exclusion], facts: &CourseFacts) 
         let (later_code, later_term, earlier_code, earlier_term) = if second.when <= first.when {
             (
                 row.blocked.clone(),
-                first_term,
+                first.term,
                 row.blocker.clone(),
-                second_term,
+                second.term,
             )
         } else {
             (
                 row.blocker.clone(),
-                second_term,
+                second.term,
                 row.blocked.clone(),
-                first_term,
+                first.term,
             )
         };
         out.push(Warning::MutuallyExclusive {
@@ -615,7 +652,7 @@ pub(crate) fn double_counted(
             continue;
         }
         let mut rules = Vec::new();
-        walk(&program.root, &mut rules);
+        program.root.walk(&mut rules);
         for rule in rules {
             for entry in &rule.filled_by {
                 programs_of.entry(*entry).or_default().push(program.program);
@@ -646,36 +683,34 @@ pub(crate) fn double_counted(
     out
 }
 
-fn walk<'a>(rule: &'a RequirementReport, out: &mut Vec<&'a RequirementReport>) {
-    out.push(rule);
-    for child in &rule.children {
-        walk(child, out);
-    }
-}
-
-/// Every unconfirmed self-check, as its own row, so it is never silent.
+/// Every unconfirmed self-check leaf, as its own row, so it is never
+/// silent. A group whose children are all self-checks is one too, but its
+/// row would repeat its children's.
 #[must_use]
 pub fn self_checks(report: &Report, programs: &[&Program]) -> Vec<Warning> {
     let mut out = Vec::new();
     for program_report in &report.programs {
         let program = programs.iter().find(|p| p.id == program_report.program);
+        let by_id: BTreeMap<RequirementId, &Requirement> = program
+            .map(|p| p.root.flatten().into_iter().map(|r| (r.id, r)).collect())
+            .unwrap_or_default();
         let mut rules = Vec::new();
-        walk(&program_report.root, &mut rules);
+        program_report.root.walk(&mut rules);
         for rule in rules {
-            if rule.outcome != (Outcome::NeedsStudentCheck { confirmed: None }) {
+            if !rule.children.is_empty()
+                || rule.outcome != (Outcome::NeedsStudentCheck { confirmed: None })
+            {
                 continue;
             }
-            let text = program
-                .and_then(|p| p.requirement(rule.requirement))
-                .map_or_else(
-                    || rule.label.clone(),
-                    |r| match &r.body {
-                        RequirementBody::NonCourse { description, .. } => description.clone(),
-                        RequirementBody::Unverifiable { text }
-                        | RequirementBody::DistinctDepartments { text, .. } => text.clone(),
-                        _ => r.label.clone(),
-                    },
-                );
+            let text = by_id.get(&rule.requirement).map_or_else(
+                || rule.label.clone(),
+                |r| match &r.body {
+                    RequirementBody::NonCourse { description, .. } => description.clone(),
+                    RequirementBody::Unverifiable { text }
+                    | RequirementBody::DistinctDepartments { text, .. } => text.clone(),
+                    _ => r.label.clone(),
+                },
+            );
             out.push(Warning::SelfCheck {
                 program: program_report.program,
                 requirement: rule.requirement,
@@ -696,7 +731,7 @@ pub fn warnings(bundle: &PlanBundle, rules: &[&RequirementReport]) -> Vec<Warnin
     let plan = &bundle.plan;
     let facts = &bundle.facts;
     let mut out = fills_no_requirement(plan, rules);
-    out.extend(duplicate_courses(plan, facts, rules));
+    out.extend(duplicate_courses(plan, facts, &bundle.programs, rules));
     out.extend(prerequisite_problems(plan, &bundle.prerequisites, facts));
     out.extend(exclusion_problems(plan, &bundle.exclusions, facts));
     out.extend(season_unlikely(plan, facts));
@@ -779,17 +814,47 @@ pub enum PrereqVerdict {
     Unknown,
 }
 
+/// The program versions the report was evaluated against.
+fn evaluated_programs<'a>(bundle: &'a PlanBundle, report: &Report) -> Vec<&'a Program> {
+    bundle
+        .programs
+        .iter()
+        .filter(|program| {
+            report
+                .programs
+                .iter()
+                .any(|p| p.program == program.id && p.evaluated_with == program.catalog_year)
+        })
+        .collect()
+}
+
+/// Whether a chosen program's course rule takes `code` more than once: a
+/// reviewer's "(minimum of 8 semesters)" where Rice's description lacks the
+/// "Repeatable for Credit." sentence.
+fn repeated_by_a_rule(programs: &[&Program], code: &CourseCode, facts: &CourseFacts) -> bool {
+    programs.iter().any(|program| {
+        program.root.flatten().into_iter().any(|r| {
+            matches!(
+                &r.body,
+                RequirementBody::Course { filter, semesters }
+                    if *semesters > 1 && filter.matches(code, facts) == FilterMatch::Yes
+            )
+        })
+    })
+}
+
 /// Which requirements' progress would rise if `code` joined the plan: a
 /// filter pass over the unmet course rules, not a matching.
 fn requirements_raised_by(
-    bundle: &PlanBundle,
+    programs: &[&Program],
     report: &Report,
     code: &CourseCode,
+    facts: &CourseFacts,
 ) -> Vec<(ProgramId, RequirementId)> {
     let mut open: BTreeSet<RequirementId> = BTreeSet::new();
     for program in &report.programs {
         let mut rules = Vec::new();
-        walk(&program.root, &mut rules);
+        program.root.walk(&mut rules);
         open.extend(
             rules
                 .iter()
@@ -798,21 +863,12 @@ fn requirements_raised_by(
         );
     }
     let mut out = Vec::new();
-    for program in &bundle.programs {
-        if !report
-            .programs
-            .iter()
-            .any(|p| p.program == program.id && p.evaluated_with == program.catalog_year)
-        {
-            continue;
-        }
+    for program in programs {
         for requirement in program.root.flatten() {
             let RequirementBody::Course { filter, .. } = &requirement.body else {
                 continue;
             };
-            if open.contains(&requirement.id)
-                && filter.matches(code, &bundle.facts) == FilterMatch::Yes
-            {
+            if open.contains(&requirement.id) && filter.matches(code, facts) == FilterMatch::Yes {
                 out.push((program.id, requirement.id));
             }
         }
@@ -821,11 +877,14 @@ fn requirements_raised_by(
 }
 
 /// What dropping `course` into each term would mean. Reads the same rows and
-/// index the warning functions read, so the preview and the post-drop
-/// warning cannot disagree. `moving` is the entry being dragged, when it is
-/// already on the board, so the index is built without it. Only `Rice`
-/// terms get a prerequisite verdict; `Away` terms return `Unknown` and `Off`
-/// terms are omitted.
+/// index the warning functions read, so the preview's prerequisite verdict
+/// and the post-drop warning cannot disagree. `duplicate_of` is the same
+/// question asked before the matching runs: it is `None` when the course is
+/// repeatable or a chosen program's rule takes it more than once, and names
+/// the earlier column otherwise. `moving` is the entry being dragged, when
+/// it is already on the board, so the index is built without it. Only
+/// `Rice` terms get a prerequisite verdict; `Away` terms return `Unknown`
+/// and `Off` terms are omitted.
 #[must_use]
 pub fn preview_placement(
     bundle: &PlanBundle,
@@ -838,17 +897,19 @@ pub fn preview_placement(
     let index = TakenIndex::build_without(plan, facts, moving);
     let fact = prereq_fact(&bundle.prerequisites, &canonical);
     let info = facts.get(&canonical);
-    let already = index.earliest(&canonical);
-    let duplicate_of = match already {
-        Some(placed) if !info.is_some_and(|i| i.repeatable) => placed.term,
+    let report = evaluate(bundle);
+    let programs = evaluated_programs(bundle, &report);
+    let intended_repeat =
+        info.is_some_and(|i| i.repeatable) || repeated_by_a_rule(&programs, &canonical, facts);
+    let duplicate_of = match index.earliest(&canonical) {
+        Some(placed) if !intended_repeat => placed.term,
         _ => None,
     };
     let credits = moving
         .and_then(|entry| moving_credits(plan, entry))
         .or_else(|| info.map(|i| i.credits.min()))
         .unwrap_or(Credits::ZERO);
-    let report = evaluate(bundle);
-    let fills = requirements_raised_by(bundle, &report, &canonical);
+    let fills = requirements_raised_by(&programs, &report, &canonical, facts);
 
     let mut out = Vec::new();
     for term in &plan.terms {

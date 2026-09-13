@@ -71,9 +71,9 @@ wanted: CatalogYear,
  */
 used: CatalogYear, } } | { "kind": "requirement_choice_unmatched", "value": { 
 /**
- * Column.
+ * Column; none for incoming credit.
  */
-term: TermId, 
+term?: TermId | null, 
 /**
  * Card.
  */
@@ -87,9 +87,9 @@ requirement: RequirementId,
  */
 basis?: FillBasis | null, } } | { "kind": "requirement_choice_missing", "value": { 
 /**
- * Column.
+ * Column; none for incoming credit.
  */
-term: TermId, 
+term?: TermId | null, 
 /**
  * Card.
  */
@@ -151,17 +151,17 @@ published: string, } } | { "kind": "mutually_exclusive", "value": {
  */
 blocked: CourseCode, 
 /**
- * Its column.
+ * Its column; none for incoming credit.
  */
-blockedTerm: TermId, 
+blockedTerm?: TermId | null, 
 /**
  * The earlier course.
  */
 blocker: CourseCode, 
 /**
- * Its column.
+ * Its column; none for incoming credit.
  */
-blockerTerm: TermId, 
+blockerTerm?: TermId | null, 
 /**
  * Rice's sentence.
  */

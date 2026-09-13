@@ -20,8 +20,8 @@ use crate::plan::{
 };
 use crate::prereq::{Exclusion, Prerequisite};
 use crate::program::{
-    CatalogYear, CourseFilter, FilterMatch, Program, ProgramId, Requirement, RequirementBody,
-    RequirementId, SourceRef,
+    CatalogYear, CourseFilter, CreditScope, FilterMatch, MAX_TREE_DEPTH, Program, ProgramId,
+    Requirement, RequirementBody, RequirementId, SourceRef,
 };
 use crate::term::{CreditRange, Credits, Season, TermPosition};
 use crate::warn::{CreditLimits, InvalidationDetail, Warning, report_warnings, warnings};
@@ -127,7 +127,8 @@ impl CourseFacts {
         self.by_code.get(&self.canonical(code))
     }
 
-    /// Every course we hold facts for, in code order.
+    /// Every course we hold facts for, in code order. An iterator is
+    /// already `#[must_use]`, and clippy refuses a second attribute.
     pub fn courses(&self) -> impl Iterator<Item = &CourseInfo> {
         self.by_code.values()
     }
@@ -292,7 +293,9 @@ impl RequirementReport {
             && self.progress.self_checks == self.progress.self_checks_confirmed
     }
 
-    fn walk<'a>(&'a self, out: &mut Vec<&'a RequirementReport>) {
+    /// This rule and everything under it, document order. The tree is at
+    /// most `MAX_TREE_DEPTH` deep by construction.
+    pub(crate) fn walk<'a>(&'a self, out: &mut Vec<&'a RequirementReport>) {
         out.push(self);
         for child in &self.children {
             child.walk(out);
@@ -432,7 +435,9 @@ struct Slot<'a> {
     filter: &'a CourseFilter,
 }
 
-fn flatten_slots<'a>(requirement: &'a Requirement, out: &mut Vec<Slot<'a>>) {
+/// One slot per semester of every course rule, document order, to
+/// `MAX_TREE_DEPTH`: the same nodes `Requirement::walk` visits.
+fn flatten_slots<'a>(requirement: &'a Requirement, out: &mut Vec<Slot<'a>>, depth: usize) {
     match &requirement.body {
         RequirementBody::Course { filter, semesters } => {
             for _ in 0..*semesters {
@@ -443,8 +448,11 @@ fn flatten_slots<'a>(requirement: &'a Requirement, out: &mut Vec<Slot<'a>>) {
             }
         }
         RequirementBody::All { of } | RequirementBody::Select { of, .. } => {
+            if depth >= MAX_TREE_DEPTH {
+                return;
+            }
             for child in of {
-                flatten_slots(child, out);
+                flatten_slots(child, out, depth + 1);
             }
         }
         RequirementBody::Credits { .. }
@@ -515,9 +523,9 @@ fn augment(
     false
 }
 
-/// Everything one program evaluation needs to read.
+/// Everything one program evaluation needs to read, plus the cards the
+/// credits rules have consumed so far.
 struct ProgramContext<'a> {
-    program: &'a Program,
     cards: &'a [Card],
     facts: &'a CourseFacts,
     matching: Matching,
@@ -526,20 +534,29 @@ struct ProgramContext<'a> {
     claimed_in: BTreeMap<RequirementId, TermId>,
 }
 
-/// Choices first, then the free pool through the matcher.
-fn match_cards(
-    program: &Program,
+/// What the pinned phase leaves for the matcher: which slots a choice took
+/// and which cards, in board order, go to the free pool.
+struct Pinned {
+    slot_taken: Vec<bool>,
+    free: Vec<usize>,
+}
+
+/// Fix each card with a choice naming one of `slots` to the first free slot
+/// of that rule. Two cards pinned to one slot is a data error the store
+/// prevents; the engine takes the first in board order, lets the rest match
+/// freely, and says so.
+fn pin_choices(
+    slots: &[Slot<'_>],
     cards: &[Card],
     facts: &CourseFacts,
+    matching: &mut Matching,
     warnings: &mut Vec<Warning>,
-) -> Matching {
-    let mut slots = Vec::new();
-    flatten_slots(&program.root, &mut slots);
-    let mut matching = Matching::default();
-    let mut slot_taken = vec![false; slots.len()];
+) -> Pinned {
+    let mut pinned = Pinned {
+        slot_taken: vec![false; slots.len()],
+        free: Vec::new(),
+    };
     let slot_requirements: BTreeSet<RequirementId> = slots.iter().map(|s| s.requirement).collect();
-    let mut free: Vec<usize> = Vec::new();
-
     for (index, card) in cards.iter().enumerate() {
         let Some(choice) = card
             .fills
@@ -547,55 +564,80 @@ fn match_cards(
             .copied()
             .find(|r| slot_requirements.contains(r))
         else {
-            free.push(index);
+            pinned.free.push(index);
             continue;
         };
-        let Some(slot_index) = slots
+        let open = slots
             .iter()
             .enumerate()
-            .position(|(i, s)| s.requirement == choice && !slot_taken[i])
-        else {
-            free.push(index);
+            .position(|(i, s)| s.requirement == choice && !pinned.slot_taken[i]);
+        let Some(slot_index) = open else {
+            warnings.push(choice_unmatched(card, choice));
+            pinned.free.push(index);
             continue;
         };
-        slot_taken[slot_index] = true;
+        pinned.slot_taken[slot_index] = true;
         matching.give(choice, index);
-        let Some(slot) = slots.get(slot_index) else {
-            continue;
-        };
-        // A pin the filter rejects is a claim: shown in the slot, never
-        // counted as met, and it must say why. AP/IB on an attribute slot is
-        // one too, whatever the filter says, because Rice's own policy rejects it.
-        let barred = card.bars_attribute_slots() && slot.filter.needs_attribute();
-        let rejected = card
-            .code
-            .as_ref()
-            .is_none_or(|code| slot.filter.matches(code, facts) == FilterMatch::No);
-        if barred {
-            matching.claimed.insert(card.entry);
-            if let Some(origin) = card.origin {
-                warnings.push(Warning::IncomingCreditIneligible {
-                    entry: card.entry,
-                    requirement: choice,
-                    origin,
-                });
-            }
-        } else if rejected {
-            matching.claimed.insert(card.entry);
-            if let Some(term) = card.term {
-                warnings.push(Warning::RequirementChoiceUnmatched {
-                    term,
-                    entry: card.entry,
-                    requirement: choice,
-                    basis: card.basis_for(choice),
-                });
-            }
+        if let Some(slot) = slots.get(slot_index) {
+            claim_if_rejected(card, slot, choice, facts, matching, warnings);
         }
     }
+    pinned
+}
 
+fn choice_unmatched(card: &Card, choice: RequirementId) -> Warning {
+    Warning::RequirementChoiceUnmatched {
+        term: card.term,
+        entry: card.entry,
+        requirement: choice,
+        basis: card.basis_for(choice),
+    }
+}
+
+/// A pin the filter rejects is a claim: shown in the slot, never counted as
+/// met, and it must say why. AP/IB on an attribute slot is one too, whatever
+/// the filter says, because Rice's own policy rejects it.
+fn claim_if_rejected(
+    card: &Card,
+    slot: &Slot<'_>,
+    choice: RequirementId,
+    facts: &CourseFacts,
+    matching: &mut Matching,
+    warnings: &mut Vec<Warning>,
+) {
+    let barred = card.bars_attribute_slots() && slot.filter.needs_attribute();
+    let rejected = card
+        .code
+        .as_ref()
+        .is_none_or(|code| slot.filter.matches(code, facts) == FilterMatch::No);
+    if barred {
+        matching.claimed.insert(card.entry);
+        if let Some(origin) = card.origin {
+            warnings.push(Warning::IncomingCreditIneligible {
+                entry: card.entry,
+                requirement: choice,
+                origin,
+            });
+        }
+    } else if rejected {
+        matching.claimed.insert(card.entry);
+        warnings.push(choice_unmatched(card, choice));
+    }
+}
+
+/// Which free cards each open slot accepts, by free-pool index.
+/// `unknown_warned` is shared across programs so a card with no facts warns
+/// once per plan.
+fn free_candidates(
+    slots: &[Slot<'_>],
+    pinned: &Pinned,
+    cards: &[Card],
+    facts: &CourseFacts,
+    warnings: &mut Vec<Warning>,
+    unknown_warned: &mut BTreeSet<EntryId>,
+) -> Vec<Vec<usize>> {
     let mut candidates: Vec<Vec<usize>> = vec![Vec::new(); slots.len()];
-    let mut unknown_warned: BTreeSet<EntryId> = BTreeSet::new();
-    for (free_index, &card_index) in free.iter().enumerate() {
+    for (free_index, &card_index) in pinned.free.iter().enumerate() {
         let Some(card) = cards.get(card_index) else {
             continue;
         };
@@ -603,7 +645,7 @@ fn match_cards(
             continue;
         };
         for (slot_index, slot) in slots.iter().enumerate() {
-            if slot_taken[slot_index]
+            if pinned.slot_taken.get(slot_index).copied().unwrap_or(true)
                 || (card.bars_attribute_slots() && slot.filter.needs_attribute())
             {
                 continue;
@@ -629,9 +671,25 @@ fn match_cards(
             }
         }
     }
-    let slot_of_card = match_slots(&candidates, free.len());
+    candidates
+}
+
+/// Choices first, then the free pool through the matcher.
+fn match_cards(
+    program: &Program,
+    cards: &[Card],
+    facts: &CourseFacts,
+    warnings: &mut Vec<Warning>,
+    unknown_warned: &mut BTreeSet<EntryId>,
+) -> Matching {
+    let mut slots = Vec::new();
+    flatten_slots(&program.root, &mut slots, 0);
+    let mut matching = Matching::default();
+    let pinned = pin_choices(&slots, cards, facts, &mut matching, warnings);
+    let candidates = free_candidates(&slots, &pinned, cards, facts, warnings, unknown_warned);
+    let slot_of_card = match_slots(&candidates, pinned.free.len());
     // Hand out in board order so `filled_by` and credit sums stay board-ordered.
-    for (free_index, &card_index) in free.iter().enumerate() {
+    for (free_index, &card_index) in pinned.free.iter().enumerate() {
         if let Some(Some(slot_index)) = slot_of_card.get(free_index)
             && let Some(slot) = slots.get(*slot_index)
         {
@@ -706,19 +764,22 @@ impl ProgramContext<'_> {
         semesters: u8,
     ) -> RequirementReport {
         let filled = self.assigned(requirement.id);
-        let matched = filled
+        // A claim is shown in the slot and never counted: not as met, and
+        // not in the hours either.
+        let matched: Vec<usize> = filled
             .iter()
+            .copied()
             .filter(|i| {
-                self.card(**i)
+                self.card(*i)
                     .is_some_and(|c| !self.matching.claimed.contains(&c.entry))
             })
-            .count();
-        let met = matched >= usize::from(semesters);
+            .collect();
+        let met = matched.len() >= usize::from(semesters);
         let mut progress = Progress {
             requirements_checkable: 1,
             requirements_met: u16::from(met),
-            requirements_claimed: u16::from(!met && filled.len() > matched),
-            credits_met: self.credits_of(filled),
+            requirements_claimed: u16::from(!met && filled.len() > matched.len()),
+            credits_met: self.credits_of(&matched),
             ..Progress::default()
         };
         match requirement.hours {
@@ -751,15 +812,18 @@ impl ProgramContext<'_> {
     }
 
     fn credits_rule(
-        &self,
+        &mut self,
         requirement: &Requirement,
         minimum: Credits,
-        scope: crate::program::CreditScope,
+        scope: CreditScope,
         from: &CourseFilter,
     ) -> RequirementReport {
-        // `Additional` counts only cards filling no other requirement; a
-        // free-elective allowance consumes cards in board order until it is
-        // full, so fills-no-requirement fires only past the allowance.
+        // `Additional` counts only cards filling no other requirement: no
+        // course slot, and no earlier `Additional` rule in document order.
+        // A free-elective allowance consumes cards in board order until it
+        // is full, so fills-no-requirement fires only past the allowance.
+        // `Any` is a total over a set, so it neither honours nor adds to
+        // the consumed set.
         let mut filled_by = Vec::new();
         let mut total = Credits::ZERO;
         for card in self.cards {
@@ -770,12 +834,14 @@ impl ProgramContext<'_> {
                 None => from.include.is_empty(),
                 Some(code) => from.matches(code, self.facts) == FilterMatch::Yes,
             };
-            let free =
-                scope == crate::program::CreditScope::Any || !self.consumed.contains(&card.entry);
+            let free = scope == CreditScope::Any || !self.consumed.contains(&card.entry);
             if eligible && free {
                 filled_by.push(card.entry);
                 total = total.saturating_add(card.credits);
             }
+        }
+        if scope == CreditScope::Additional {
+            self.consumed.extend(filled_by.iter().copied());
         }
         let met = total >= minimum;
         let progress = Progress {
@@ -849,20 +915,21 @@ impl ProgramContext<'_> {
     }
 
     fn group(
-        &self,
+        &mut self,
         requirement: &Requirement,
         of: &[Requirement],
         select: Option<u8>,
+        depth: usize,
     ) -> RequirementReport {
-        let children: Vec<RequirementReport> = of
-            .iter()
-            .map(|child| match &child.body {
+        let mut children: Vec<RequirementReport> = Vec::with_capacity(of.len());
+        for child in of {
+            children.push(match &child.body {
                 RequirementBody::DistinctDepartments { minimum, .. } => {
                     self.distinct_departments(child, of, *minimum)
                 }
-                _ => self.requirement(child),
-            })
-            .collect();
+                _ => self.requirement_at(child, depth + 1),
+            });
+        }
         let mut progress = Progress::default();
         let mut met_children = 0u16;
         let mut checkable_children = 0u16;
@@ -887,15 +954,20 @@ impl ProgramContext<'_> {
         }
         let outcome = match select {
             Some(count) => {
-                progress.requirements_met = met_children.min(u16::from(count));
-                progress.requirements_checkable = u16::from(count);
-                if let Some(hours) = requirement.hours {
-                    progress.credits_required = hours.min();
+                select_progress(&mut progress, requirement, &children, count);
+                // A self-check option can stand in for a missing checkable
+                // one, so `count` applies to the checkable options only;
+                // with none, the choice is the student's, as under `All`.
+                let needed = if any_self_check {
+                    u16::from(count).min(checkable_children)
                 } else {
-                    progress.credits_required = Credits::ZERO;
-                    progress.credits_unknown = progress.credits_unknown.saturating_add(1);
-                }
-                if met_children >= u16::from(count) {
+                    u16::from(count)
+                };
+                progress.requirements_met = met_children.min(needed);
+                progress.requirements_checkable = needed;
+                if needed == 0 && any_self_check {
+                    Outcome::NeedsStudentCheck { confirmed: None }
+                } else if met_children >= needed {
                     Outcome::Met
                 } else if any_progress {
                     Outcome::Partial
@@ -928,10 +1000,17 @@ impl ProgramContext<'_> {
         }
     }
 
-    fn requirement(&self, requirement: &Requirement) -> RequirementReport {
+    fn requirement_at(&mut self, requirement: &Requirement, depth: usize) -> RequirementReport {
         match &requirement.body {
-            RequirementBody::All { of } => self.group(requirement, of, None),
-            RequirementBody::Select { count, of } => self.group(requirement, of, Some(*count)),
+            RequirementBody::All { .. } | RequirementBody::Select { .. }
+                if depth >= MAX_TREE_DEPTH =>
+            {
+                self.too_deep(requirement)
+            }
+            RequirementBody::All { of } => self.group(requirement, of, None, depth),
+            RequirementBody::Select { count, of } => {
+                self.group(requirement, of, Some(*count), depth)
+            }
             RequirementBody::Course { filter, semesters } => {
                 self.course_rule(requirement, filter, *semesters)
             }
@@ -945,6 +1024,39 @@ impl ProgramContext<'_> {
             | RequirementBody::DistinctDepartments { .. } => self.self_check(requirement),
         }
     }
+
+    /// A group at the depth bound: its subtree is not read, so it is the
+    /// student's to check, and the label says why.
+    fn too_deep(&self, requirement: &Requirement) -> RequirementReport {
+        let mut report = self.self_check(requirement);
+        TOO_DEEP_LABEL.clone_into(&mut report.label);
+        report
+    }
+}
+
+/// The label of a group reported at `MAX_TREE_DEPTH`.
+const TOO_DEEP_LABEL: &str = "requirement tree too deep";
+
+/// A `Select` asks for `count` of its options, so the hours it needs are
+/// its own (unknown when the page prints none), and the hours it holds are
+/// those of the `count` best-filled options: a student who took three of
+/// "select one" has met it once.
+fn select_progress(
+    progress: &mut Progress,
+    requirement: &Requirement,
+    children: &[RequirementReport],
+    count: u8,
+) {
+    if let Some(hours) = requirement.hours {
+        progress.credits_required = hours.min();
+        progress.credits_unknown = 0;
+    } else {
+        progress.credits_required = Credits::ZERO;
+        progress.credits_unknown = 1;
+    }
+    let mut held: Vec<Credits> = children.iter().map(|c| c.progress.credits_met).collect();
+    held.sort_unstable_by(|a, b| b.cmp(a));
+    progress.credits_met = crate::plan::sum_credits(held.into_iter().take(usize::from(count)));
 }
 
 fn program_report(
@@ -953,8 +1065,9 @@ fn program_report(
     cards: &[Card],
     facts: &CourseFacts,
     warnings: &mut Vec<Warning>,
+    unknown_warned: &mut BTreeSet<EntryId>,
 ) -> ProgramReport {
-    let matching = match_cards(program, cards, facts, warnings);
+    let matching = match_cards(program, cards, facts, warnings, unknown_warned);
     let consumed: BTreeSet<EntryId> = matching
         .assigned
         .values()
@@ -962,8 +1075,7 @@ fn program_report(
         .filter_map(|i| cards.get(*i))
         .map(|c| c.entry)
         .collect();
-    let context = ProgramContext {
-        program,
+    let mut context = ProgramContext {
         cards,
         facts,
         matching,
@@ -979,7 +1091,7 @@ fn program_report(
             .flat_map(|t| t.non_course.iter().map(move |c| (c.requirement, t.id)))
             .collect(),
     };
-    let root = context.requirement(&context.program.root);
+    let root = context.requirement_at(&program.root, 0);
     let mut progress = root.progress;
     if let Some(total) = program.total_credits {
         progress.credits_required = total;
@@ -1001,7 +1113,15 @@ fn program_report(
 pub fn evaluate_program(plan: &Plan, program: &Program, facts: &CourseFacts) -> ProgramReport {
     let cards = collect_cards(plan, facts);
     let mut warnings = Vec::new();
-    program_report(plan, program, &cards, facts, &mut warnings)
+    let mut unknown_warned = BTreeSet::new();
+    program_report(
+        plan,
+        program,
+        &cards,
+        facts,
+        &mut warnings,
+        &mut unknown_warned,
+    )
 }
 
 /// Pick the version to evaluate: the plan's year when held, else the
@@ -1037,13 +1157,10 @@ fn choice_missing(bundle: &PlanBundle, cards: &[Card], chosen: &[&Program]) -> V
         .collect();
     let mut out = Vec::new();
     for card in cards {
-        let Some(term) = card.term else {
-            continue;
-        };
         for requirement in &card.fills {
             if !live.contains(requirement) {
                 out.push(Warning::RequirementChoiceMissing {
-                    term,
+                    term: card.term,
                     entry: card.entry,
                     requirement: *requirement,
                     retired: retired.contains(requirement),
@@ -1064,6 +1181,7 @@ pub fn evaluate(bundle: &PlanBundle) -> Report {
     let facts = &bundle.facts;
     let cards = collect_cards(plan, facts);
     let mut program_warnings = Vec::new();
+    let mut unknown_warned = BTreeSet::new();
     let mut reports = Vec::new();
     let mut chosen: Vec<&Program> = Vec::new();
     for id in &plan.programs {
@@ -1089,6 +1207,7 @@ pub fn evaluate(bundle: &PlanBundle) -> Report {
             &cards,
             facts,
             &mut program_warnings,
+            &mut unknown_warned,
         ));
     }
     program_warnings.extend(choice_missing(bundle, &cards, &chosen));
@@ -1103,10 +1222,12 @@ pub fn evaluate(bundle: &PlanBundle) -> Report {
             ..p
         });
     }
+    // The largest program total: declared where the page prints one, else
+    // the folded sum, as each `ProgramReport` already holds it.
     progress.credits_met = crate::plan::sum_credits(cards.iter().map(|c| c.credits));
     progress.credits_required = reports
         .iter()
-        .filter_map(|r| r.declared_credits)
+        .map(|r| r.progress.credits_required)
         .max()
         .unwrap_or(Credits::ZERO);
 
