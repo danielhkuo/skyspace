@@ -8,6 +8,17 @@ license.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Writes `web/src/api/generated/` from `cargo test --features ts`. Off in
+# every shipped build, so the frozen dependency tree is unchanged.
+ts = ["dep:ts-rs"]
+
 [dependencies]
+serde = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+ts-rs = { workspace = true, optional = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
+proptest = { workspace = true }

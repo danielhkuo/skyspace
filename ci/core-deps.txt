@@ -1,0 +1,11 @@
+proc-macro2 v1.0.107
+quote v1.0.47
+serde v1.0.229
+serde_core v1.0.229
+serde_derive v1.0.229 (proc-macro)
+skyspace-core v0.1.0 (/Users/dkuo/repos/skyspace/crates/skyspace-core)
+syn v3.0.5
+thiserror v2.0.20
+thiserror-impl v2.0.20 (proc-macro)
+unicode-ident v1.0.24
+uuid v1.26.1

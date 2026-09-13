@@ -1,6 +1,9 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# `skyspace-wasm` only makes sense under wasm-pack, so a root `cargo build`,
+# `cargo test` or `cargo clippy --all-targets` skips it.
+default-members = ["crates/skyspace-core"]
 
 [workspace.package]
 version = "0.1.0"
@@ -18,3 +21,52 @@ pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
+
+# Every version and feature set once; members write `{ workspace = true }`.
+[workspace.dependencies]
+skyspace-core = { path = "crates/skyspace-core" }
+skyspace-parse = { path = "crates/skyspace-parse" }
+skyspace-store = { path = "crates/skyspace-store" }
+skyspace-ingest = { path = "crates/skyspace-ingest" }
+
+serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
+serde_json = "1.0.150"
+uuid = { version = "1.23", default-features = false, features = ["serde"] }
+thiserror = "2.0.18"
+ts-rs = "12"
+proptest = "1.11"
+
+scraper = "0.27"
+quick-xml = { version = "0.38.4", features = ["serialize"] }
+regex = "1.12.4"
+insta = "1.48"
+
+sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "time", "json", "migrate", "macros"] }
+tokio = { version = "1.52.3", features = ["rt", "macros", "time", "sync"] }
+time = { version = "0.3.47", features = ["serde", "parsing", "formatting", "macros"] }
+sha2 = "0.10.9"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "json"] }
+
+reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls", "gzip"] }
+url = "2.5.8"
+encoding_rs = "0.8"
+flate2 = "1.1.9"
+bytes = "1.11.1"
+
+axum = "0.8.9"
+axum-extra = { version = "0.10", features = ["query"] }
+tower = "0.5"
+tower-http = { version = "0.6.11", features = ["trace", "compression-gzip", "timeout", "limit", "request-id", "catch-panic", "util"] }
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "builder", "tokio1"] }
+rand = "0.9"
+base64 = "0.22"
+anyhow = "1.0.102"
+dotenvy = "0.15.7"
+clap = { version = "4.6.1", features = ["derive", "env"] }
+
+wasm-bindgen = "0.2.128"
+wasm-bindgen-test = "0.3.78"
+js-sys = "0.3.105"
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"

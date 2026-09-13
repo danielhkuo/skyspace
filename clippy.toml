@@ -4,3 +4,8 @@
 # "Skyspace" is deliberately absent: it has no intra-word capital and does not
 # trip the lint. ".." keeps clippy's own default list as well.
 doc-valid-idents = ["CourseLeaf", "NetID", "WebAssembly", "PostgreSQL", ".."]
+# CI lints test code with -D warnings while the workspace denies unwrap,
+# expect and panic; without these three, tests do not compile.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
