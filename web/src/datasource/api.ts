@@ -490,6 +490,9 @@ async function createPlan(plan: Plan): Promise<Plan> {
     const envelope = await plans.create(planToWire(plan));
     const created = planFromWire(envelope.plan);
     planVersions.set(created.id, envelope.version);
+    // Onboarding replaces the plan on screen: a second plan is not active
+    // until asked, and the board opens on the active one.
+    await plans.activate(created.id);
     return created;
   });
 }

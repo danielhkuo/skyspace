@@ -184,6 +184,16 @@ function entryCode(plan: Plan, entry: EntryId): string {
 }
 
 /** A pin the student already explained: kept, but out of the loud count. */
+/**
+ * What the warnings table and its badge show. A self-check is not a defect
+ * in the plan: it is a requirement Skyspace cannot verify, and the sidebar's
+ * "Check yourself" row is where it is answered. Listing every one as a
+ * warning made an empty plan open with eleven of them.
+ */
+export function planWarnings(warnings: Warning[]): Warning[] {
+  return warnings.filter(w => w.kind !== 'selfCheck');
+}
+
 export function isRecordedClaim(warning: Warning): boolean {
   return (
     (warning.kind === 'requirementChoiceUnmatched' &&
