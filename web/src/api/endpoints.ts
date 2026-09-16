@@ -244,6 +244,13 @@ export const plans = {
   remove(id: PlanId, signal?: AbortSignal): Promise<void> {
     return apiFetch<void>(`/plans/${seg(id)}`, {method: 'DELETE', signal});
   },
+  /** Make it the plan the board opens on; only an account's first plan is active by itself. */
+  activate(id: PlanId, signal?: AbortSignal): Promise<void> {
+    return apiFetch<void>(`/plans/${seg(id)}/activate`, {
+      method: 'POST',
+      signal,
+    });
+  },
   /** Bare, not `Fresh`, and carries no version. */
   bundle(id: PlanId, signal?: AbortSignal): Promise<PlanBundle> {
     return apiFetch<PlanBundle>(`/plans/${seg(id)}/bundle`, {signal});

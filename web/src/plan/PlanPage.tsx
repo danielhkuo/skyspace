@@ -49,7 +49,7 @@ import {RequirementSuggestions} from './RequirementSuggestions';
 import {FavoritesTray} from './FavoritesTray';
 import {TermPickerDialog} from './TermPickerDialog';
 import {requirementTargetKey, useBoardDrag} from './useBoardDrag';
-import {isRecordedClaim, termName} from './labels';
+import {isRecordedClaim, planWarnings, termName} from './labels';
 import {locateEntry, usePlan, termRemoveBlocker} from './usePlan';
 import {WarningsPanel} from './WarningsPanel';
 import {LoadErrorCard} from '../shell/LoadErrorCard';
@@ -496,7 +496,8 @@ function PlanBoardPage({
             programs={bundle.programs}
             report={report}
             warningCount={
-              report.warnings.filter(w => !isRecordedClaim(w)).length
+              planWarnings(report.warnings).filter(w => !isRecordedClaim(w))
+                .length
             }
             onToggleWarnings={() => setShowWarnings(v => !v)}
             onOpenSettings={() => setSettingsOpen(true)}
@@ -582,7 +583,7 @@ function PlanBoardPage({
                       {showWarnings && (
                         <WarningsPanel
                           plan={bundle.plan}
-                          warnings={report.warnings}
+                          warnings={planWarnings(report.warnings)}
                           onEditCourse={setEditingCourse}
                         />
                       )}
