@@ -18,117 +18,132 @@ Parsed {
                 rules: [
                     Requirement {
                         id: RequirementId(
-                            c50fe749-33c7-528d-941e-534b395b2af6,
+                            454c1244-663a-51cc-972d-c76da5c55ab7,
                         ),
-                        label: "SINGLE VARIABLE CALCULUS I",
-                        hours: Some(
-                            Fixed(
-                                Credits(
-                                    300,
-                                ),
-                            ),
-                        ),
+                        label: "Math Courses",
+                        hours: None,
                         source: SourceRef {
                             url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
                             anchor: None,
                         },
-                        body: Course {
-                            filter: CourseFilter {
-                                include: [
-                                    Code {
-                                        code: CourseCode {
-                                            subject: Subject(
-                                                "MATH",
+                        body: All {
+                            of: [
+                                Requirement {
+                                    id: RequirementId(
+                                        c50fe749-33c7-528d-941e-534b395b2af6,
+                                    ),
+                                    label: "SINGLE VARIABLE CALCULUS I",
+                                    hours: Some(
+                                        Fixed(
+                                            Credits(
+                                                300,
                                             ),
-                                            number: CourseNumber(
-                                                "101",
-                                            ),
-                                        },
+                                        ),
+                                    ),
+                                    source: SourceRef {
+                                        url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
+                                        anchor: None,
                                     },
-                                    Code {
-                                        code: CourseCode {
-                                            subject: Subject(
-                                                "MATH",
-                                            ),
-                                            number: CourseNumber(
-                                                "105",
-                                            ),
+                                    body: Course {
+                                        filter: CourseFilter {
+                                            include: [
+                                                Code {
+                                                    code: CourseCode {
+                                                        subject: Subject(
+                                                            "MATH",
+                                                        ),
+                                                        number: CourseNumber(
+                                                            "101",
+                                                        ),
+                                                    },
+                                                },
+                                                Code {
+                                                    code: CourseCode {
+                                                        subject: Subject(
+                                                            "MATH",
+                                                        ),
+                                                        number: CourseNumber(
+                                                            "105",
+                                                        ),
+                                                    },
+                                                },
+                                            ],
+                                            exclude: [],
                                         },
+                                        semesters: 1,
                                     },
-                                ],
-                                exclude: [],
-                            },
-                            semesters: 1,
-                        },
-                    },
-                    Requirement {
-                        id: RequirementId(
-                            a75e06e0-8028-52e9-b85e-87abc7a9f167,
-                        ),
-                        label: "COMPUTATIONAL THINKING",
-                        hours: Some(
-                            Fixed(
-                                Credits(
-                                    400,
-                                ),
-                            ),
-                        ),
-                        source: SourceRef {
-                            url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
-                            anchor: None,
-                        },
-                        body: Course {
-                            filter: CourseFilter {
-                                include: [
-                                    Code {
-                                        code: CourseCode {
-                                            subject: Subject(
-                                                "COMP",
+                                },
+                                Requirement {
+                                    id: RequirementId(
+                                        a75e06e0-8028-52e9-b85e-87abc7a9f167,
+                                    ),
+                                    label: "COMPUTATIONAL THINKING",
+                                    hours: Some(
+                                        Fixed(
+                                            Credits(
+                                                400,
                                             ),
-                                            number: CourseNumber(
-                                                "140",
-                                            ),
+                                        ),
+                                    ),
+                                    source: SourceRef {
+                                        url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
+                                        anchor: None,
+                                    },
+                                    body: Course {
+                                        filter: CourseFilter {
+                                            include: [
+                                                Code {
+                                                    code: CourseCode {
+                                                        subject: Subject(
+                                                            "COMP",
+                                                        ),
+                                                        number: CourseNumber(
+                                                            "140",
+                                                        ),
+                                                    },
+                                                },
+                                            ],
+                                            exclude: [],
                                         },
+                                        semesters: 1,
                                     },
-                                ],
-                                exclude: [],
-                            },
-                            semesters: 1,
-                        },
-                    },
-                    Requirement {
-                        id: RequirementId(
-                            70ce8b2e-6e7b-5f06-993c-67603d08f725,
-                        ),
-                        label: "(AI-ASSISTED SOFTWARE DEVELOPMENT)",
-                        hours: Some(
-                            Fixed(
-                                Credits(
-                                    100,
-                                ),
-                            ),
-                        ),
-                        source: SourceRef {
-                            url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
-                            anchor: None,
-                        },
-                        body: Course {
-                            filter: CourseFilter {
-                                include: [
-                                    Code {
-                                        code: CourseCode {
-                                            subject: Subject(
-                                                "COMP",
+                                },
+                                Requirement {
+                                    id: RequirementId(
+                                        70ce8b2e-6e7b-5f06-993c-67603d08f725,
+                                    ),
+                                    label: "(AI-ASSISTED SOFTWARE DEVELOPMENT)",
+                                    hours: Some(
+                                        Fixed(
+                                            Credits(
+                                                100,
                                             ),
-                                            number: CourseNumber(
-                                                "303",
-                                            ),
+                                        ),
+                                    ),
+                                    source: SourceRef {
+                                        url: "https://ga.rice.edu/programs-study/departments-programs/engineering/computer-science/computer-science-bscs/",
+                                        anchor: None,
+                                    },
+                                    body: Course {
+                                        filter: CourseFilter {
+                                            include: [
+                                                Code {
+                                                    code: CourseCode {
+                                                        subject: Subject(
+                                                            "COMP",
+                                                        ),
+                                                        number: CourseNumber(
+                                                            "303",
+                                                        ),
+                                                    },
+                                                },
+                                            ],
+                                            exclude: [],
                                         },
+                                        semesters: 1,
                                     },
-                                ],
-                                exclude: [],
-                            },
-                            semesters: 1,
+                                },
+                            ],
                         },
                     },
                     Requirement {
@@ -292,9 +307,7 @@ Parsed {
                         },
                     },
                 ],
-                unparsed: [
-                    "Math Courses",
-                ],
+                unparsed: [],
             },
             AreaDraft {
                 title: "Design Requirement",
@@ -434,10 +447,6 @@ Parsed {
             ),
         ],
         issues: [
-            ParseIssue {
-                code: UnclassifiedRequirementRow,
-                detail: "computer-science-bscs row 4: \"Math Courses\"",
-            },
             ParseIssue {
                 code: UnclassifiedRequirementRow,
                 detail: "computer-science-bscs row 22: \"Select 2 courses from departmental (COMP) course offerings (a minimum of 3 credit hours each) at the 300-level or above\"",

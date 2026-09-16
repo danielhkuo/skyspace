@@ -284,18 +284,24 @@ fn bscs_page_becomes_areas_and_rules() {
     );
     assert_eq!(draft.areas.len(), 3);
     let core = &draft.areas[0];
-    assert_eq!(core.unparsed, vec!["Math Courses".to_owned()]);
-    assert_eq!(core.rules.len(), 5);
-    assert_eq!(core.rules[0].label, "SINGLE VARIABLE CALCULUS I");
+    // "Math Courses" is a heading over the rows under it, not a rule of its own.
+    assert!(core.unparsed.is_empty(), "{:?}", core.unparsed);
+    assert_eq!(core.rules.len(), 3);
+    assert_eq!(core.rules[0].label, "Math Courses");
+    let RequirementBody::All { of: math } = &core.rules[0].body else {
+        panic!("heading should open an All group: {:?}", core.rules[0].body);
+    };
+    assert_eq!(math.len(), 3);
+    assert_eq!(math[0].label, "SINGLE VARIABLE CALCULUS I");
     assert!(
-        matches!(&core.rules[0].body, RequirementBody::Course { filter, .. } if filter.include.len() == 2)
+        matches!(&math[0].body, RequirementBody::Course { filter, .. } if filter.include.len() == 2)
     );
-    assert_eq!(core.rules[2].label, "(AI-ASSISTED SOFTWARE DEVELOPMENT)");
+    assert_eq!(math[2].label, "(AI-ASSISTED SOFTWARE DEVELOPMENT)");
     assert!(
-        matches!(&core.rules[3].body, RequirementBody::Select { count: 1, of } if of.len() == 3)
+        matches!(&core.rules[1].body, RequirementBody::Select { count: 1, of } if of.len() == 3)
     );
     assert!(
-        matches!(&core.rules[4].body, RequirementBody::Credits { minimum, from, .. } if minimum.cents() == 600 && from.include.len() == 2)
+        matches!(&core.rules[2].body, RequirementBody::Credits { minimum, from, .. } if minimum.cents() == 600 && from.include.len() == 2)
     );
     assert_eq!(draft.aliases.len(), 1);
     assert_eq!(draft.aliases[0].1.to_string(), "ECON 307");

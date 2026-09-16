@@ -103,6 +103,11 @@ async fn owner_other_and_anonymous(pool: sqlx::PgPool) {
             format!("/api/v1/plans/{}/duplicate", owned.plan),
             Some(json!({ "name": "Copy" })),
         ),
+        (
+            Method::POST,
+            format!("/api/v1/plans/{}/activate", owned.plan),
+            None,
+        ),
     ];
     for (method, uri, body) in &reads {
         let mine = call(&app, method.clone(), uri, Some(&owner), body.as_ref()).await;

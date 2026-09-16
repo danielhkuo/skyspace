@@ -223,6 +223,25 @@ pub async fn duplicate(
     envelope(&state, &session, copy).await
 }
 
+/// `POST /api/v1/plans/{id}/activate`: make this the plan the board opens
+/// on. Only the first plan an account creates is active on its own; every
+/// later one (onboarding's "start over", a duplicate) needs this call.
+pub async fn activate(
+    session: Session,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    if state
+        .store
+        .set_active_plan(session.account_id, PlanId(id))
+        .await?
+    {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(ApiError::NotFound)
+    }
+}
+
 /// `DELETE /api/v1/plans/{id}`: `409 last_plan` for the account's last one.
 pub async fn remove(
     session: Session,

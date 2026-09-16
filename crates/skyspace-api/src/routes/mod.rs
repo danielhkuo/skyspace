@@ -135,6 +135,12 @@ pub fn endpoints() -> Vec<Endpoint> {
             Session,
             post(plans::duplicate),
         ),
+        Endpoint::new(
+            POST,
+            "/api/v1/plans/{id}/activate",
+            Session,
+            post(plans::activate),
+        ),
         Endpoint::new(DELETE, "/api/v1/plans/{id}", Session, delete(plans::remove)),
         Endpoint::new(
             GET,

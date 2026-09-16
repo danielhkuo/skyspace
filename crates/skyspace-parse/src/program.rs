@@ -388,6 +388,22 @@ struct Group {
 enum GroupKind {
     Select(u8),
     Credits(Credits),
+    /// A bare heading such as "Math Courses": the course rows under it are
+    /// all required, and the heading is their label, not a rule of its own.
+    All,
+}
+
+/// A codeless row that reads as a heading rather than a sentence: a few
+/// words, no terminal punctuation, no hours. "Math Courses" is one;
+/// "Note: University Graduation Requirements include 31 credit hours." and
+/// "Select 1 course from the following:" are not.
+fn is_heading(text: &str) -> bool {
+    let text = text.trim();
+    !text.is_empty()
+        && text.split_whitespace().count() <= 6
+        && !text.ends_with(['.', ':', ';', '!', '?'])
+        && !text.contains(':')
+        && !text.chars().any(|c| c.is_ascii_digit())
 }
 
 /// What one `<tr>` turned out to be.
@@ -738,6 +754,13 @@ impl Page<'_> {
     ) {
         self.report.kept_row();
         let first = codes[0].clone();
+        if matches!(self.group.as_ref().map(|g| &g.kind), Some(GroupKind::All)) {
+            let requirement = self.course_requirement(codes, title, hours);
+            if let Some(group) = self.group.as_mut() {
+                group.options.push(requirement);
+            }
+            return;
+        }
         if indented && self.group.is_some() {
             if let Some(GroupKind::Credits(_)) = self.group.as_ref().map(|g| &g.kind) {
                 for other in &codes[1..] {
@@ -780,7 +803,7 @@ impl Page<'_> {
                     self.report.kept_row();
                     return;
                 }
-                GroupKind::Select(_) => group.options.last_mut(),
+                GroupKind::Select(_) | GroupKind::All => group.options.last_mut(),
             },
             None => self.areas.last_mut().and_then(|area| area.rules.last_mut()),
         };
@@ -804,6 +827,18 @@ impl Page<'_> {
     /// A codeless row: the "any course between X and Y with the exception
     /// of Z" form becomes a range rule; everything else is kept verbatim.
     fn comment(&mut self, text: String, hours: Option<CreditRange>) {
+        if hours.is_none() && is_heading(&text) {
+            let id = self.id_for(&text);
+            self.group = Some(Group {
+                label: text,
+                hours: None,
+                kind: GroupKind::All,
+                options: Vec::new(),
+                filter: CourseFilter::default(),
+                id,
+            });
+            return;
+        }
         let Some(caps) = self.shapes.between.captures(&text) else {
             self.unparsed(text);
             return;
@@ -860,7 +895,7 @@ impl Page<'_> {
             return;
         };
         let empty = match group.kind {
-            GroupKind::Select(_) => group.options.is_empty(),
+            GroupKind::Select(_) | GroupKind::All => group.options.is_empty(),
             GroupKind::Credits(_) => group.filter.include.is_empty(),
         };
         if empty {
@@ -877,6 +912,7 @@ impl Page<'_> {
                 scope: CreditScope::Any,
                 from: group.filter,
             },
+            GroupKind::All => RequirementBody::All { of: group.options },
         };
         self.report.kept_row();
         let source = self.source.clone();
