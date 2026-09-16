@@ -317,3 +317,58 @@ async fn the_abuse_guard_counts_every_vector_in_the_document(pool: sqlx::PgPool)
     let accepted = create_plan(&app, &cookie, &json!({ "plan": full })).await;
     assert_eq!(accepted.status(), StatusCode::OK);
 }
+
+#[sqlx::test(migrations = "../skyspace-store/migrations")]
+async fn a_later_plan_becomes_active_only_when_asked(pool: sqlx::PgPool) {
+    let (app, state) = app(pool);
+    seed_catalog(&state.store).await;
+    let program = seed_program(&state.store).await;
+    let cookie = sign_in(&app, &state, "owl@rice.edu").await;
+    let first = json(
+        create_plan(
+            &app,
+            &cookie,
+            &json!({ "plan": plan("First", vec![program], &[]) }),
+        )
+        .await,
+    )
+    .await;
+    let second = json(
+        create_plan(
+            &app,
+            &cookie,
+            &json!({ "plan": plan("Second", vec![program], &[]) }),
+        )
+        .await,
+    )
+    .await;
+    let list = json(get(&app, "/api/v1/plans", Some(&cookie)).await).await;
+    assert_eq!(list[0]["id"], first["plan"]["id"]);
+    assert_eq!(list[0]["isActive"], true);
+    assert_eq!(list[1]["isActive"], false);
+
+    let second_id = second["plan"]["id"].as_str().unwrap();
+    let activated = call(
+        &app,
+        Method::POST,
+        &format!("/api/v1/plans/{second_id}/activate"),
+        Some(&cookie),
+        None,
+    )
+    .await;
+    assert_eq!(activated.status(), StatusCode::NO_CONTENT);
+    let list = json(get(&app, "/api/v1/plans", Some(&cookie)).await).await;
+    assert_eq!(list[0]["id"], second_id);
+    assert_eq!(list[0]["isActive"], true);
+    assert_eq!(list[1]["isActive"], false);
+
+    let missing = call(
+        &app,
+        Method::POST,
+        "/api/v1/plans/00000000-0000-0000-0000-000000000000/activate",
+        Some(&cookie),
+        None,
+    )
+    .await;
+    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+}
