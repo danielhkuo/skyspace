@@ -1,6 +1,7 @@
 import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Icon} from '@astryxdesign/core/Icon';
+import {IconButton} from '@astryxdesign/core/IconButton';
 import {Button} from '@astryxdesign/core/Button';
 import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Link} from '@astryxdesign/core/Link';
@@ -8,7 +9,13 @@ import {ProgressBar} from '@astryxdesign/core/ProgressBar';
 import {Stack, StackItem} from '@astryxdesign/core/Stack';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
-import {createContext, useContext, useState, type ReactNode} from 'react';
+import {
+  createContext,
+  useContext,
+  useId,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import {
   findRequirement,
@@ -176,6 +183,7 @@ function LeafRow({
   wrapRequirement?: SidebarProps['wrapRequirement'];
 }) {
   const [open, setOpen] = useState(false);
+  const detailsId = useId();
   const first = requirements[0];
   if (first === undefined) {
     return null;
@@ -245,11 +253,24 @@ function LeafRow({
         </Text>
       )}
       {expandable && (
-        <Icon
-          icon={open ? 'chevronDown' : 'chevronRight'}
+        <IconButton
+          label={`Details for ${label}`}
+          variant="ghost"
           size="sm"
-          color="secondary"
-          label={open ? 'Collapse' : 'Expand'}
+          icon={
+            <Icon
+              icon={open ? 'chevronDown' : 'chevronRight'}
+              size="sm"
+              color="secondary"
+            />
+          }
+          aria-expanded={open}
+          aria-controls={open ? detailsId : undefined}
+          onClick={e => {
+            // The row toggles on click too; without this the press would toggle twice.
+            e.stopPropagation();
+            setOpen(v => !v);
+          }}
         />
       )}
     </Stack>
@@ -260,7 +281,13 @@ function LeafRow({
         ? row
         : wrapRequirement(program, first, row)}
       {open && (
-        <Stack width="100%" gap={0} paddingInlineStart={3} paddingBlock={0.5}>
+        <Stack
+          id={detailsId}
+          width="100%"
+          gap={0}
+          paddingInlineStart={3}
+          paddingBlock={0.5}
+        >
           {filled.map(entry => {
             const {label: code, manual} = entryLabel(plan, entry);
             const bySayso = claimed.has(entry);
