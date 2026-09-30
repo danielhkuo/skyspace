@@ -160,10 +160,11 @@ function entryTerm(plan: Plan, entry: EntryId): string {
 }
 
 /**
- * A leaf course requirement, or a run of sibling slots, as exactly one line:
- * mark, label, the codes filling it, and the count. Everything else (one row
- * per card, the change link, suggestions) lives behind the chevron, so the
- * list reads the same whether a requirement holds one card or eight.
+ * A leaf course requirement, or a run of sibling slots, as exactly one line
+ * while closed: mark, label, the codes filling it, and the count. Open, the
+ * label and codes wrap in full, and everything else (one row per card, the
+ * change link, suggestions) appears below, so the list reads the same whether
+ * a requirement holds one card or eight.
  */
 function LeafRow({
   plan,
@@ -236,13 +237,22 @@ function LeafRow({
     >
       <StatusMark report={outcome} />
       <StackItem size="fill">
-        <Stack direction="horizontal" gap={1.5} vAlign="center" width="100%">
-          <Text size="sm" maxLines={1}>
+        {/* Open, the label and codes wrap in full: the tooltip on a clipped
+            line needs a mouse, and the label lists which courses count. */}
+        <Stack
+          direction={open ? 'vertical' : 'horizontal'}
+          gap={1.5}
+          vAlign="center"
+          width="100%"
+        >
+          <Text size="sm" maxLines={open ? 0 : 1}>
             {label}
           </Text>
-          <Text type="supporting" maxLines={1}>
-            {summary}
-          </Text>
+          {summary !== '' && (
+            <Text type="supporting" maxLines={open ? 0 : 1}>
+              {summary}
+            </Text>
+          )}
         </Stack>
       </StackItem>
       {total > 1 && (
