@@ -130,6 +130,9 @@ export function OnboardingPage() {
       .then(b => setFacts(b.facts))
       .catch(() => setFacts(undefined));
   }, []);
+  // The Majors picker searches majors only, so its placeholder counts the same
+  // set; `available` also holds the university program and minors.
+  const majorCount = available.filter(p => p.kind === 'major').length;
   // Anything chosen is worth a question before it is thrown away.
   const dirty =
     majors.length > 0 || minors.length > 0 || incoming.length > 0 || step > 1;
@@ -276,7 +279,7 @@ export function OnboardingPage() {
                 <>
                   <ProgramPicker
                     label="Majors"
-                    placeholder={`Search ${available.length} programs by name`}
+                    placeholder={`Search ${majorCount} major${majorCount === 1 ? '' : 's'} by name`}
                     kinds={['major']}
                     available={available}
                     chosen={majors}
