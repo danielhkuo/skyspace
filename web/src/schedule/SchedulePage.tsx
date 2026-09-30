@@ -248,7 +248,16 @@ export function SchedulePage() {
         }
         content={
           <LayoutContent padding={0} isScrollable={false}>
-            <Stack width="100%" height="100%" isScrollable>
+            {/* The grid holds nothing focusable, so the scroller itself takes
+                focus: otherwise a keyboard user cannot scroll it (WCAG 2.1.1). */}
+            <Stack
+              width="100%"
+              height="100%"
+              isScrollable
+              tabIndex={0}
+              role="region"
+              aria-label="Week grid"
+            >
               <WeekGrid
                 schedule={current}
                 sectionsByCrn={state.sectionsByCrn}
