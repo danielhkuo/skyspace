@@ -437,7 +437,8 @@ export function OnboardingPage() {
                     Assign each card its Rice equivalent to apply its credit
                     hours. Cards without an equivalent will only count for raw
                     hours. Only your official transfer evaluation from the
-                    registrar is final. count toward distribution.
+                    registrar is final. AP and IB credit never counts toward
+                    distribution.
                   </Text>
                 </>
               )}
