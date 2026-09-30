@@ -22,7 +22,9 @@ createRoot(container).render(
   <StrictMode>
     {/* One theme, light only: spec.md says no light/dark switch. */}
     <Theme theme={neutralTheme} mode="light">
-      <BrowserRouter>
+      {/* The catalog search box takes its value from the URL. React drops
+          keys typed into an input whose value commits in a transition. */}
+      <BrowserRouter useTransitions={false}>
         <LinkProvider component={RouterLink}>
           <App />
         </LinkProvider>
