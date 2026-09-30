@@ -41,14 +41,18 @@ type CandidateListProps = {
   dispatch: (action: ScheduleAction) => void;
 };
 
-const swatch = (hue: string): CSSProperties => ({
+// A hidden course fades only its swatch. Opacity on the whole row would blend
+// its text toward the background and below WCAG AA contrast, and the row
+// stays interactive. The swatch only repeats what the course code says, so it
+// carries no contrast requirement of its own.
+const swatch = (hue: string, visible: boolean): CSSProperties => ({
   width: 12,
   height: 12,
   flexShrink: 0,
   borderRadius: 'var(--radius-inner)',
   background: `var(--color-border-${hue})`,
+  opacity: visible ? undefined : 0.55,
 });
-const dimmed: CSSProperties = {opacity: 0.55};
 
 /** The candidates, one block each: title row, section picker, seats, conflicts. */
 export function CandidateList({
@@ -106,15 +110,9 @@ function CandidateRow({
     : [];
 
   return (
-    <Stack
-      width="100%"
-      gap={1}
-      paddingBlock={2}
-      align="start"
-      style={candidate.visible ? undefined : dimmed}
-    >
+    <Stack width="100%" gap={1} paddingBlock={2} align="start">
       <Stack direction="horizontal" width="100%" gap={1.5} vAlign="center">
-        <Stack style={swatch(hue)} />
+        <Stack style={swatch(hue, candidate.visible)} />
         <Text
           weight="semibold"
           size="sm"
