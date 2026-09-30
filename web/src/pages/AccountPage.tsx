@@ -10,6 +10,7 @@ import {useState} from 'react';
 import {useNavigate} from 'react-router';
 
 import {dataSource} from '../datasource';
+import {type Session, UnauthenticatedError} from '../datasource/types';
 import {announceSessionChange, useSession} from '../shell/useSession';
 
 const NEVER = [
@@ -18,12 +19,46 @@ const NEVER = [
   'Anything from Esther',
 ];
 
+type DeleteCopy = {
+  buttonLabel: string;
+  helper: string;
+  title: string;
+  description: string;
+  cancelLabel: string;
+};
+
+const ACCOUNT_DELETE_COPY: DeleteCopy = {
+  buttonLabel: 'Delete account',
+  helper: 'Removes every plan, schedule and bookmark. Cannot be undone.',
+  title: 'Delete your account?',
+  description:
+    'Every plan, favorite and self-check goes, immediately and for good. There is no backup.',
+  cancelLabel: 'Keep my account',
+};
+
+const GUEST_DELETE_COPY: DeleteCopy = {
+  buttonLabel: 'Clear saved data',
+  helper:
+    'Removes every schedule and bookmark saved in this browser. Cannot be undone.',
+  title: 'Delete what this browser saved?',
+  description:
+    'Every schedule and favorite saved in this browser goes, immediately and for good.',
+  cancelLabel: 'Keep my data',
+};
+
+/** A guest has no account to delete, only what this browser saved. */
+function deleteCopy(session: Session | null | undefined): DeleteCopy {
+  return session ? ACCOUNT_DELETE_COPY : GUEST_DELETE_COPY;
+}
+
 /** Account on the left, privacy on the right (`Account and Privacy`). */
 export function AccountPage() {
   const {session, signOut} = useSession();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | undefined>(undefined);
+  const copy = deleteCopy(session);
 
   return (
     <Stack
@@ -84,14 +119,26 @@ export function AccountPage() {
               </Text>
               <Stack width="100%" gap={0.5} align="start">
                 <Button
-                  label="Delete account"
+                  label={copy.buttonLabel}
                   variant="destructive"
                   size="sm"
-                  onClick={() => setConfirming(true)}
+                  // Until the session is known, the label could name the wrong action.
+                  isDisabled={session === undefined}
+                  onClick={() => {
+                    setDeleteError(undefined);
+                    setConfirming(true);
+                  }}
                 />
-                <Text type="supporting">
-                  Removes every plan, schedule and bookmark. Cannot be undone.
-                </Text>
+                <Text type="supporting">{copy.helper}</Text>
+                {deleteError !== undefined && (
+                  <Text
+                    size="sm"
+                    role="alert"
+                    style={{color: 'var(--color-text-red)'}}
+                  >
+                    {deleteError}
+                  </Text>
+                )}
               </Stack>
               <Stack
                 direction="horizontal"
@@ -188,9 +235,9 @@ export function AccountPage() {
               Deleting your account
             </Text>
             <Text>
-              Delete account on this page removes every plan, schedule and
-              bookmark immediately. It cannot be undone, and we keep no backup
-              copy tied to your email.
+              Deleting your account removes every plan, schedule and bookmark
+              immediately. It cannot be undone, and we keep no backup copy tied
+              to your email.
             </Text>
           </Stack>
         </Stack>
@@ -198,20 +245,34 @@ export function AccountPage() {
       <AlertDialog
         isOpen={confirming}
         onOpenChange={setConfirming}
-        title="Delete your account?"
-        description="Every plan, favorite and self-check goes, immediately and for good. There is no backup."
-        cancelLabel="Keep my account"
+        title={copy.title}
+        description={copy.description}
+        cancelLabel={copy.cancelLabel}
         actionLabel="Delete everything"
         actionVariant="destructive"
         isActionLoading={deleting}
         onAction={() => {
           setDeleting(true);
-          void dataSource.deleteAccount().then(() => {
-            announceSessionChange();
-            setDeleting(false);
-            setConfirming(false);
-            window.location.assign('/catalog');
-          });
+          void dataSource
+            .deleteAccount()
+            .then(() => {
+              announceSessionChange();
+              setConfirming(false);
+              window.location.assign('/catalog');
+            })
+            .catch((e: unknown) => {
+              // The dialog has no room for an error, so close it and say why beside the button.
+              setConfirming(false);
+              if (e instanceof UnauthenticatedError) {
+                // The session ended elsewhere; show guest wording, not a
+                // "Delete account" that would only clear this browser.
+                announceSessionChange();
+                setDeleteError(`${e.message}.`);
+              } else {
+                setDeleteError('The delete did not finish. Try again.');
+              }
+            })
+            .finally(() => setDeleting(false));
         }}
       />
     </Stack>

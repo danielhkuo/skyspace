@@ -95,7 +95,11 @@ export type DataSource = {
    * (`06-api.md` "Guest mode"). Never overwrites; a name collision is renamed.
    */
   claimGuestData(guest: GuestData): Promise<void>;
-  /** Removes every plan, favorite and session. Cannot be undone. */
+  /**
+   * Signed in: removes the account with every plan, favorite and session.
+   * Signed out: clears what this browser saved, with no server call.
+   * Cannot be undone.
+   */
   deleteAccount(): Promise<void>;
   /**
    * Whether we are showing the last good data because a pull is overdue.
