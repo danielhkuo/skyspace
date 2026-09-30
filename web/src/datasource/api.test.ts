@@ -242,6 +242,34 @@ describe('signed-in schedules', () => {
   });
 });
 
+describe('delete account', () => {
+  it('clears a guest browser without calling DELETE /account', async () => {
+    routes = [unauthenticated('/api/v1/account')];
+    const source = await load();
+    await source.saveSchedule(schedule);
+    await source.setCurrentSchedule('202710', schedule.id);
+    expect(localStorage.getItem(GUEST_KEY)).not.toBeNull();
+
+    await source.deleteAccount();
+
+    expect(of('DELETE', '/api/v1/account')).toHaveLength(0);
+    expect(localStorage.getItem(GUEST_KEY)).toBeNull();
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('deletes the account once when signed in', async () => {
+    routes = [
+      signedIn(),
+      {method: 'DELETE', path: '/api/v1/account', status: 204},
+    ];
+    const source = await load();
+
+    await source.deleteAccount();
+
+    expect(of('DELETE', '/api/v1/account')).toHaveLength(1);
+  });
+});
+
 describe('plans', () => {
   it('turns a 409 on save into StaleVersionError', async () => {
     routes = [

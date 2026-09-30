@@ -710,7 +710,11 @@ export const apiDataSource: DataSource = {
   claimGuestData,
 
   async deleteAccount(): Promise<void> {
-    await onSession('delete your account', () => account.remove());
+    // A guest has no account: `DELETE /account` would answer 401 and stop
+    // the local clean-up below, which is all a guest has to delete.
+    if (await signedIn()) {
+      await onSession('delete your account', () => account.remove());
+    }
     forgetEverything();
     clearGuest();
     forgetCurrentSchedules();
